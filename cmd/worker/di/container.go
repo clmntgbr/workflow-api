@@ -11,6 +11,7 @@ import (
 	domainorganization "go-api/internal/domain/organization"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
+	"go-api/internal/infrastructure/centrifugo"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/messaging/rabbitmq"
 	"go-api/internal/infrastructure/notification"
@@ -45,6 +46,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	dedupRepo := processed.NewRepository(db)
 	notifier := notification.NewLogNotifier()
+	realtimePublisher := centrifugo.NewPublisher(env)
+	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
+	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -57,26 +61,51 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"notify_user_on_created",
 		eventuser.NewNotifyUserOnCreatedHandler(notifier).Handle,
 	))
+	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
+		dedupRepo,
+		"publish_user_created_realtime",
+		publishUserRealtime.OnCreated,
+	))
 	reg.Register(domainuser.EventTypeUserUpdated, dedup.With(
 		dedupRepo,
 		"user_updated",
 		eventuser.NewUserUpdatedHandler().Handle,
+	))
+	reg.Register(domainuser.EventTypeUserUpdated, dedup.With(
+		dedupRepo,
+		"publish_user_updated_realtime",
+		publishUserRealtime.OnUpdated,
 	))
 	reg.Register(domainuser.EventTypeUserDeleted, dedup.With(
 		dedupRepo,
 		"user_deleted",
 		eventuser.NewUserDeletedHandler().Handle,
 	))
+	reg.Register(domainuser.EventTypeUserDeleted, dedup.With(
+		dedupRepo,
+		"publish_user_deleted_realtime",
+		publishUserRealtime.OnDeleted,
+	))
 	reg.Register(domainuser.EventTypeUserActiveOrganizationChanged, dedup.With(
 		dedupRepo,
 		"user_active_organization_changed",
 		eventuser.NewUserActiveOrganizationChangedHandler().Handle,
+	))
+	reg.Register(domainuser.EventTypeUserActiveOrganizationChanged, dedup.With(
+		dedupRepo,
+		"publish_user_active_organization_changed_realtime",
+		publishUserRealtime.OnActiveOrganizationChanged,
 	))
 
 	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
 		dedupRepo,
 		"organization_created",
 		eventorganization.NewOrganizationCreatedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
+		dedupRepo,
+		"publish_organization_created_realtime",
+		publishOrgRealtime.OnCreated,
 	))
 	reg.Register(domainorganization.EventTypeOrganizationUpdated, dedup.With(
 		dedupRepo,

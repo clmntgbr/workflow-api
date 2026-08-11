@@ -45,7 +45,7 @@ func (h *CreateOrganizationHandler) Handle(
 		return nil, errors.New("creator user is required")
 	}
 
-	org := domainorganization.NewOrganization(cmd.Name)
+	org := domainorganization.NewOrganization(cmd.Name, cmd.CreatorUserID)
 	org.AddMember(cmd.CreatorUserID)
 
 	err := h.orgRepo.WithTransaction(ctx, func(txCtx context.Context) error {

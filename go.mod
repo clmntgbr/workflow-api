@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/centrifugal/gocent/v3 v3.4.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

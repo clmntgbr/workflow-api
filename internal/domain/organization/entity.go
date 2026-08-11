@@ -21,7 +21,7 @@ type Organization struct {
 	events []event.DomainEvent
 }
 
-func NewOrganization(name string) *Organization {
+func NewOrganization(name string, createdByUserID uuid.UUID) *Organization {
 	now := time.Now().UTC()
 	org := &Organization{
 		ID:        uuid.New(),
@@ -31,10 +31,11 @@ func NewOrganization(name string) *Organization {
 		MemberIDs: nil,
 	}
 	org.recordEvent(OrganizationCreated{
-		ID:             uuid.New().String(),
-		OrganizationID: org.ID.String(),
-		Name:           org.Name,
-		Timestamp:      now,
+		ID:              uuid.New().String(),
+		OrganizationID:  org.ID.String(),
+		Name:            org.Name,
+		CreatedByUserID: createdByUserID.String(),
+		Timestamp:       now,
 	})
 	return org
 }

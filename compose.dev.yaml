@@ -19,11 +19,18 @@ services:
       - go-build-cache:/root/.cache/go-build
     env_file:
       - .env
+    environment:
+      CENTRIFUGO_URL: http://centrifugo:8000/api
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev-centrifugo-api-key}
+      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-dev-centrifugo-token-secret}
+      CENTRIFUGO_PUBLIC_WS_URL: ${CENTRIFUGO_PUBLIC_WS_URL:-ws://localhost:8000/connection/websocket}
     depends_on:
       database:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      centrifugo:
+        condition: service_started
     networks:
       - api
     restart: unless-stopped
@@ -41,11 +48,18 @@ services:
       - go-build-cache:/root/.cache/go-build
     env_file:
       - .env
+    environment:
+      CENTRIFUGO_URL: http://centrifugo:8000/api
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev-centrifugo-api-key}
+      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-dev-centrifugo-token-secret}
+      CENTRIFUGO_PUBLIC_WS_URL: ${CENTRIFUGO_PUBLIC_WS_URL:-ws://localhost:8000/connection/websocket}
     depends_on:
       database:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      centrifugo:
+        condition: service_started
     networks:
       - api
     restart: unless-stopped
@@ -85,6 +99,23 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-user}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-password}
+    networks:
+      - api
+    restart: unless-stopped
+
+  centrifugo:
+    container_name: centrifugo
+    image: centrifugo/centrifugo:v5
+    command: ["centrifugo", "-c", "config.json"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./centrifugo:/centrifugo:ro
+    working_dir: /centrifugo
+    environment:
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-dev-centrifugo-api-key}
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_SECRET:-dev-centrifugo-token-secret}
+      CENTRIFUGO_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost:3000 http://localhost:3001}
     networks:
       - api
     restart: unless-stopped

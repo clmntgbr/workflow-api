@@ -29,6 +29,7 @@ type Container struct {
 	UserHandler            *httphandler.UserHandler
 	OrganizationHandler    *httphandler.OrganizationHandler
 	WorkflowHandler        *httphandler.WorkflowHandler
+	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -99,5 +100,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getWorkflowByIDHandler,
 			listWorkflowsByOrgHandler,
 		),
+		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}
 }

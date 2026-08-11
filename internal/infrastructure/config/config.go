@@ -11,26 +11,30 @@ import (
 )
 
 type Config struct {
-	DatabaseURL          string
-	ClerkWebhookSecret   string
-	Port                 string
-	Environment          string
-	ClerkSecretKey       string
-	ClerkFrontendAPI     string
-	CORSAllowedOrigins   []string
-	CORSAllowCredentials bool
-	CORSAllowMethods     []string
-	CORSAllowHeaders     []string
-	CORSMaxAge           int
-	RateLimitMax         int
-	RabbitMQURL          string
-	RabbitMQExchange     string
-	RabbitMQQueue        string
-	RabbitMQRoutingKey   string
-	RabbitMQRetryTTLMS   int
-	WorkerMaxRetries     int
-	OutboxPollInterval   time.Duration
-	WorkerConcurrency    int
+	DatabaseURL           string
+	ClerkWebhookSecret    string
+	Port                  string
+	Environment           string
+	ClerkSecretKey        string
+	ClerkFrontendAPI      string
+	CORSAllowedOrigins    []string
+	CORSAllowCredentials  bool
+	CORSAllowMethods      []string
+	CORSAllowHeaders      []string
+	CORSMaxAge            int
+	RateLimitMax          int
+	RabbitMQURL           string
+	RabbitMQExchange      string
+	RabbitMQQueue         string
+	RabbitMQRoutingKey    string
+	RabbitMQRetryTTLMS    int
+	WorkerMaxRetries      int
+	OutboxPollInterval    time.Duration
+	WorkerConcurrency     int
+	CentrifugoURL         string
+	CentrifugoAPIKey      string
+	CentrifugoTokenSecret string
+	CentrifugoPublicWSURL string
 }
 
 func Load() *Config {
@@ -39,26 +43,30 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DatabaseURL:          getEnv("DATABASE_URL"),
-		ClerkWebhookSecret:   getEnv("CLERK_WEBHOOK_SECRET"),
-		Port:                 getEnv("PORT"),
-		Environment:          getEnv("GO_ENV"),
-		ClerkSecretKey:       getEnv("CLERK_SECRET_KEY"),
-		ClerkFrontendAPI:     getEnv("CLERK_FRONTEND_API"),
-		CORSAllowedOrigins:   strings.Split(getEnv("CORS_ALLOWED_ORIGINS"), ","),
-		CORSAllowCredentials: getEnvBool("CORS_ALLOW_CREDENTIALS"),
-		CORSAllowMethods:     strings.Split(getEnv("CORS_ALLOW_METHODS"), ","),
-		CORSAllowHeaders:     strings.Split(getEnv("CORS_ALLOW_HEADERS"), ","),
-		CORSMaxAge:           getEnvInt("CORS_MAX_AGE"),
-		RateLimitMax:         getEnvInt("RATE_LIMIT_MAX"),
-		RabbitMQURL:          getEnv("RABBITMQ_URL"),
-		RabbitMQExchange:     getEnvOrDefault("RABBITMQ_EXCHANGE", "domain.events"),
-		RabbitMQQueue:        getEnvOrDefault("RABBITMQ_QUEUE", "domain.events"),
-		RabbitMQRoutingKey:   getEnvOrDefault("RABBITMQ_ROUTING_KEY", "user.#"),
-		RabbitMQRetryTTLMS:   getEnvIntOrDefault("RABBITMQ_RETRY_TTL_MS", 30000),
-		WorkerMaxRetries:     getEnvIntOrDefault("WORKER_MAX_RETRIES", 3),
-		OutboxPollInterval:   getEnvDuration("OUTBOX_POLL_INTERVAL", 2*time.Second),
-		WorkerConcurrency:    getEnvIntOrDefault("WORKER_CONCURRENCY", 4),
+		DatabaseURL:           getEnv("DATABASE_URL"),
+		ClerkWebhookSecret:    getEnv("CLERK_WEBHOOK_SECRET"),
+		Port:                  getEnv("PORT"),
+		Environment:           getEnv("GO_ENV"),
+		ClerkSecretKey:        getEnv("CLERK_SECRET_KEY"),
+		ClerkFrontendAPI:      getEnv("CLERK_FRONTEND_API"),
+		CORSAllowedOrigins:    strings.Split(getEnv("CORS_ALLOWED_ORIGINS"), ","),
+		CORSAllowCredentials:  getEnvBool("CORS_ALLOW_CREDENTIALS"),
+		CORSAllowMethods:      strings.Split(getEnv("CORS_ALLOW_METHODS"), ","),
+		CORSAllowHeaders:      strings.Split(getEnv("CORS_ALLOW_HEADERS"), ","),
+		CORSMaxAge:            getEnvInt("CORS_MAX_AGE"),
+		RateLimitMax:          getEnvInt("RATE_LIMIT_MAX"),
+		RabbitMQURL:           getEnv("RABBITMQ_URL"),
+		RabbitMQExchange:      getEnvOrDefault("RABBITMQ_EXCHANGE", "domain.events"),
+		RabbitMQQueue:         getEnvOrDefault("RABBITMQ_QUEUE", "domain.events"),
+		RabbitMQRoutingKey:    getEnvOrDefault("RABBITMQ_ROUTING_KEY", "#"),
+		RabbitMQRetryTTLMS:    getEnvIntOrDefault("RABBITMQ_RETRY_TTL_MS", 30000),
+		WorkerMaxRetries:      getEnvIntOrDefault("WORKER_MAX_RETRIES", 3),
+		OutboxPollInterval:    getEnvDuration("OUTBOX_POLL_INTERVAL", 2*time.Second),
+		WorkerConcurrency:     getEnvIntOrDefault("WORKER_CONCURRENCY", 4),
+		CentrifugoURL:         getEnv("CENTRIFUGO_URL"),
+		CentrifugoAPIKey:      getEnv("CENTRIFUGO_API_KEY"),
+		CentrifugoTokenSecret: getEnv("CENTRIFUGO_TOKEN_SECRET"),
+		CentrifugoPublicWSURL: getEnvOrDefault("CENTRIFUGO_PUBLIC_WS_URL", ""),
 	}
 }
 

@@ -11,10 +11,11 @@ const (
 )
 
 type OrganizationCreated struct {
-	ID             string    `json:"eventId"`
-	OrganizationID string    `json:"organizationId"`
-	Name           string    `json:"name"`
-	Timestamp      time.Time `json:"timestamp"`
+	ID              string    `json:"eventId"`
+	OrganizationID  string    `json:"organizationId"`
+	Name            string    `json:"name"`
+	CreatedByUserID string    `json:"createdByUserId"`
+	Timestamp       time.Time `json:"timestamp"`
 }
 
 func (e OrganizationCreated) EventID() string       { return e.ID }

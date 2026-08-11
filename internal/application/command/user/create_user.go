@@ -45,7 +45,7 @@ func (h *CreateUserHandler) Handle(ctx context.Context, cmd CreateUserCommand) (
 			return err
 		}
 
-		org := domainorganization.NewOrganization(personalOrganizationName(cmd.FirstName, cmd.LastName))
+		org := domainorganization.NewOrganization(personalOrganizationName(cmd.FirstName, cmd.LastName), u.ID)
 		org.AddMember(u.ID)
 		if err := h.orgRepo.Save(txCtx, org); err != nil {
 			return err
