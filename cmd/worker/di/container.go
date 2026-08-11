@@ -17,6 +17,7 @@ import (
 	"go-api/internal/infrastructure/notification"
 	"go-api/internal/infrastructure/persistence/outbox"
 	"go-api/internal/infrastructure/persistence/processed"
+	"go-api/internal/infrastructure/persistence/read"
 
 	"gorm.io/gorm"
 )
@@ -47,8 +48,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	dedupRepo := processed.NewRepository(db)
 	notifier := notification.NewLogNotifier()
 	realtimePublisher := centrifugo.NewPublisher(env)
+	orgReadRepo := read.NewOrganizationReadRepository(db)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
 	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
+	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -153,10 +156,20 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"workflow_created",
 		eventworkflow.NewWorkflowCreatedHandler().Handle,
 	))
+	reg.Register(domainworkflow.EventTypeWorkflowCreated, dedup.With(
+		dedupRepo,
+		"publish_workflow_created_realtime",
+		publishWorkflowRealtime.OnCreated,
+	))
 	reg.Register(domainworkflow.EventTypeWorkflowUpdated, dedup.With(
 		dedupRepo,
 		"workflow_updated",
 		eventworkflow.NewWorkflowUpdatedHandler().Handle,
+	))
+	reg.Register(domainworkflow.EventTypeWorkflowUpdated, dedup.With(
+		dedupRepo,
+		"publish_workflow_updated_realtime",
+		publishWorkflowRealtime.OnUpdated,
 	))
 	reg.Register(domainworkflow.EventTypeWorkflowDeleted, dedup.With(
 		dedupRepo,
