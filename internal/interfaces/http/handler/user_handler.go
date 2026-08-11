@@ -6,6 +6,7 @@ import (
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
+	"go-api/internal/interfaces/http/validation"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -53,6 +54,9 @@ func (h *UserHandler) SetActiveOrganization(c fiber.Ctx) error {
 	var req dto.SetActiveOrganizationRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 
 	orgID, err := uuid.Parse(req.OrganizationID)

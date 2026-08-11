@@ -9,7 +9,7 @@ import (
 type WorkflowDetailResponse struct {
 	ID                      string    `json:"id"`
 	Name                    string    `json:"name"`
-	Description             string    `json:"description"`
+	Description             *string   `json:"description"`
 	Status                  string    `json:"status"`
 	OrganizationID          string    `json:"organizationId"`
 	ScheduleIntervalMinutes int       `json:"scheduleIntervalMinutes"`
@@ -26,7 +26,7 @@ func NewWorkflowDetailResponseFromView(view domainworkflow.WorkflowView) Workflo
 	return WorkflowDetailResponse{
 		ID:                      view.ID.String(),
 		Name:                    view.Name,
-		Description:             view.Description,
+		Description:             optionalNonEmptyString(view.Description),
 		Status:                  string(view.Status),
 		OrganizationID:          view.OrganizationID.String(),
 		ScheduleIntervalMinutes: view.ScheduleIntervalMinutes,
@@ -44,7 +44,7 @@ func NewWorkflowDetailResponseFromEntity(w domainworkflow.Workflow) WorkflowDeta
 	return WorkflowDetailResponse{
 		ID:                      w.ID.String(),
 		Name:                    w.Name,
-		Description:             w.Description,
+		Description:             optionalNonEmptyString(w.Description),
 		Status:                  string(w.Status),
 		OrganizationID:          w.OrganizationID.String(),
 		ScheduleIntervalMinutes: w.ScheduleIntervalMinutes,
@@ -64,4 +64,11 @@ func NewWorkflowListResponseFromViews(views []domainworkflow.WorkflowView) []Wor
 		items = append(items, NewWorkflowDetailResponseFromView(view))
 	}
 	return items
+}
+
+func optionalNonEmptyString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

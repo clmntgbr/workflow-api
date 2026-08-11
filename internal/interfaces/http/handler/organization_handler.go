@@ -9,6 +9,7 @@ import (
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
+	"go-api/internal/interfaces/http/validation"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -76,8 +77,8 @@ func (h *OrganizationHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 
 	org, err := h.createHandler.Handle(c.Context(), orgcmd.CreateOrganizationCommand{
@@ -134,8 +135,8 @@ func (h *OrganizationHandler) Update(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 
 	err = h.updateHandler.Handle(c.Context(), orgcmd.UpdateOrganizationCommand{
@@ -218,6 +219,9 @@ func (h *OrganizationHandler) AddMember(c fiber.Ctx) error {
 	var req dto.AddOrganizationMemberRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 	userID, err := uuid.Parse(req.UserID)
 	if err != nil {

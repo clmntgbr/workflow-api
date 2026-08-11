@@ -10,6 +10,7 @@ import (
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
+	"go-api/internal/interfaces/http/validation"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -49,10 +50,10 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
-
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
+	req.Description = strings.TrimSpace(req.Description)
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 
 	w, err := h.createHandler.Handle(c.Context(), workflowcmd.CreateWorkflowCommand{
@@ -163,26 +164,15 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
-
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
+	req.Description = strings.TrimSpace(req.Description)
+	if err := validation.Struct(c, &req); err != nil {
+		return err
 	}
 
 	status, err := domainworkflow.ParseStatus(req.Status)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid status"})
-	}
-	if status == domainworkflow.StatusDeleted {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Use DELETE to mark a workflow as deleted"})
-	}
-
-	if req.NotificationsEnabled == nil || req.NotifyOnSuccess == nil ||
-		req.NotifyOnFailure == nil || req.NotifyOnCancel == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "notification flags are required"})
-	}
-	if req.ScheduleIntervalMinutes == nil || req.Concurrency == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "scheduleIntervalMinutes and concurrency are required"})
 	}
 
 	err = h.updateHandler.Handle(c.Context(), workflowcmd.UpdateWorkflowCommand{
