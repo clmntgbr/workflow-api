@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/domain/paginate"
 	domainworkflow "go-api/internal/domain/workflow"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 
 type ListWorkflowsByOrganizationQuery struct {
 	OrganizationID uuid.UUID
+	Query          paginate.PaginateQuery
 }
 
 type ListWorkflowsByOrganizationHandler struct {
@@ -26,13 +28,13 @@ func NewListWorkflowsByOrganizationHandler(
 func (h *ListWorkflowsByOrganizationHandler) Handle(
 	ctx context.Context,
 	q ListWorkflowsByOrganizationQuery,
-) ([]domainworkflow.WorkflowView, error) {
+) ([]domainworkflow.WorkflowView, int64, error) {
 	if q.OrganizationID == uuid.Nil {
-		return nil, errors.New("organizationId is required")
+		return nil, 0, errors.New("organizationId is required")
 	}
-	views, err := h.readRepo.FindByOrganizationID(ctx, q.OrganizationID)
+	views, total, err := h.readRepo.FindByOrganizationID(ctx, q.OrganizationID, q.Query)
 	if err != nil {
-		return nil, errors.New("failed to list workflows")
+		return nil, 0, errors.New("failed to list workflows")
 	}
-	return views, nil
+	return views, total, nil
 }

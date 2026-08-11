@@ -5,6 +5,7 @@ import (
 
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/domain/paginate"
 	domainworkflow "go-api/internal/domain/workflow"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -103,14 +104,37 @@ func (h *WorkflowHandler) ListByOrganization(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
-	views, err := h.listByOrgHandler.Handle(c.Context(), queryworkflow.ListWorkflowsByOrganizationQuery{
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid query parameters",
+			"errors":  err.Error(),
+		})
+	}
+
+	orderBy := query.OrderBy
+	sortBy := query.SortBy
+	query.Normalize()
+	if sortBy == "" {
+		query.SortBy = "created_at"
+	}
+	if orderBy == "" {
+		query.OrderBy = paginate.OrderByDesc
+	}
+
+	views, total, err := h.listByOrgHandler.Handle(c.Context(), queryworkflow.ListWorkflowsByOrganizationQuery{
 		OrganizationID: orgID,
+		Query:          query,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list workflows"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowListResponseFromViews(views))
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
+		presenter.NewWorkflowListResponseFromViews(views),
+		int(total),
+		query,
+	))
 }
 
 func (h *WorkflowHandler) Update(c fiber.Ctx) error {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"go-api/internal/domain/paginate"
+
 	"github.com/google/uuid"
 )
 
@@ -17,7 +19,11 @@ type WorkflowWriteRepository interface {
 
 type WorkflowReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*WorkflowView, error)
-	FindByOrganizationID(ctx context.Context, organizationID uuid.UUID) ([]WorkflowView, error)
+	FindByOrganizationID(
+		ctx context.Context,
+		organizationID uuid.UUID,
+		query paginate.PaginateQuery,
+	) ([]WorkflowView, int64, error)
 }
 
 type WorkflowView struct {

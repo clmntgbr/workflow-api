@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"go-api/internal/domain/paginate"
 	domainworkflow "go-api/internal/domain/workflow"
 
 	"github.com/google/uuid"
@@ -59,27 +60,48 @@ func (r *workflowReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 func (r *workflowReadRepository) FindByOrganizationID(
 	ctx context.Context,
 	organizationID uuid.UUID,
-) ([]domainworkflow.WorkflowView, error) {
+	query paginate.PaginateQuery,
+) ([]domainworkflow.WorkflowView, int64, error) {
+	query.Normalize()
+	if query.SortBy == "" {
+		query.SortBy = "created_at"
+	}
+	if query.OrderBy != paginate.OrderByAsc {
+		query.OrderBy = paginate.OrderByDesc
+	}
+
+	db := r.db.WithContext(ctx).
+		Model(&workflowRow{}).
+		Where("organization_id = ? AND status <> ?", organizationID, domainworkflow.StatusDeleted)
+
+	if query.Search != "" {
+		like := "%" + query.Search + "%"
+		db = db.Where("name ILIKE ? OR description ILIKE ?", like, like)
+	}
+
+	db, total, err := Paginate(db, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var rows []workflowRow
-	err := r.db.WithContext(ctx).
+	err = db.
 		Select(
 			"id", "name", "description", "status", "organization_id",
 			"schedule_interval_minutes", "concurrency",
 			"notifications_enabled", "notify_on_success", "notify_on_failure", "notify_on_cancel",
 			"created_at", "updated_at",
 		).
-		Where("organization_id = ? AND status <> ?", organizationID, domainworkflow.StatusDeleted).
-		Order("created_at DESC").
 		Find(&rows).Error
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	views := make([]domainworkflow.WorkflowView, 0, len(rows))
 	for _, row := range rows {
 		views = append(views, *toWorkflowView(row))
 	}
-	return views, nil
+	return views, total, nil
 }
 
 func toWorkflowView(row workflowRow) *domainworkflow.WorkflowView {
