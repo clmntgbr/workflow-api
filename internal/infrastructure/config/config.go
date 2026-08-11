@@ -53,7 +53,7 @@ func Load() *Config {
 		RateLimitMax:         getEnvInt("RATE_LIMIT_MAX"),
 		RabbitMQURL:          getEnv("RABBITMQ_URL"),
 		RabbitMQExchange:     getEnvOrDefault("RABBITMQ_EXCHANGE", "domain.events"),
-		RabbitMQQueue:        getEnvOrDefault("RABBITMQ_QUEUE", "user.events"),
+		RabbitMQQueue:        getEnvOrDefault("RABBITMQ_QUEUE", "domain.events"),
 		RabbitMQRoutingKey:   getEnvOrDefault("RABBITMQ_ROUTING_KEY", "user.#"),
 		RabbitMQRetryTTLMS:   getEnvIntOrDefault("RABBITMQ_RETRY_TTL_MS", 30000),
 		WorkerMaxRetries:     getEnvIntOrDefault("WORKER_MAX_RETRIES", 3),

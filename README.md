@@ -69,7 +69,7 @@ Supported domain events: `user.created.v1`, `user.updated.v1`, `user.deleted.v1`
 
 - Each domain event has a stable `eventId` (set when recorded on the aggregate).
 - Handlers are wrapped with dedup on `(event_id, handler_name)` via `processed_events`.
-- RabbitMQ topology: `user.events` → `user.events.retry` (TTL) → back to main; non-retryable / max attempts → `user.events.dlq`.
+- RabbitMQ topology: `domain.events` → `domain.events.retry` (TTL) → back to main; non-retryable / max attempts → `domain.events.dlq`.
 - Never `Nack(requeue=true)` — retries go through the TTL retry queue.
 
 If queue declare fails after changing args, delete the old queues (or recreate the RabbitMQ volume) then restart the worker.
@@ -126,7 +126,7 @@ make migrate
 - Queries use `UserReadRepository` (SQL projection / `UserView`), not domain mutation.
 - Event types are versioned (`user.created.v1`).
 - One worker process runs outbox relay + consumer; scale the worker horizontally as needed.
-- Start with a single queue (`user.events`); split queues later if throughput requires it.
+- Start with a single queue (`domain.events`); split queues later if throughput requires it.
 
 ## Environment
 
@@ -134,7 +134,7 @@ See `.env.dist`. Required extras for messaging:
 
 - `RABBITMQ_URL`
 - `RABBITMQ_EXCHANGE` (default `domain.events`)
-- `RABBITMQ_QUEUE` (default `user.events`)
+- `RABBITMQ_QUEUE` (default `domain.events`)
 - `RABBITMQ_ROUTING_KEY` (default `user.#`)
 - `OUTBOX_POLL_INTERVAL` (default `2s`)
 - `WORKER_CONCURRENCY` (default `4`)
