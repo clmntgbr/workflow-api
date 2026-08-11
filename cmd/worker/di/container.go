@@ -4,9 +4,13 @@ import (
 	"log"
 
 	"go-api/internal/application/event/dedup"
+	eventorganization "go-api/internal/application/event/organization"
 	eventuser "go-api/internal/application/event/user"
+	eventworkflow "go-api/internal/application/event/workflow"
 	"go-api/internal/application/registry"
+	domainorganization "go-api/internal/domain/organization"
 	domainuser "go-api/internal/domain/user"
+	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/messaging/rabbitmq"
 	"go-api/internal/infrastructure/notification"
@@ -62,6 +66,48 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"user_deleted",
 		eventuser.NewUserDeletedHandler().Handle,
+	))
+
+	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
+		dedupRepo,
+		"organization_created",
+		eventorganization.NewOrganizationCreatedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationUpdated, dedup.With(
+		dedupRepo,
+		"organization_updated",
+		eventorganization.NewOrganizationUpdatedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationDeleted, dedup.With(
+		dedupRepo,
+		"organization_deleted",
+		eventorganization.NewOrganizationDeletedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationMemberAdded, dedup.With(
+		dedupRepo,
+		"organization_member_added",
+		eventorganization.NewOrganizationMemberAddedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationMemberRemoved, dedup.With(
+		dedupRepo,
+		"organization_member_removed",
+		eventorganization.NewOrganizationMemberRemovedHandler().Handle,
+	))
+
+	reg.Register(domainworkflow.EventTypeWorkflowCreated, dedup.With(
+		dedupRepo,
+		"workflow_created",
+		eventworkflow.NewWorkflowCreatedHandler().Handle,
+	))
+	reg.Register(domainworkflow.EventTypeWorkflowUpdated, dedup.With(
+		dedupRepo,
+		"workflow_updated",
+		eventworkflow.NewWorkflowUpdatedHandler().Handle,
+	))
+	reg.Register(domainworkflow.EventTypeWorkflowDeleted, dedup.With(
+		dedupRepo,
+		"workflow_deleted",
+		eventworkflow.NewWorkflowDeletedHandler().Handle,
 	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)

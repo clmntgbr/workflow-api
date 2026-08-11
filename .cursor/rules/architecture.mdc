@@ -7,7 +7,7 @@ alwaysApply: true
 
 Go Fiber API. Module path: `go-api`. Code and comments in **English**.
 
-This file is the single source of truth for architecture conventions.
+This file is the single source of truth for architecture conventions. Keep rules **generic**; use project-specific names only as **examples**.
 
 ## Layers (dependency rule)
 
@@ -36,23 +36,27 @@ internal/
   infrastructure/
     persistence/write|read|outbox|processed
     messaging/rabbitmq/   publisher, consumer, topology (retry/DLQ)
-    config|clerk|…
+    config|<vendor adapters>/…
   interfaces/http/        handlers, middleware, dto, presenter
 cmd/
   api/                    HTTP server
-  worker/                 outbox relay + RabbitMQ consumer
+  worker/                 Outbox relay + main RabbitMQ consumer
   cli/                    SQL migrations (goose) + schema check
+  <extra>/                Optional specialized binaries (scheduler, pipeline workers, …)
 migrations/               *.sql (schema source of truth)
 ```
+
+Examples of aggregates: `user`, `order`, `scan`, `media`, `subscription`.  
+Examples of optional binaries: `scheduler` (cron), or dedicated consumers for heavy work (`metadata`, `heuristic`, `aimodel`).
 
 ## CQRS principles
 
 - **Command ≠ async event.** Commands run synchronously in the HTTP request: persist aggregate, return ID (`201`). Publish events **after** commit via outbox (fire-and-forget).
-- **Long work only** uses async (`202 Accepted` + tracking) when needed.
-- **No physical read/write DB split** for now — same Postgres; write repos use aggregates, read repos return views (not domain mutation).
-- **Version event types** from day one: `user.created.v1`, `user.updated.v1`, …
-- **One scalable worker process**; internal dispatch via `HandlerRegistry`, not a giant switch.
-- Prefer **one queue per bounded context** initially (`user.events`); split by event type only when throughput requires it.
+- **Long / heavy work** uses async consumers or dedicated processes (`202 Accepted` + tracking when the HTTP client must wait on progress).
+- **No physical read/write DB split** by default — same Postgres; write repos use aggregates, read repos return views (not domain mutation).
+- **Version event types** from day one: `user.created.v1`, `order.paid.v1`, `scan.completed.v1`, …
+- Prefer **one main orchestration worker** with internal dispatch via `HandlerRegistry`, not a giant switch.
+- Prefer **one main queue per bounded context / product** initially (e.g. `domain.events` or `user.events`). Split queues when a stage is heavy, slow, or scaled independently.
 
 ## Domain events & aggregates
 
@@ -71,7 +75,7 @@ migrations/               *.sql (schema source of truth)
 ## Queries (read)
 
 - Package: `internal/application/query/<aggregate>/`
-- Return dedicated views (`UserView`, …), not write-side aggregates when possible.
+- Return dedicated views (`UserView`, `OrderView`, …), not write-side aggregates when possible.
 - Read repos may use optimized SQL against the same tables.
 
 ## Outbox
@@ -82,15 +86,17 @@ migrations/               *.sql (schema source of truth)
 
 ## Event handlers & registry
 
-- Register handlers in `cmd/worker/di` on `HandlerRegistry`.
+- Register orchestration handlers in `cmd/worker/di` on `HandlerRegistry`.
+- If the project has specialized consumers, register **their** handlers in the matching `cmd/<binary>/di`.
 - Multiple handlers per event type are allowed.
-- Handler names for dedup are stable strings (e.g. `user_created`, `notify_user_on_created`).
+- Handler names for dedup are stable strings (e.g. `user_created`, `notify_user_on_created`, `publish_scan_created_realtime`).
+- Prefer real side-effect handlers. Avoid empty log-only stubs unless useful for ops.
 
 ## Idempotence (`processed_events`)
 
 - Dedup key: **`(event_id, handler_name)`**.
 - For DB side effects: `MarkProcessed` in the **same transaction** as the side effect; if not inserted → no-op.
-- For external side effects (email/API): prefer provider idempotency keys; `processed_events` alone does not make external calls exactly-once.
+- For external side effects (email/API/storage): prefer provider idempotency keys; `processed_events` alone does not make external calls exactly-once.
 - Use `application/event/dedup.With` (or equivalent) when wiring handlers.
 
 ## Retry / DLQ (RabbitMQ)
@@ -100,6 +106,24 @@ migrations/               *.sql (schema source of truth)
 - **Never** `Nack(requeue=true)`. Retries go through the TTL retry queue only.
 - Invalid envelope / poison messages → DLQ (do not tight-loop).
 - DLQ is for investigation/replay — do not auto-purge.
+- Each consumer queue (main or specialized) owns its own retry/DLQ topology.
+
+## Specialized workers (optional pattern)
+
+Use dedicated binaries/queues when a handler is CPU/IO heavy, has different scaling needs, or a different failure profile.
+
+Example pipeline shape (media / document processing):
+
+```
+resource.uploaded.v1
+  → (worker) enqueue stage A
+stage.a.v1 → (stage-a worker) → stage.a.done.v1
+  → (worker) enqueue stage B
+stage.b.v1 → (stage-b worker) → stage.b.done.v1
+  → (worker) finalize aggregate
+```
+
+Keep orchestration (enqueue next step, finalize, cleanup, realtime) on the main worker when possible; keep heavy analysis on specialized consumers.
 
 ## Schema & migrations
 
@@ -109,9 +133,10 @@ migrations/               *.sql (schema source of truth)
 
 ## Naming
 
-- Usecase/command/query/event packages by **domain** (`user`, `auth`, `identity`), not vendor names.
+- Usecase/command/query/event packages by **domain** (`user`, `order`, `billing`), not vendor names.
+- Vendor SDKs and HTTP clients live under `infrastructure/<vendor>/` (e.g. `clerk`, `stripe`, `minio`).
 - JSON API/presenter tags: **camelCase**.
-- Do not camelCase external contracts (Clerk webhooks, RabbitMQ envelopes field names already defined, etc.).
+- Do not camelCase external contracts (webhooks, provider payloads, RabbitMQ envelopes already defined, etc.).
 - DI folders: `cmd/<binary>/di` (manual composition).
 
 ## Where new code goes
@@ -124,6 +149,7 @@ migrations/               *.sql (schema source of truth)
 | Handler registry | `internal/application/registry/` |
 | GORM write / read / outbox / processed | `internal/infrastructure/persistence/` |
 | RabbitMQ | `internal/infrastructure/messaging/rabbitmq/` |
+| External adapters | `internal/infrastructure/<adapter>/` |
 | HTTP | `internal/interfaces/http/` |
 | SQL migrations | `migrations/` |
 | Composition root | `cmd/<binary>/di/` |
@@ -134,5 +160,6 @@ migrations/               *.sql (schema source of truth)
 - Introduce a generic `CommandBus` / `Dispatch(any)` unless already required
 - Put DDL in domain entity tags
 - Use `Nack(requeue=true)` for retries
-- Split queues by event type prematurely
+- Split the main queue by every event type prematurely
+- Put heavy CPU/IO work on the main worker when a dedicated consumer already exists for that stage
 - Expand scope beyond the request (no drive-by refactors)
