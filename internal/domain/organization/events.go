@@ -27,6 +27,7 @@ type OrganizationUpdated struct {
 	ID             string    `json:"eventId"`
 	OrganizationID string    `json:"organizationId"`
 	Name           string    `json:"name"`
+	MemberIDs      []string  `json:"memberIds"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
@@ -38,6 +39,7 @@ func (e OrganizationUpdated) OccurredAt() time.Time { return e.Timestamp }
 type OrganizationDeleted struct {
 	ID             string    `json:"eventId"`
 	OrganizationID string    `json:"organizationId"`
+	MemberIDs      []string  `json:"memberIds"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

@@ -57,6 +57,7 @@ func (o *Organization) ApplyUpdate(name string) {
 		ID:             uuid.New().String(),
 		OrganizationID: o.ID.String(),
 		Name:           o.Name,
+		MemberIDs:      uuidStrings(o.MemberIDs),
 		Timestamp:      o.UpdatedAt,
 	})
 }
@@ -65,8 +66,17 @@ func (o *Organization) MarkDeleted() {
 	o.recordEvent(OrganizationDeleted{
 		ID:             uuid.New().String(),
 		OrganizationID: o.ID.String(),
+		MemberIDs:      uuidStrings(o.MemberIDs),
 		Timestamp:      time.Now().UTC(),
 	})
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	return out
 }
 
 func (o *Organization) AddMember(userID uuid.UUID) bool {

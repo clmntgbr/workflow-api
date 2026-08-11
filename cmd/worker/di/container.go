@@ -112,20 +112,40 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"organization_updated",
 		eventorganization.NewOrganizationUpdatedHandler().Handle,
 	))
+	reg.Register(domainorganization.EventTypeOrganizationUpdated, dedup.With(
+		dedupRepo,
+		"publish_organization_updated_realtime",
+		publishOrgRealtime.OnUpdated,
+	))
 	reg.Register(domainorganization.EventTypeOrganizationDeleted, dedup.With(
 		dedupRepo,
 		"organization_deleted",
 		eventorganization.NewOrganizationDeletedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationDeleted, dedup.With(
+		dedupRepo,
+		"publish_organization_deleted_realtime",
+		publishOrgRealtime.OnDeleted,
 	))
 	reg.Register(domainorganization.EventTypeOrganizationMemberAdded, dedup.With(
 		dedupRepo,
 		"organization_member_added",
 		eventorganization.NewOrganizationMemberAddedHandler().Handle,
 	))
+	reg.Register(domainorganization.EventTypeOrganizationMemberAdded, dedup.With(
+		dedupRepo,
+		"publish_organization_member_added_realtime",
+		publishOrgRealtime.OnMemberAdded,
+	))
 	reg.Register(domainorganization.EventTypeOrganizationMemberRemoved, dedup.With(
 		dedupRepo,
 		"organization_member_removed",
 		eventorganization.NewOrganizationMemberRemovedHandler().Handle,
+	))
+	reg.Register(domainorganization.EventTypeOrganizationMemberRemoved, dedup.With(
+		dedupRepo,
+		"publish_organization_member_removed_realtime",
+		publishOrgRealtime.OnMemberRemoved,
 	))
 
 	reg.Register(domainworkflow.EventTypeWorkflowCreated, dedup.With(
