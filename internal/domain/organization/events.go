@@ -14,7 +14,6 @@ type OrganizationCreated struct {
 	ID             string    `json:"eventId"`
 	OrganizationID string    `json:"organizationId"`
 	Name           string    `json:"name"`
-	IsActive       bool      `json:"isActive"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
@@ -27,7 +26,6 @@ type OrganizationUpdated struct {
 	ID             string    `json:"eventId"`
 	OrganizationID string    `json:"organizationId"`
 	Name           string    `json:"name"`
-	IsActive       bool      `json:"isActive"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

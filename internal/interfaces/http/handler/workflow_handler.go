@@ -6,6 +6,7 @@ import (
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryworkflow "go-api/internal/application/query/workflow"
 	domainworkflow "go-api/internal/domain/workflow"
+	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
 
@@ -38,6 +39,11 @@ func NewWorkflowHandler(
 }
 
 func (h *WorkflowHandler) Create(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
 	var req dto.CreateWorkflowRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
@@ -46,11 +52,6 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
-	}
-
-	orgID, err := uuid.Parse(req.OrganizationID)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid organization id"})
 	}
 
 	w, err := h.createHandler.Handle(c.Context(), workflowcmd.CreateWorkflowCommand{
@@ -72,6 +73,11 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
@@ -84,14 +90,17 @@ func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
+	if view.OrganizationID != orgID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromView(*view))
 }
 
 func (h *WorkflowHandler) ListByOrganization(c fiber.Ctx) error {
-	orgID, err := uuid.Parse(c.Query("organizationId"))
+	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "organizationId query param is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
 	views, err := h.listByOrgHandler.Handle(c.Context(), queryworkflow.ListWorkflowsByOrganizationQuery{
@@ -105,9 +114,25 @@ func (h *WorkflowHandler) ListByOrganization(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Update(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	existing, err := h.getByIDHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: id})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+	}
+	if existing.OrganizationID != orgID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
 	var req dto.UpdateWorkflowRequest
@@ -167,9 +192,25 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Delete(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	existing, err := h.getByIDHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: id})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+	}
+	if existing.OrganizationID != orgID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
 	if err := h.deleteHandler.Handle(c.Context(), id); err != nil {

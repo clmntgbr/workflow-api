@@ -35,13 +35,16 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 func setupUserRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/users/me", container.UserHandler.GetUser)
+	api.Put("/users/me/active-organization", container.UserHandler.SetActiveOrganization)
 }
 
 func setupOrganizationRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Get("/organizations", container.OrganizationHandler.List)
 	api.Post("/organizations", container.OrganizationHandler.Create)
 	api.Get("/organizations/:id", container.OrganizationHandler.GetByID)
 	api.Put("/organizations/:id", container.OrganizationHandler.Update)
+	api.Post("/organizations/:id/activate", container.OrganizationHandler.Activate)
 	api.Delete("/organizations/:id", container.OrganizationHandler.Delete)
 	api.Post("/organizations/:id/members", container.OrganizationHandler.AddMember)
 	api.Delete("/organizations/:id/members/:userId", container.OrganizationHandler.RemoveMember)

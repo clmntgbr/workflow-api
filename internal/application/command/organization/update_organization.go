@@ -11,9 +11,8 @@ import (
 )
 
 type UpdateOrganizationCommand struct {
-	ID       uuid.UUID
-	Name     string
-	IsActive bool
+	ID   uuid.UUID
+	Name string
 }
 
 type UpdateOrganizationHandler struct {
@@ -42,7 +41,7 @@ func (h *UpdateOrganizationHandler) Handle(ctx context.Context, cmd UpdateOrgani
 			return errors.New("organization not found")
 		}
 
-		org.ApplyUpdate(cmd.Name, cmd.IsActive)
+		org.ApplyUpdate(cmd.Name)
 
 		if err := h.repo.Update(txCtx, org); err != nil {
 			return errors.New("failed to update organization")

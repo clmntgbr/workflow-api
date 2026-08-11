@@ -21,11 +21,11 @@ func (h *OrganizationUpdatedHandler) Handle(ctx context.Context, payload []byte)
 		return messaging.NonRetryable(err)
 	}
 	log.Printf(
-		"event handled %s eventId=%s organizationId=%s isActive=%v",
+		"event handled %s eventId=%s organizationId=%s name=%s",
 		domainorganization.EventTypeOrganizationUpdated,
 		evt.ID,
 		evt.OrganizationID,
-		evt.IsActive,
+		evt.Name,
 	)
 	return nil
 }

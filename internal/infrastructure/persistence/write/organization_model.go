@@ -13,7 +13,6 @@ import (
 type OrganizationModel struct {
 	ID        uuid.UUID `gorm:"column:id;primaryKey"`
 	Name      string    `gorm:"column:name"`
-	IsActive  bool      `gorm:"column:is_active"`
 	CreatedAt time.Time `gorm:"column:created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at"`
 }
@@ -37,7 +36,6 @@ func organizationModelFromDomain(o *domainorganization.Organization) *Organizati
 	return &OrganizationModel{
 		ID:        o.ID,
 		Name:      o.Name,
-		IsActive:  o.IsActive,
 		CreatedAt: o.CreatedAt,
 		UpdatedAt: o.UpdatedAt,
 	}
@@ -47,7 +45,6 @@ func organizationDomainFromModel(m *OrganizationModel, memberIDs []uuid.UUID) *d
 	return &domainorganization.Organization{
 		ID:        m.ID,
 		Name:      m.Name,
-		IsActive:  m.IsActive,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 		MemberIDs: memberIDs,

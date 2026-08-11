@@ -67,6 +67,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"user_deleted",
 		eventuser.NewUserDeletedHandler().Handle,
 	))
+	reg.Register(domainuser.EventTypeUserActiveOrganizationChanged, dedup.With(
+		dedupRepo,
+		"user_active_organization_changed",
+		eventuser.NewUserActiveOrganizationChangedHandler().Handle,
+	))
 
 	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
 		dedupRepo,

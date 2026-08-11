@@ -18,12 +18,12 @@ type OrganizationWriteRepository interface {
 
 type OrganizationReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*OrganizationView, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID) ([]OrganizationView, error)
 }
 
 type OrganizationView struct {
 	ID        uuid.UUID
 	Name      string
-	IsActive  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	MemberIDs []uuid.UUID

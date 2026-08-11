@@ -3,7 +3,6 @@ package dto
 type CreateWorkflowRequest struct {
 	Name                    string `json:"name"`
 	Description             string `json:"description"`
-	OrganizationID          string `json:"organizationId"`
 	ScheduleIntervalMinutes *int   `json:"scheduleIntervalMinutes"`
 	Concurrency             *int   `json:"concurrency"`
 	NotificationsEnabled    *bool  `json:"notificationsEnabled"`

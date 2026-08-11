@@ -6,6 +6,7 @@ import (
 
 	domainorganization "go-api/internal/domain/organization"
 	"go-api/internal/domain/port"
+	domainuser "go-api/internal/domain/user"
 
 	"github.com/google/uuid"
 )
@@ -16,20 +17,26 @@ type RemoveOrganizationMemberCommand struct {
 }
 
 type RemoveOrganizationMemberHandler struct {
-	repo   domainorganization.OrganizationWriteRepository
-	outbox port.OutboxRepository
+	orgRepo  domainorganization.OrganizationWriteRepository
+	userRepo domainuser.UserWriteRepository
+	outbox   port.OutboxRepository
 }
 
 func NewRemoveOrganizationMemberHandler(
-	repo domainorganization.OrganizationWriteRepository,
+	orgRepo domainorganization.OrganizationWriteRepository,
+	userRepo domainuser.UserWriteRepository,
 	outbox port.OutboxRepository,
 ) *RemoveOrganizationMemberHandler {
-	return &RemoveOrganizationMemberHandler{repo: repo, outbox: outbox}
+	return &RemoveOrganizationMemberHandler{
+		orgRepo:  orgRepo,
+		userRepo: userRepo,
+		outbox:   outbox,
+	}
 }
 
 func (h *RemoveOrganizationMemberHandler) Handle(ctx context.Context, cmd RemoveOrganizationMemberCommand) error {
-	return h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
-		org, err := h.repo.GetByID(txCtx, cmd.OrganizationID)
+	return h.orgRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		org, err := h.orgRepo.GetByID(txCtx, cmd.OrganizationID)
 		if err != nil {
 			return errors.New("failed to get organization")
 		}
@@ -41,9 +48,26 @@ func (h *RemoveOrganizationMemberHandler) Handle(ctx context.Context, cmd Remove
 			return nil
 		}
 
-		if err := h.repo.Update(txCtx, org); err != nil {
+		if err := h.orgRepo.Update(txCtx, org); err != nil {
 			return errors.New("failed to remove organization member")
 		}
-		return h.outbox.StoreEvents(txCtx, org.PullEvents())
+
+		events := org.PullEvents()
+
+		user, err := h.userRepo.GetByID(txCtx, cmd.UserID)
+		if err != nil {
+			return errors.New("failed to get user")
+		}
+		if user != nil &&
+			user.ActiveOrganizationID != nil &&
+			*user.ActiveOrganizationID == cmd.OrganizationID {
+			user.ClearActiveOrganization()
+			if err := h.userRepo.Update(txCtx, user); err != nil {
+				return errors.New("failed to clear active organization")
+			}
+			events = append(events, user.PullEvents()...)
+		}
+
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 }

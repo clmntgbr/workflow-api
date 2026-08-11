@@ -6,22 +6,32 @@ import (
 
 	domainorganization "go-api/internal/domain/organization"
 	"go-api/internal/domain/port"
+	domainuser "go-api/internal/domain/user"
+
+	"github.com/google/uuid"
 )
 
 type CreateOrganizationCommand struct {
-	Name string
+	Name          string
+	CreatorUserID uuid.UUID
 }
 
 type CreateOrganizationHandler struct {
-	repo   domainorganization.OrganizationWriteRepository
-	outbox port.OutboxRepository
+	orgRepo  domainorganization.OrganizationWriteRepository
+	userRepo domainuser.UserWriteRepository
+	outbox   port.OutboxRepository
 }
 
 func NewCreateOrganizationHandler(
-	repo domainorganization.OrganizationWriteRepository,
+	orgRepo domainorganization.OrganizationWriteRepository,
+	userRepo domainuser.UserWriteRepository,
 	outbox port.OutboxRepository,
 ) *CreateOrganizationHandler {
-	return &CreateOrganizationHandler{repo: repo, outbox: outbox}
+	return &CreateOrganizationHandler{
+		orgRepo:  orgRepo,
+		userRepo: userRepo,
+		outbox:   outbox,
+	}
 }
 
 func (h *CreateOrganizationHandler) Handle(
@@ -31,16 +41,39 @@ func (h *CreateOrganizationHandler) Handle(
 	if cmd.Name == "" {
 		return nil, errors.New("name is required")
 	}
+	if cmd.CreatorUserID == uuid.Nil {
+		return nil, errors.New("creator user is required")
+	}
 
 	org := domainorganization.NewOrganization(cmd.Name)
+	org.AddMember(cmd.CreatorUserID)
 
-	err := h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := h.repo.Save(txCtx, org); err != nil {
+	err := h.orgRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.orgRepo.Save(txCtx, org); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, org.PullEvents())
+
+		user, err := h.userRepo.GetByID(txCtx, cmd.CreatorUserID)
+		if err != nil {
+			return errors.New("failed to get creator user")
+		}
+		if user == nil {
+			return errors.New("creator user not found")
+		}
+
+		user.SetActiveOrganization(org.ID)
+		if err := h.userRepo.Update(txCtx, user); err != nil {
+			return errors.New("failed to set active organization")
+		}
+
+		events := append(org.PullEvents(), user.PullEvents()...)
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 	if err != nil {
+		if err.Error() == "creator user not found" || err.Error() == "failed to get creator user" ||
+			err.Error() == "failed to set active organization" {
+			return nil, err
+		}
 		return nil, errors.New("failed to create organization")
 	}
 

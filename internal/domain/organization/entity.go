@@ -10,10 +10,10 @@ import (
 
 // Organization is the aggregate root for an organization and its memberships.
 // Members are referenced by user ID only — User remains a separate aggregate.
+// Whether an organization is "active" for a user is derived from User.ActiveOrganizationID.
 type Organization struct {
 	ID        uuid.UUID
 	Name      string
-	IsActive  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	MemberIDs []uuid.UUID
@@ -26,7 +26,6 @@ func NewOrganization(name string) *Organization {
 	org := &Organization{
 		ID:        uuid.New(),
 		Name:      name,
-		IsActive:  true,
 		CreatedAt: now,
 		UpdatedAt: now,
 		MemberIDs: nil,
@@ -35,7 +34,6 @@ func NewOrganization(name string) *Organization {
 		ID:             uuid.New().String(),
 		OrganizationID: org.ID.String(),
 		Name:           org.Name,
-		IsActive:       org.IsActive,
 		Timestamp:      now,
 	})
 	return org
@@ -51,15 +49,13 @@ func (o *Organization) recordEvent(e event.DomainEvent) {
 	o.events = append(o.events, e)
 }
 
-func (o *Organization) ApplyUpdate(name string, isActive bool) {
+func (o *Organization) ApplyUpdate(name string) {
 	o.Name = name
-	o.IsActive = isActive
 	o.UpdatedAt = time.Now().UTC()
 	o.recordEvent(OrganizationUpdated{
 		ID:             uuid.New().String(),
 		OrganizationID: o.ID.String(),
 		Name:           o.Name,
-		IsActive:       o.IsActive,
 		Timestamp:      o.UpdatedAt,
 	})
 }

@@ -4,38 +4,51 @@ import (
 	"time"
 
 	domainuser "go-api/internal/domain/user"
+
+	"github.com/google/uuid"
 )
 
 type UserDetailResponse struct {
-	ID        string    `json:"id"`
-	ClerkID   string    `json:"clerkId"`
-	FirstName string    `json:"firstName"`
-	LastName  string    `json:"lastName"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID                   string    `json:"id"`
+	ClerkID              string    `json:"clerkId"`
+	FirstName            string    `json:"firstName"`
+	LastName             string    `json:"lastName"`
+	Email                string    `json:"email"`
+	ActiveOrganizationID *string   `json:"activeOrganizationId"`
+	CreatedAt            time.Time `json:"createdAt"`
+	UpdatedAt            time.Time `json:"updatedAt"`
+}
+
+func optionalUUIDString(id *uuid.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
 }
 
 func NewUserDetailResponseFromView(view domainuser.UserView) UserDetailResponse {
 	return UserDetailResponse{
-		ID:        view.ID.String(),
-		ClerkID:   view.ClerkID,
-		FirstName: view.FirstName,
-		LastName:  view.LastName,
-		Email:     view.Email,
-		CreatedAt: view.CreatedAt,
-		UpdatedAt: view.UpdatedAt,
+		ID:                   view.ID.String(),
+		ClerkID:              view.ClerkID,
+		FirstName:            view.FirstName,
+		LastName:             view.LastName,
+		Email:                view.Email,
+		ActiveOrganizationID: optionalUUIDString(view.ActiveOrganizationID),
+		CreatedAt:            view.CreatedAt,
+		UpdatedAt:            view.UpdatedAt,
 	}
 }
 
 func NewUserDetailResponseFromEntity(user domainuser.User) UserDetailResponse {
 	return UserDetailResponse{
-		ID:        user.ID.String(),
-		ClerkID:   user.ClerkID,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:                   user.ID.String(),
+		ClerkID:              user.ClerkID,
+		FirstName:            user.FirstName,
+		LastName:             user.LastName,
+		Email:                user.Email,
+		ActiveOrganizationID: optionalUUIDString(user.ActiveOrganizationID),
+		CreatedAt:            user.CreatedAt,
+		UpdatedAt:            user.UpdatedAt,
 	}
 }

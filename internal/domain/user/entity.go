@@ -9,14 +9,15 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID
-	ClerkID   string
-	FirstName string
-	LastName  string
-	Banned    bool
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID                   uuid.UUID
+	ClerkID              string
+	FirstName            string
+	LastName             string
+	Banned               bool
+	Email                string
+	ActiveOrganizationID *uuid.UUID
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 
 	events []event.DomainEvent
 }
@@ -83,4 +84,39 @@ func (u *User) MarkDeleted() {
 		ClerkID:   u.ClerkID,
 		Timestamp: time.Now().UTC(),
 	})
+}
+
+// SetActiveOrganization switches the user's active organization context.
+// Returns false when the organization is already active (no-op).
+func (u *User) SetActiveOrganization(organizationID uuid.UUID) bool {
+	if u.ActiveOrganizationID != nil && *u.ActiveOrganizationID == organizationID {
+		return false
+	}
+	id := organizationID
+	u.ActiveOrganizationID = &id
+	u.UpdatedAt = time.Now().UTC()
+	u.recordEvent(UserActiveOrganizationChanged{
+		ID:             uuid.New().String(),
+		UserID:         u.ID.String(),
+		OrganizationID: organizationID.String(),
+		Timestamp:      u.UpdatedAt,
+	})
+	return true
+}
+
+// ClearActiveOrganization removes the active organization context.
+// Returns false when there was none (no-op).
+func (u *User) ClearActiveOrganization() bool {
+	if u.ActiveOrganizationID == nil {
+		return false
+	}
+	u.ActiveOrganizationID = nil
+	u.UpdatedAt = time.Now().UTC()
+	u.recordEvent(UserActiveOrganizationChanged{
+		ID:             uuid.New().String(),
+		UserID:         u.ID.String(),
+		OrganizationID: "",
+		Timestamp:      u.UpdatedAt,
+	})
+	return true
 }

@@ -45,20 +45,22 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
-	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, outboxRepo)
+	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
 	updateUserHandler := usercmd.NewUpdateUserHandler(userWriteRepo, outboxRepo)
 	getUserByExternalIDHandler := usercmd.NewGetUserByExternalIDHandler(userWriteRepo)
 	deleteUserByExternalIDHandler := usercmd.NewDeleteUserByExternalIDHandler(userWriteRepo, outboxRepo)
+	setActiveOrganizationHandler := usercmd.NewSetActiveOrganizationHandler(userWriteRepo, orgWriteRepo, outboxRepo)
 	validateTokenHandler := authcmd.NewValidateTokenHandler(jwksProvider, userWriteRepo)
 	fetchUserHandler := identitycmd.NewFetchUserHandler(infraClerk.NewUserGateway(env.ClerkSecretKey))
 	getUserByIDHandler := queryuser.NewGetUserByIDHandler(userReadRepo)
 
-	createOrgHandler := orgcmd.NewCreateOrganizationHandler(orgWriteRepo, outboxRepo)
+	createOrgHandler := orgcmd.NewCreateOrganizationHandler(orgWriteRepo, userWriteRepo, outboxRepo)
 	updateOrgHandler := orgcmd.NewUpdateOrganizationHandler(orgWriteRepo, outboxRepo)
 	deleteOrgHandler := orgcmd.NewDeleteOrganizationHandler(orgWriteRepo, outboxRepo)
-	addOrgMemberHandler := orgcmd.NewAddOrganizationMemberHandler(orgWriteRepo, outboxRepo)
-	removeOrgMemberHandler := orgcmd.NewRemoveOrganizationMemberHandler(orgWriteRepo, outboxRepo)
+	addOrgMemberHandler := orgcmd.NewAddOrganizationMemberHandler(orgWriteRepo, userWriteRepo, outboxRepo)
+	removeOrgMemberHandler := orgcmd.NewRemoveOrganizationMemberHandler(orgWriteRepo, userWriteRepo, outboxRepo)
 	getOrgByIDHandler := queryorganization.NewGetOrganizationByIDHandler(orgReadRepo)
+	listOrgsByUserHandler := queryorganization.NewListOrganizationsByUserHandler(orgReadRepo)
 
 	createWorkflowHandler := workflowcmd.NewCreateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	updateWorkflowHandler := workflowcmd.NewUpdateWorkflowHandler(workflowWriteRepo, outboxRepo)
@@ -79,7 +81,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			updateUserHandler,
 			deleteUserByExternalIDHandler,
 		),
-		UserHandler: httphandler.NewUserHandler(getUserByIDHandler),
+		UserHandler: httphandler.NewUserHandler(getUserByIDHandler, setActiveOrganizationHandler),
 		OrganizationHandler: httphandler.NewOrganizationHandler(
 			createOrgHandler,
 			updateOrgHandler,
@@ -87,6 +89,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			addOrgMemberHandler,
 			removeOrgMemberHandler,
 			getOrgByIDHandler,
+			listOrgsByUserHandler,
+			setActiveOrganizationHandler,
 		),
 		WorkflowHandler: httphandler.NewWorkflowHandler(
 			createWorkflowHandler,

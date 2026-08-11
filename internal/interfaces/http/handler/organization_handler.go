@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	orgcmd "go-api/internal/application/command/organization"
+	usercmd "go-api/internal/application/command/user"
 	queryorganization "go-api/internal/application/query/organization"
+	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
 
@@ -13,12 +15,14 @@ import (
 )
 
 type OrganizationHandler struct {
-	createHandler       *orgcmd.CreateOrganizationHandler
-	updateHandler       *orgcmd.UpdateOrganizationHandler
-	deleteHandler       *orgcmd.DeleteOrganizationHandler
-	addMemberHandler    *orgcmd.AddOrganizationMemberHandler
-	removeMemberHandler *orgcmd.RemoveOrganizationMemberHandler
-	getByIDHandler      *queryorganization.GetOrganizationByIDHandler
+	createHandler                *orgcmd.CreateOrganizationHandler
+	updateHandler                *orgcmd.UpdateOrganizationHandler
+	deleteHandler                *orgcmd.DeleteOrganizationHandler
+	addMemberHandler             *orgcmd.AddOrganizationMemberHandler
+	removeMemberHandler          *orgcmd.RemoveOrganizationMemberHandler
+	getByIDHandler               *queryorganization.GetOrganizationByIDHandler
+	listByUserHandler            *queryorganization.ListOrganizationsByUserHandler
+	setActiveOrganizationHandler *usercmd.SetActiveOrganizationHandler
 }
 
 func NewOrganizationHandler(
@@ -28,18 +32,45 @@ func NewOrganizationHandler(
 	addMemberHandler *orgcmd.AddOrganizationMemberHandler,
 	removeMemberHandler *orgcmd.RemoveOrganizationMemberHandler,
 	getByIDHandler *queryorganization.GetOrganizationByIDHandler,
+	listByUserHandler *queryorganization.ListOrganizationsByUserHandler,
+	setActiveOrganizationHandler *usercmd.SetActiveOrganizationHandler,
 ) *OrganizationHandler {
 	return &OrganizationHandler{
-		createHandler:       createHandler,
-		updateHandler:       updateHandler,
-		deleteHandler:       deleteHandler,
-		addMemberHandler:    addMemberHandler,
-		removeMemberHandler: removeMemberHandler,
-		getByIDHandler:      getByIDHandler,
+		createHandler:                createHandler,
+		updateHandler:                updateHandler,
+		deleteHandler:                deleteHandler,
+		addMemberHandler:             addMemberHandler,
+		removeMemberHandler:          removeMemberHandler,
+		getByIDHandler:               getByIDHandler,
+		listByUserHandler:            listByUserHandler,
+		setActiveOrganizationHandler: setActiveOrganizationHandler,
 	}
 }
 
+func (h *OrganizationHandler) List(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	views, err := h.listByUserHandler.Handle(c.Context(), queryorganization.ListOrganizationsByUserQuery{
+		UserID: user.ID,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list organizations"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(
+		presenter.NewOrganizationListResponseFromViews(views, user.ActiveOrganizationID),
+	)
+}
+
 func (h *OrganizationHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	var req dto.CreateOrganizationRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
@@ -49,15 +80,26 @@ func (h *OrganizationHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
 	}
 
-	org, err := h.createHandler.Handle(c.Context(), orgcmd.CreateOrganizationCommand{Name: req.Name})
+	org, err := h.createHandler.Handle(c.Context(), orgcmd.CreateOrganizationCommand{
+		Name:          req.Name,
+		CreatorUserID: user.ID,
+	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create organization"})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(presenter.NewOrganizationDetailResponseFromEntity(*org))
+	activeID := org.ID
+	return c.Status(fiber.StatusCreated).JSON(
+		presenter.NewOrganizationDetailResponseFromEntity(*org, &activeID),
+	)
 }
 
 func (h *OrganizationHandler) GetByID(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid organization id"})
@@ -71,10 +113,17 @@ func (h *OrganizationHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get organization"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewOrganizationDetailResponseFromView(*view))
+	return c.Status(fiber.StatusOK).JSON(
+		presenter.NewOrganizationDetailResponseFromView(*view, user.ActiveOrganizationID),
+	)
 }
 
 func (h *OrganizationHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid organization id"})
@@ -88,14 +137,10 @@ func (h *OrganizationHandler) Update(c fiber.Ctx) error {
 	if req.Name == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "name is required"})
 	}
-	if req.IsActive == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "isActive is required"})
-	}
 
 	err = h.updateHandler.Handle(c.Context(), orgcmd.UpdateOrganizationCommand{
-		ID:       id,
-		Name:     req.Name,
-		IsActive: *req.IsActive,
+		ID:   id,
+		Name: req.Name,
 	})
 	if err != nil {
 		if err.Error() == "organization not found" {
@@ -109,7 +154,46 @@ func (h *OrganizationHandler) Update(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get organization"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewOrganizationDetailResponseFromView(*view))
+	return c.Status(fiber.StatusOK).JSON(
+		presenter.NewOrganizationDetailResponseFromView(*view, user.ActiveOrganizationID),
+	)
+}
+
+func (h *OrganizationHandler) Activate(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid organization id"})
+	}
+
+	err = h.setActiveOrganizationHandler.Handle(c.Context(), usercmd.SetActiveOrganizationCommand{
+		UserID:         user.ID,
+		OrganizationID: id,
+	})
+	if err != nil {
+		switch err.Error() {
+		case "organization not found":
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Organization not found"})
+		case "user is not a member of the organization":
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "User is not a member of the organization"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to activate organization"})
+		}
+	}
+
+	view, err := h.getByIDHandler.Handle(c.Context(), queryorganization.GetOrganizationByIDQuery{ID: id})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get organization"})
+	}
+
+	activeID := id
+	return c.Status(fiber.StatusOK).JSON(
+		presenter.NewOrganizationDetailResponseFromView(*view, &activeID),
+	)
 }
 
 func (h *OrganizationHandler) Delete(c fiber.Ctx) error {

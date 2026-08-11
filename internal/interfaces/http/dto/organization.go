@@ -5,8 +5,7 @@ type CreateOrganizationRequest struct {
 }
 
 type UpdateOrganizationRequest struct {
-	Name     string `json:"name"`
-	IsActive *bool  `json:"isActive"`
+	Name string `json:"name"`
 }
 
 type AddOrganizationMemberRequest struct {

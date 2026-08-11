@@ -6,6 +6,7 @@ import (
 
 	domainorganization "go-api/internal/domain/organization"
 	"go-api/internal/domain/port"
+	domainuser "go-api/internal/domain/user"
 
 	"github.com/google/uuid"
 )
@@ -16,20 +17,26 @@ type AddOrganizationMemberCommand struct {
 }
 
 type AddOrganizationMemberHandler struct {
-	repo   domainorganization.OrganizationWriteRepository
-	outbox port.OutboxRepository
+	orgRepo  domainorganization.OrganizationWriteRepository
+	userRepo domainuser.UserWriteRepository
+	outbox   port.OutboxRepository
 }
 
 func NewAddOrganizationMemberHandler(
-	repo domainorganization.OrganizationWriteRepository,
+	orgRepo domainorganization.OrganizationWriteRepository,
+	userRepo domainuser.UserWriteRepository,
 	outbox port.OutboxRepository,
 ) *AddOrganizationMemberHandler {
-	return &AddOrganizationMemberHandler{repo: repo, outbox: outbox}
+	return &AddOrganizationMemberHandler{
+		orgRepo:  orgRepo,
+		userRepo: userRepo,
+		outbox:   outbox,
+	}
 }
 
 func (h *AddOrganizationMemberHandler) Handle(ctx context.Context, cmd AddOrganizationMemberCommand) error {
-	return h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
-		org, err := h.repo.GetByID(txCtx, cmd.OrganizationID)
+	return h.orgRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		org, err := h.orgRepo.GetByID(txCtx, cmd.OrganizationID)
 		if err != nil {
 			return errors.New("failed to get organization")
 		}
@@ -41,9 +48,24 @@ func (h *AddOrganizationMemberHandler) Handle(ctx context.Context, cmd AddOrgani
 			return nil
 		}
 
-		if err := h.repo.Update(txCtx, org); err != nil {
+		if err := h.orgRepo.Update(txCtx, org); err != nil {
 			return errors.New("failed to add organization member")
 		}
-		return h.outbox.StoreEvents(txCtx, org.PullEvents())
+
+		events := org.PullEvents()
+
+		user, err := h.userRepo.GetByID(txCtx, cmd.UserID)
+		if err != nil {
+			return errors.New("failed to get user")
+		}
+		if user != nil && user.ActiveOrganizationID == nil {
+			user.SetActiveOrganization(org.ID)
+			if err := h.userRepo.Update(txCtx, user); err != nil {
+				return errors.New("failed to set active organization")
+			}
+			events = append(events, user.PullEvents()...)
+		}
+
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 }
