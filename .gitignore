@@ -1,0 +1,10 @@
+# Build output
+main
+tmp/
+
+# Air
+build-errors.log
+
+coverage*
+.env
+bin/*

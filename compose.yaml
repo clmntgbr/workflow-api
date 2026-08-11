@@ -1,0 +1,28 @@
+# Production-oriented compose (API + worker).
+# Expects managed/external Postgres and RabbitMQ via .env.
+# For local infra: use compose.dev.yaml
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: api
+    command: ["./api"]
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: worker
+    command: ["./worker"]
+    env_file:
+      - .env
+    restart: unless-stopped
