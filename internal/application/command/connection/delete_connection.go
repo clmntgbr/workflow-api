@@ -61,8 +61,6 @@ func (h *DeleteConnectionHandler) Handle(ctx context.Context, id uuid.UUID) erro
 			CreatedAt: stepView.CreatedAt,
 		})
 	}
-	ordering := domainstep.CalculateOrderingByPosition(positioned)
-
 	edges := make([]domainstep.GraphEdge, 0, len(connections))
 	for _, connectionView := range connections {
 		if connectionView.ID == id {
@@ -73,6 +71,8 @@ func (h *DeleteConnectionHandler) Handle(ctx context.Context, id uuid.UUID) erro
 			TargetStepID: connectionView.TargetStepID,
 		})
 	}
+	ordering := domainstep.CalculateOrderingByPosition(positioned, edges)
+
 	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
 	for stepID, values := range ordering {
 		executionOrderByStepID[stepID] = values.ExecutionOrder

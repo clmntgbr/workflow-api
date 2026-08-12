@@ -100,15 +100,10 @@ func (h *CreateStepHandler) Handle(
 		})
 	}
 	positioned = append(positioned, now)
-	ordering := domainstep.CalculateOrderingByPosition(positioned)
 
 	connections, err := h.connReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
 	if err != nil {
 		return nil, errors.New("failed to list connections")
-	}
-	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
-	for stepID, values := range ordering {
-		executionOrderByStepID[stepID] = values.ExecutionOrder
 	}
 	edges := make([]domainstep.GraphEdge, 0, len(connections))
 	for _, connection := range connections {
@@ -116,6 +111,12 @@ func (h *CreateStepHandler) Handle(
 			SourceStepID: connection.SourceStepID,
 			TargetStepID: connection.TargetStepID,
 		})
+	}
+	ordering := domainstep.CalculateOrderingByPosition(positioned, edges)
+
+	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
+	for stepID, values := range ordering {
+		executionOrderByStepID[stepID] = values.ExecutionOrder
 	}
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 

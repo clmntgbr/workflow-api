@@ -75,18 +75,18 @@ func (h *UpdateStepPositionHandler) Handle(
 			CreatedAt: stepView.CreatedAt,
 		})
 	}
-	ordering := domainstep.CalculateOrderingByPosition(positioned)
-
-	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
-	for stepID, values := range ordering {
-		executionOrderByStepID[stepID] = values.ExecutionOrder
-	}
 	edges := make([]domainstep.GraphEdge, 0, len(connections))
 	for _, connectionView := range connections {
 		edges = append(edges, domainstep.GraphEdge{
 			SourceStepID: connectionView.SourceStepID,
 			TargetStepID: connectionView.TargetStepID,
 		})
+	}
+	ordering := domainstep.CalculateOrderingByPosition(positioned, edges)
+
+	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
+	for stepID, values := range ordering {
+		executionOrderByStepID[stepID] = values.ExecutionOrder
 	}
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 

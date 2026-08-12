@@ -96,8 +96,6 @@ func (h *CreateConnectionHandler) Handle(
 			CreatedAt: stepView.CreatedAt,
 		})
 	}
-	ordering := domainstep.CalculateOrderingByPosition(positioned)
-
 	edges := make([]domainstep.GraphEdge, 0, len(connections)+1)
 	for _, connectionView := range connections {
 		edges = append(edges, domainstep.GraphEdge{
@@ -109,6 +107,8 @@ func (h *CreateConnectionHandler) Handle(
 		SourceStepID: cmd.SourceStepID,
 		TargetStepID: cmd.TargetStepID,
 	})
+	ordering := domainstep.CalculateOrderingByPosition(positioned, edges)
+
 	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
 	for stepID, values := range ordering {
 		executionOrderByStepID[stepID] = values.ExecutionOrder
