@@ -78,10 +78,13 @@ migrations/               *.sql (schema source of truth)
 - Read repos may use optimized SQL against the same tables.
 - List endpoints should bind pagination/filter query structs, normalize defaults, and return a typed paginated response.
 
-## Payload validation (mandatory)
+## Payload validation (mandatory with exceptions)
 
 - **All incoming payloads must be validated, always. No exception.**
-- Validate request body, query params, path params, and headers when relevant.
+- Validate request body always.
+- Path params validated with direct parsing (example: `uuid.Parse(...)`) are acceptable; dedicated path DTOs are optional.
+- Pagination/filter query params normalized via `PaginateQuery.Normalize()` are acceptable; dedicated validator tags are optional for those query structs.
+- Header validation is required only for business-specific headers handled in endpoint logic; authentication/webhook/security headers may be validated in middleware.
 - Perform validation at the HTTP boundary (`interfaces/http`) before calling application handlers.
 - Use explicit DTOs per endpoint; never bind directly to domain entities.
 - Reject invalid payloads with consistent `400` responses and clear field-level errors.
