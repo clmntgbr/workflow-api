@@ -4,10 +4,12 @@ import (
 	"log"
 
 	"go-api/internal/application/event/dedup"
+	eventendpoint "go-api/internal/application/event/endpoint"
 	eventorganization "go-api/internal/application/event/organization"
 	eventuser "go-api/internal/application/event/user"
 	eventworkflow "go-api/internal/application/event/workflow"
 	"go-api/internal/application/registry"
+	domainendpoint "go-api/internal/domain/endpoint"
 	domainorganization "go-api/internal/domain/organization"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -52,6 +54,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
 	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
 	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -175,6 +178,17 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"workflow_deleted",
 		eventworkflow.NewWorkflowDeletedHandler().Handle,
+	))
+
+	reg.Register(domainendpoint.EventTypeEndpointCreated, dedup.With(
+		dedupRepo,
+		"endpoint_created",
+		eventendpoint.NewEndpointCreatedHandler().Handle,
+	))
+	reg.Register(domainendpoint.EventTypeEndpointCreated, dedup.With(
+		dedupRepo,
+		"publish_endpoint_created_realtime",
+		publishEndpointRealtime.OnCreated,
 	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)

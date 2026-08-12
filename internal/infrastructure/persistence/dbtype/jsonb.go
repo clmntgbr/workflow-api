@@ -1,4 +1,4 @@
-package outbox
+package dbtype
 
 import (
 	"database/sql/driver"

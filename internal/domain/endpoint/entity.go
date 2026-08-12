@@ -1,0 +1,109 @@
+package endpoint
+
+import (
+	"time"
+
+	"go-api/internal/domain/event"
+
+	"github.com/google/uuid"
+)
+
+type Endpoint struct {
+	ID             uuid.UUID
+	Name           string
+	Description    string
+	URL            string
+	Method         Method
+	Headers        map[string]string
+	Query          map[string]string
+	Timeout        int
+	RetryOnFailure bool
+	RetryCount     int
+	RetryDelay     int
+	Status         Status
+	OrganizationID uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+
+	events []event.DomainEvent
+}
+
+type NewEndpointParams struct {
+	Name           string
+	Description    string
+	URL            string
+	Method         Method
+	Headers        map[string]string
+	Query          map[string]string
+	Timeout        int
+	RetryOnFailure bool
+	RetryCount     int
+	RetryDelay     int
+	OrganizationID uuid.UUID
+}
+
+func NewEndpoint(p NewEndpointParams) *Endpoint {
+	now := time.Now().UTC()
+	headers := p.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	query := p.Query
+	if query == nil {
+		query = map[string]string{}
+	}
+	timeout := p.Timeout
+	if timeout <= 0 {
+		timeout = 30000
+	}
+	retryDelay := p.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = 1000
+	}
+
+	e := &Endpoint{
+		ID:             uuid.New(),
+		Name:           p.Name,
+		Description:    p.Description,
+		URL:            p.URL,
+		Method:         p.Method,
+		Headers:        headers,
+		Query:          query,
+		Timeout:        timeout,
+		RetryOnFailure: p.RetryOnFailure,
+		RetryCount:     p.RetryCount,
+		RetryDelay:     retryDelay,
+		Status:         StatusActive,
+		OrganizationID: p.OrganizationID,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	e.recordEvent(EndpointCreated{
+		ID:             uuid.New().String(),
+		EndpointID:     e.ID.String(),
+		OrganizationID: e.OrganizationID.String(),
+		Name:           e.Name,
+		Description:    e.Description,
+		URL:            e.URL,
+		Method:         string(e.Method),
+		Headers:        e.Headers,
+		Query:          e.Query,
+		Timeout:        e.Timeout,
+		RetryOnFailure: e.RetryOnFailure,
+		RetryCount:     e.RetryCount,
+		RetryDelay:     e.RetryDelay,
+		Status:         string(e.Status),
+		Timestamp:      now,
+	})
+	return e
+}
+
+func (e *Endpoint) PullEvents() []event.DomainEvent {
+	events := e.events
+	e.events = nil
+	return events
+}
+
+func (e *Endpoint) recordEvent(evt event.DomainEvent) {
+	e.events = append(e.events, evt)
+}

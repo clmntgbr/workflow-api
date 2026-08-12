@@ -7,6 +7,7 @@ import (
 
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
+	"go-api/internal/infrastructure/persistence/dbtype"
 	"go-api/internal/infrastructure/persistence/write"
 
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ func (r *repository) StoreEvents(ctx context.Context, events []event.DomainEvent
 			ID:          eventID,
 			AggregateID: e.AggregateID(),
 			EventType:   e.EventType(),
-			Payload:     JSONB(payload),
+			Payload:     dbtype.JSONB(payload),
 			CreatedAt:   e.OccurredAt(),
 		})
 	}

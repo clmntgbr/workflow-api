@@ -4,10 +4,12 @@ import (
 	"log"
 
 	authcmd "go-api/internal/application/command/auth"
+	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
 	orgcmd "go-api/internal/application/command/organization"
 	usercmd "go-api/internal/application/command/user"
 	workflowcmd "go-api/internal/application/command/workflow"
+	queryendpoint "go-api/internal/application/query/endpoint"
 	queryorganization "go-api/internal/application/query/organization"
 	queryuser "go-api/internal/application/query/user"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -29,6 +31,7 @@ type Container struct {
 	UserHandler            *httphandler.UserHandler
 	OrganizationHandler    *httphandler.OrganizationHandler
 	WorkflowHandler        *httphandler.WorkflowHandler
+	EndpointHandler        *httphandler.EndpointHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -44,6 +47,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	orgReadRepo := read.NewOrganizationReadRepository(db)
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
+	endpointWriteRepo := write.NewEndpointWriteRepository(db)
+	endpointReadRepo := read.NewEndpointReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -68,6 +73,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	deleteWorkflowHandler := workflowcmd.NewDeleteWorkflowHandler(workflowWriteRepo, outboxRepo)
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
 	listWorkflowsByOrgHandler := queryworkflow.NewListWorkflowsByOrganizationHandler(workflowReadRepo)
+
+	createEndpointHandler := endpointcmd.NewCreateEndpointHandler(endpointWriteRepo, outboxRepo)
+	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
+	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
 
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
@@ -99,6 +108,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			deleteWorkflowHandler,
 			getWorkflowByIDHandler,
 			listWorkflowsByOrgHandler,
+		),
+		EndpointHandler: httphandler.NewEndpointHandler(
+			createEndpointHandler,
+			getEndpointByIDHandler,
+			listEndpointsByOrgHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}

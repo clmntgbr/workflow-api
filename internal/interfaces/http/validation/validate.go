@@ -21,11 +21,21 @@ func init() {
 		return name
 	})
 	_ = validate.RegisterValidation("workflow_status", validateWorkflowStatus)
+	_ = validate.RegisterValidation("http_method", validateHTTPMethod)
 }
 
 func validateWorkflowStatus(fl validator.FieldLevel) bool {
 	switch fl.Field().String() {
 	case "active", "inactive", "canceled":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateHTTPMethod(fl validator.FieldLevel) bool {
+	switch strings.ToUpper(fl.Field().String()) {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
 		return true
 	default:
 		return false
@@ -73,6 +83,8 @@ func messageFor(fieldErr validator.FieldError) string {
 		return "is required"
 	case "uuid":
 		return "must be a valid UUID"
+	case "url":
+		return "must be a valid URL"
 	case "min":
 		if fieldErr.Kind() == reflect.String {
 			return fmt.Sprintf("must be at least %s characters", fieldErr.Param())
@@ -83,7 +95,7 @@ func messageFor(fieldErr validator.FieldError) string {
 			return fmt.Sprintf("must be at most %s characters", fieldErr.Param())
 		}
 		return fmt.Sprintf("must be at most %s", fieldErr.Param())
-	case "oneof", "workflow_status":
+	case "oneof", "workflow_status", "http_method":
 		return "is invalid"
 	default:
 		return fmt.Sprintf("failed on '%s' validation", fieldErr.Tag())
