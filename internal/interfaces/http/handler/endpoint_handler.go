@@ -68,6 +68,10 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 	if queryParams == nil {
 		queryParams = map[string]string{}
 	}
+	body := req.Body
+	if body == nil {
+		body = map[string]any{}
+	}
 
 	e, err := h.createHandler.Handle(c.Context(), endpointcmd.CreateEndpointCommand{
 		Name:           req.Name,
@@ -76,6 +80,7 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		Method:         method,
 		Headers:        headers,
 		Query:          queryParams,
+		Body:           body,
 		Timeout:        intOrDefault(req.Timeout, 30000),
 		RetryOnFailure: boolOrDefault(req.RetryOnFailure, false),
 		RetryCount:     intOrDefault(req.RetryCount, 0),
@@ -141,6 +146,10 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 	if queryParams == nil {
 		queryParams = map[string]string{}
 	}
+	body := req.Body
+	if body == nil {
+		body = map[string]any{}
+	}
 
 	err = h.updateHandler.Handle(c.Context(), endpointcmd.UpdateEndpointCommand{
 		ID:             id,
@@ -150,6 +159,7 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 		Method:         method,
 		Headers:        headers,
 		Query:          queryParams,
+		Body:           body,
 		Timeout:        *req.Timeout,
 		RetryOnFailure: *req.RetryOnFailure,
 		RetryCount:     *req.RetryCount,

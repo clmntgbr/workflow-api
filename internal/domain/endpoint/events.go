@@ -17,6 +17,7 @@ type EndpointCreated struct {
 	Method         string            `json:"method"`
 	Headers        map[string]string `json:"headers"`
 	Query          map[string]string `json:"query"`
+	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
 	RetryCount     int               `json:"retryCount"`
@@ -40,6 +41,7 @@ type EndpointUpdated struct {
 	Method         string            `json:"method"`
 	Headers        map[string]string `json:"headers"`
 	Query          map[string]string `json:"query"`
+	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
 	RetryCount     int               `json:"retryCount"`

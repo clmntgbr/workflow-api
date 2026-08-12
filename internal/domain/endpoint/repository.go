@@ -33,6 +33,7 @@ type EndpointView struct {
 	Method         Method
 	Headers        map[string]string
 	Query          map[string]string
+	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int

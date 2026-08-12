@@ -22,6 +22,7 @@ type endpointRow struct {
 	Method         string
 	Headers        dbtype.JSONB
 	QueryParams    dbtype.JSONB
+	Body           dbtype.JSONB
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int
@@ -35,7 +36,7 @@ type endpointRow struct {
 func (endpointRow) TableName() string { return "endpoints" }
 
 var endpointSelectColumns = []string{
-	"id", "name", "description", "url", "method", "headers", "query_params",
+	"id", "name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms", "status",
 	"organization_id", "created_at", "updated_at",
 }
@@ -120,6 +121,12 @@ func toEndpointView(row endpointRow) (*domainendpoint.EndpointView, error) {
 			return nil, err
 		}
 	}
+	body := map[string]any{}
+	if len(row.Body) > 0 {
+		if err := json.Unmarshal(row.Body, &body); err != nil {
+			return nil, err
+		}
+	}
 
 	return &domainendpoint.EndpointView{
 		ID:             row.ID,
@@ -129,6 +136,7 @@ func toEndpointView(row endpointRow) (*domainendpoint.EndpointView, error) {
 		Method:         domainendpoint.Method(row.Method),
 		Headers:        headers,
 		Query:          query,
+		Body:           body,
 		Timeout:        row.Timeout,
 		RetryOnFailure: row.RetryOnFailure,
 		RetryCount:     row.RetryCount,

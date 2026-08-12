@@ -7,6 +7,7 @@ type CreateEndpointRequest struct {
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
 	Query          map[string]string `json:"query" validate:"omitempty"`
+	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"omitempty,min=1,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"omitempty"`
 	RetryCount     *int              `json:"retryCount" validate:"omitempty,min=0,max=10"`
@@ -20,6 +21,7 @@ type UpdateEndpointRequest struct {
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
 	Query          map[string]string `json:"query" validate:"omitempty"`
+	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"required,min=1,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"required"`
 	RetryCount     *int              `json:"retryCount" validate:"required,min=0,max=10"`

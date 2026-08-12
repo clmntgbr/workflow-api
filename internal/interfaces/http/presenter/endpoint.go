@@ -14,6 +14,7 @@ type EndpointDetailResponse struct {
 	Method         string            `json:"method"`
 	Headers        map[string]string `json:"headers"`
 	Query          map[string]string `json:"query"`
+	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
 	RetryCount     int               `json:"retryCount"`
@@ -33,6 +34,7 @@ func NewEndpointDetailResponseFromView(view domainendpoint.EndpointView) Endpoin
 		string(view.Method),
 		view.Headers,
 		view.Query,
+		view.Body,
 		view.Timeout,
 		view.RetryOnFailure,
 		view.RetryCount,
@@ -53,6 +55,7 @@ func NewEndpointDetailResponseFromEntity(e domainendpoint.Endpoint) EndpointDeta
 		string(e.Method),
 		e.Headers,
 		e.Query,
+		e.Body,
 		e.Timeout,
 		e.RetryOnFailure,
 		e.RetryCount,
@@ -75,6 +78,7 @@ func NewEndpointListResponseFromViews(views []domainendpoint.EndpointView) []End
 func endpointDetailResponse(
 	id, name, description, url, method string,
 	headers, query map[string]string,
+	body map[string]any,
 	timeout int,
 	retryOnFailure bool,
 	retryCount, retryDelay int,
@@ -87,6 +91,9 @@ func endpointDetailResponse(
 	if query == nil {
 		query = map[string]string{}
 	}
+	if body == nil {
+		body = map[string]any{}
+	}
 	return EndpointDetailResponse{
 		ID:             id,
 		Name:           name,
@@ -95,6 +102,7 @@ func endpointDetailResponse(
 		Method:         method,
 		Headers:        headers,
 		Query:          query,
+		Body:           body,
 		Timeout:        timeout,
 		RetryOnFailure: retryOnFailure,
 		RetryCount:     retryCount,

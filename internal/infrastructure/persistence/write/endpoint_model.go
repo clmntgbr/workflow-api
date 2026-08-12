@@ -20,6 +20,7 @@ type EndpointModel struct {
 	Method         string       `gorm:"column:method"`
 	Headers        dbtype.JSONB `gorm:"column:headers"`
 	QueryParams    dbtype.JSONB `gorm:"column:query_params"`
+	Body           dbtype.JSONB `gorm:"column:body"`
 	Timeout        int          `gorm:"column:timeout_ms"`
 	RetryOnFailure bool         `gorm:"column:retry_on_failure"`
 	RetryCount     int          `gorm:"column:retry_count"`
@@ -52,6 +53,14 @@ func endpointModelFromDomain(e *domainendpoint.Endpoint) (*EndpointModel, error)
 	if err != nil {
 		return nil, err
 	}
+	body := e.Body
+	if body == nil {
+		body = map[string]any{}
+	}
+	bodyRaw, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
 
 	return &EndpointModel{
 		ID:             e.ID,
@@ -61,6 +70,7 @@ func endpointModelFromDomain(e *domainendpoint.Endpoint) (*EndpointModel, error)
 		Method:         string(e.Method),
 		Headers:        dbtype.JSONB(headersRaw),
 		QueryParams:    dbtype.JSONB(queryRaw),
+		Body:           dbtype.JSONB(bodyRaw),
 		Timeout:        e.Timeout,
 		RetryOnFailure: e.RetryOnFailure,
 		RetryCount:     e.RetryCount,
@@ -86,6 +96,12 @@ func endpointDomainFromModel(m *EndpointModel) (*domainendpoint.Endpoint, error)
 			return nil, err
 		}
 	}
+	body := map[string]any{}
+	if len(m.Body) > 0 {
+		if err := json.Unmarshal(m.Body, &body); err != nil {
+			return nil, err
+		}
+	}
 
 	return &domainendpoint.Endpoint{
 		ID:             m.ID,
@@ -95,6 +111,7 @@ func endpointDomainFromModel(m *EndpointModel) (*domainendpoint.Endpoint, error)
 		Method:         domainendpoint.Method(m.Method),
 		Headers:        headers,
 		Query:          query,
+		Body:           body,
 		Timeout:        m.Timeout,
 		RetryOnFailure: m.RetryOnFailure,
 		RetryCount:     m.RetryCount,

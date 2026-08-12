@@ -18,6 +18,7 @@ type UpdateEndpointCommand struct {
 	Method         domainendpoint.Method
 	Headers        map[string]string
 	Query          map[string]string
+	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int
@@ -70,6 +71,7 @@ func (h *UpdateEndpointHandler) Handle(ctx context.Context, cmd UpdateEndpointCo
 			Method:         cmd.Method,
 			Headers:        cmd.Headers,
 			Query:          cmd.Query,
+			Body:           cmd.Body,
 			Timeout:        cmd.Timeout,
 			RetryOnFailure: cmd.RetryOnFailure,
 			RetryCount:     cmd.RetryCount,

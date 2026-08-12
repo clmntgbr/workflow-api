@@ -16,6 +16,7 @@ type Endpoint struct {
 	Method         Method
 	Headers        map[string]string
 	Query          map[string]string
+	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int
@@ -35,6 +36,7 @@ type NewEndpointParams struct {
 	Method         Method
 	Headers        map[string]string
 	Query          map[string]string
+	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int
@@ -51,6 +53,10 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 	query := p.Query
 	if query == nil {
 		query = map[string]string{}
+	}
+	body := p.Body
+	if body == nil {
+		body = map[string]any{}
 	}
 	timeout := p.Timeout
 	if timeout <= 0 {
@@ -69,6 +75,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		Method:         p.Method,
 		Headers:        headers,
 		Query:          query,
+		Body:           body,
 		Timeout:        timeout,
 		RetryOnFailure: p.RetryOnFailure,
 		RetryCount:     p.RetryCount,
@@ -88,6 +95,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		Method:         string(e.Method),
 		Headers:        e.Headers,
 		Query:          e.Query,
+		Body:           e.Body,
 		Timeout:        e.Timeout,
 		RetryOnFailure: e.RetryOnFailure,
 		RetryCount:     e.RetryCount,
@@ -111,6 +119,7 @@ type UpdateEndpointParams struct {
 	Method         Method
 	Headers        map[string]string
 	Query          map[string]string
+	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
 	RetryCount     int
@@ -127,6 +136,10 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	if query == nil {
 		query = map[string]string{}
 	}
+	body := p.Body
+	if body == nil {
+		body = map[string]any{}
+	}
 	timeout := p.Timeout
 	if timeout <= 0 {
 		timeout = 30000
@@ -142,6 +155,7 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	e.Method = p.Method
 	e.Headers = headers
 	e.Query = query
+	e.Body = body
 	e.Timeout = timeout
 	e.RetryOnFailure = p.RetryOnFailure
 	e.RetryCount = p.RetryCount
@@ -159,6 +173,7 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 		Method:         string(e.Method),
 		Headers:        e.Headers,
 		Query:          e.Query,
+		Body:           e.Body,
 		Timeout:        e.Timeout,
 		RetryOnFailure: e.RetryOnFailure,
 		RetryCount:     e.RetryCount,
