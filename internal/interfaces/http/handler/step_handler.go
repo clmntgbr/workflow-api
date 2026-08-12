@@ -43,6 +43,11 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
 	var req dto.CreateStepRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
@@ -52,10 +57,6 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		return err
 	}
 
-	workflowID, err := uuid.Parse(req.WorkflowID)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
-	}
 	endpointID, err := uuid.Parse(req.EndpointID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid endpoint id"})
@@ -66,7 +67,7 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		EndpointID:     endpointID,
 		OrganizationID: orgID,
 		Index:          req.Index,
-		TreeIndex:      req.TreeIndex,
+		TreeIndex:      0,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,

@@ -72,7 +72,7 @@ func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 
 func setupStepRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
-	api.Post("/steps", container.StepHandler.Create)
+	api.Post("/workflows/:workflowId/steps", container.StepHandler.Create)
 	api.Get("/steps", container.StepHandler.ListByWorkflow)
 	api.Get("/steps/:id", container.StepHandler.GetByID)
 }
