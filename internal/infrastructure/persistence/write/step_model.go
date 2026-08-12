@@ -29,8 +29,8 @@ type StepModel struct {
 	StepIndex      string       `gorm:"column:step_index"`
 	ExecutionOrder int          `gorm:"column:execution_order"`
 	TreeIndex      int          `gorm:"column:tree_index"`
-	PositionX      int          `gorm:"column:position_x"`
-	PositionY      int          `gorm:"column:position_y"`
+	PositionX      float64      `gorm:"column:position_x"`
+	PositionY      float64      `gorm:"column:position_y"`
 	Status         string       `gorm:"column:status"`
 	CreatedAt      time.Time    `gorm:"column:created_at"`
 	UpdatedAt      time.Time    `gorm:"column:updated_at"`

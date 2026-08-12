@@ -91,6 +91,11 @@ func (h *StepHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
@@ -103,7 +108,7 @@ func (h *StepHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get step"})
 	}
-	if view.OrganizationID != orgID {
+	if view.OrganizationID != orgID || view.WorkflowID != workflowID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
 	}
 
@@ -116,18 +121,7 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
-	var listQuery dto.ListStepsQuery
-	if err := c.Bind().Query(&listQuery); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid query parameters",
-			"errors":  err.Error(),
-		})
-	}
-	if err := validation.Struct(c, &listQuery); err != nil {
-		return err
-	}
-
-	workflowID, err := uuid.Parse(listQuery.WorkflowID)
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}

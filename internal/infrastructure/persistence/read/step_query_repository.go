@@ -32,8 +32,8 @@ type stepRow struct {
 	StepIndex      string
 	ExecutionOrder int
 	TreeIndex      int
-	PositionX      int
-	PositionY      int
+	PositionX      float64
+	PositionY      float64
 	Status         string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
