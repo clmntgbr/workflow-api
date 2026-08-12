@@ -12,6 +12,7 @@ const (
 	EntityOrganization = "organization"
 	EntityWorkflow     = "workflow"
 	EntityEndpoint     = "endpoint"
+	EntityStep         = "step"
 )
 
 func EventType(entity, action string) string {

@@ -7,10 +7,12 @@ import (
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
 	orgcmd "go-api/internal/application/command/organization"
+	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryorganization "go-api/internal/application/query/organization"
+	querystep "go-api/internal/application/query/step"
 	queryuser "go-api/internal/application/query/user"
 	queryworkflow "go-api/internal/application/query/workflow"
 	infraClerk "go-api/internal/infrastructure/clerk"
@@ -32,6 +34,7 @@ type Container struct {
 	OrganizationHandler    *httphandler.OrganizationHandler
 	WorkflowHandler        *httphandler.WorkflowHandler
 	EndpointHandler        *httphandler.EndpointHandler
+	StepHandler            *httphandler.StepHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -49,6 +52,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	endpointWriteRepo := write.NewEndpointWriteRepository(db)
 	endpointReadRepo := read.NewEndpointReadRepository(db)
+	stepWriteRepo := write.NewStepWriteRepository(db)
+	stepReadRepo := read.NewStepReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -78,6 +83,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
 	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
+
+	createStepHandler := stepcmd.NewCreateStepHandler(stepWriteRepo, endpointReadRepo, workflowReadRepo, outboxRepo)
+	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
+	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
 
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
@@ -115,6 +124,12 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			updateEndpointHandler,
 			getEndpointByIDHandler,
 			listEndpointsByOrgHandler,
+		),
+		StepHandler: httphandler.NewStepHandler(
+			createStepHandler,
+			getStepByIDHandler,
+			listStepsByWorkflowHandler,
+			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}

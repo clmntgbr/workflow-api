@@ -6,11 +6,13 @@ import (
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventorganization "go-api/internal/application/event/organization"
+	eventstep "go-api/internal/application/event/step"
 	eventuser "go-api/internal/application/event/user"
 	eventworkflow "go-api/internal/application/event/workflow"
 	"go-api/internal/application/registry"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domainorganization "go-api/internal/domain/organization"
+	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/infrastructure/centrifugo"
@@ -55,6 +57,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
 	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -199,6 +202,17 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_endpoint_updated_realtime",
 		publishEndpointRealtime.OnUpdated,
+	))
+
+	reg.Register(domainstep.EventTypeStepCreated, dedup.With(
+		dedupRepo,
+		"step_created",
+		eventstep.NewStepCreatedHandler().Handle,
+	))
+	reg.Register(domainstep.EventTypeStepCreated, dedup.With(
+		dedupRepo,
+		"publish_step_created_realtime",
+		publishStepRealtime.OnCreated,
 	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
