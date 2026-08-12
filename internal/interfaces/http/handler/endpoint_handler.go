@@ -19,6 +19,7 @@ import (
 type EndpointHandler struct {
 	createHandler    *endpointcmd.CreateEndpointHandler
 	updateHandler    *endpointcmd.UpdateEndpointHandler
+	deleteHandler    *endpointcmd.DeleteEndpointHandler
 	getByIDHandler   *queryendpoint.GetEndpointByIDHandler
 	listByOrgHandler *queryendpoint.ListEndpointsByOrganizationHandler
 }
@@ -26,12 +27,14 @@ type EndpointHandler struct {
 func NewEndpointHandler(
 	createHandler *endpointcmd.CreateEndpointHandler,
 	updateHandler *endpointcmd.UpdateEndpointHandler,
+	deleteHandler *endpointcmd.DeleteEndpointHandler,
 	getByIDHandler *queryendpoint.GetEndpointByIDHandler,
 	listByOrgHandler *queryendpoint.ListEndpointsByOrganizationHandler,
 ) *EndpointHandler {
 	return &EndpointHandler{
 		createHandler:    createHandler,
 		updateHandler:    updateHandler,
+		deleteHandler:    deleteHandler,
 		getByIDHandler:   getByIDHandler,
 		listByOrgHandler: listByOrgHandler,
 	}
@@ -246,4 +249,28 @@ func (h *EndpointHandler) ListByOrganization(c fiber.Ctx) error {
 		int(total),
 		query,
 	))
+}
+
+func (h *EndpointHandler) Delete(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid endpoint id"})
+	}
+
+	if err := h.deleteHandler.Handle(c.Context(), endpointcmd.DeleteEndpointCommand{
+		ID:             id,
+		OrganizationID: orgID,
+	}); err != nil {
+		if err.Error() == "endpoint not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Endpoint not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to delete endpoint"})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }

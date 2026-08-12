@@ -183,6 +183,17 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	})
 }
 
+func (e *Endpoint) MarkDeleted() {
+	e.Status = StatusDeleted
+	e.UpdatedAt = time.Now().UTC()
+	e.recordEvent(EndpointDeleted{
+		ID:             uuid.New().String(),
+		EndpointID:     e.ID.String(),
+		OrganizationID: e.OrganizationID.String(),
+		Timestamp:      e.UpdatedAt,
+	})
+}
+
 func (e *Endpoint) recordEvent(evt event.DomainEvent) {
 	e.events = append(e.events, evt)
 }

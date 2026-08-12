@@ -86,6 +86,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createEndpointHandler := endpointcmd.NewCreateEndpointHandler(endpointWriteRepo, outboxRepo)
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
+	deleteEndpointHandler := endpointcmd.NewDeleteEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
 	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
 
@@ -164,6 +165,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		EndpointHandler: httphandler.NewEndpointHandler(
 			createEndpointHandler,
 			updateEndpointHandler,
+			deleteEndpointHandler,
 			getEndpointByIDHandler,
 			listEndpointsByOrgHandler,
 		),
