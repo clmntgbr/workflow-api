@@ -4,16 +4,16 @@ import (
 	"log"
 
 	authcmd "go-api/internal/application/command/auth"
+	conncmd "go-api/internal/application/command/connection"
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
 	orgcmd "go-api/internal/application/command/organization"
-	conncmd "go-api/internal/application/command/connection"
 	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
 	workflowcmd "go-api/internal/application/command/workflow"
+	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryorganization "go-api/internal/application/query/organization"
-	queryconn "go-api/internal/application/query/connection"
 	querystep "go-api/internal/application/query/step"
 	queryuser "go-api/internal/application/query/user"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -89,12 +89,36 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
 	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
 
-	createConnHandler := conncmd.NewCreateConnectionHandler(connWriteRepo, stepReadRepo, outboxRepo)
-	deleteConnHandler := conncmd.NewDeleteConnectionHandler(connWriteRepo, outboxRepo)
+	createConnHandler := conncmd.NewCreateConnectionHandler(
+		connWriteRepo,
+		connReadRepo,
+		stepReadRepo,
+		stepWriteRepo,
+		outboxRepo,
+	)
+	deleteConnHandler := conncmd.NewDeleteConnectionHandler(
+		connWriteRepo,
+		connReadRepo,
+		stepReadRepo,
+		stepWriteRepo,
+		outboxRepo,
+	)
 	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
-	createStepHandler := stepcmd.NewCreateStepHandler(stepWriteRepo, endpointReadRepo, workflowReadRepo, outboxRepo)
-	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(stepWriteRepo, outboxRepo)
+	createStepHandler := stepcmd.NewCreateStepHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
+		endpointReadRepo,
+		workflowReadRepo,
+		outboxRepo,
+	)
+	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
+		outboxRepo,
+	)
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
 	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
 

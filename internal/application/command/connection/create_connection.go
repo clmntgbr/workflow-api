@@ -19,20 +19,26 @@ type CreateConnectionCommand struct {
 }
 
 type CreateConnectionHandler struct {
-	connRepo domainconnection.ConnectionWriteRepository
-	stepRepo domainstep.StepReadRepository
-	outbox   port.OutboxRepository
+	connRepo      domainconnection.ConnectionWriteRepository
+	connReadRepo  domainconnection.ConnectionReadRepository
+	stepReadRepo  domainstep.StepReadRepository
+	stepWriteRepo domainstep.StepWriteRepository
+	outbox        port.OutboxRepository
 }
 
 func NewCreateConnectionHandler(
 	connRepo domainconnection.ConnectionWriteRepository,
-	stepRepo domainstep.StepReadRepository,
+	connReadRepo domainconnection.ConnectionReadRepository,
+	stepReadRepo domainstep.StepReadRepository,
+	stepWriteRepo domainstep.StepWriteRepository,
 	outbox port.OutboxRepository,
 ) *CreateConnectionHandler {
 	return &CreateConnectionHandler{
-		connRepo: connRepo,
-		stepRepo: stepRepo,
-		outbox:   outbox,
+		connRepo:      connRepo,
+		connReadRepo:  connReadRepo,
+		stepReadRepo:  stepReadRepo,
+		stepWriteRepo: stepWriteRepo,
+		outbox:        outbox,
 	}
 }
 
@@ -44,7 +50,7 @@ func (h *CreateConnectionHandler) Handle(
 		return nil, errors.New("source and target steps must be different")
 	}
 
-	source, err := h.stepRepo.FindByID(ctx, cmd.SourceStepID)
+	source, err := h.stepReadRepo.FindByID(ctx, cmd.SourceStepID)
 	if err != nil {
 		return nil, errors.New("failed to get source step")
 	}
@@ -55,7 +61,7 @@ func (h *CreateConnectionHandler) Handle(
 		return nil, errors.New("source step not found")
 	}
 
-	target, err := h.stepRepo.FindByID(ctx, cmd.TargetStepID)
+	target, err := h.stepReadRepo.FindByID(ctx, cmd.TargetStepID)
 	if err != nil {
 		return nil, errors.New("failed to get target step")
 	}
@@ -73,8 +79,50 @@ func (h *CreateConnectionHandler) Handle(
 		TargetStepID:   cmd.TargetStepID,
 	})
 
+	steps, err := h.stepReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
+	if err != nil {
+		return nil, errors.New("failed to list steps")
+	}
+	connections, err := h.connReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
+	if err != nil {
+		return nil, errors.New("failed to list connections")
+	}
+
+	positioned := make([]domainstep.PositionedStep, 0, len(steps))
+	for _, stepView := range steps {
+		positioned = append(positioned, domainstep.PositionedStep{
+			ID:        stepView.ID,
+			Position:  stepView.Position,
+			CreatedAt: stepView.CreatedAt,
+		})
+	}
+	ordering := domainstep.CalculateOrderingByPosition(positioned)
+
+	edges := make([]domainstep.GraphEdge, 0, len(connections)+1)
+	for _, connectionView := range connections {
+		edges = append(edges, domainstep.GraphEdge{
+			SourceStepID: connectionView.SourceStepID,
+			TargetStepID: connectionView.TargetStepID,
+		})
+	}
+	edges = append(edges, domainstep.GraphEdge{
+		SourceStepID: cmd.SourceStepID,
+		TargetStepID: cmd.TargetStepID,
+	})
+	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
+	for stepID, values := range ordering {
+		executionOrderByStepID[stepID] = values.ExecutionOrder
+	}
+	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
+
 	err = h.connRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.connRepo.Save(txCtx, conn); err != nil {
+			return err
+		}
+		if err := h.stepWriteRepo.UpdateOrdering(txCtx, ordering); err != nil {
+			return err
+		}
+		if err := h.stepWriteRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
 		return h.outbox.StoreEvents(txCtx, conn.PullEvents())

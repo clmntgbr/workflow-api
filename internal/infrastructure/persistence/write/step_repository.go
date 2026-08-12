@@ -40,6 +40,33 @@ func (r *stepWriteRepository) Update(ctx context.Context, step *domainstep.Step)
 	return DBWithContext(ctx, r.db).Save(model).Error
 }
 
+func (r *stepWriteRepository) UpdateTreeIndices(ctx context.Context, indices map[uuid.UUID]int) error {
+	db := DBWithContext(ctx, r.db)
+	for stepID, treeIndex := range indices {
+		if err := db.Model(&StepModel{}).
+			Where("id = ?", stepID).
+			Update("tree_index", treeIndex).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *stepWriteRepository) UpdateOrdering(ctx context.Context, ordering map[uuid.UUID]domainstep.StepOrdering) error {
+	db := DBWithContext(ctx, r.db)
+	for stepID, values := range ordering {
+		if err := db.Model(&StepModel{}).
+			Where("id = ?", stepID).
+			Updates(map[string]any{
+				"step_index":      values.Index,
+				"execution_order": values.ExecutionOrder,
+			}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *stepWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainstep.Step, error) {
 	var model StepModel
 	err := DBWithContext(ctx, r.db).First(&model, "id = ?", id).Error

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"strings"
-
 	stepcmd "go-api/internal/application/command/step"
 	querystep "go-api/internal/application/query/step"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -55,7 +53,6 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
-	req.Index = strings.TrimSpace(req.Index)
 	if err := validation.Struct(c, &req); err != nil {
 		return err
 	}
@@ -69,8 +66,6 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		WorkflowID:     workflowID,
 		EndpointID:     endpointID,
 		OrganizationID: orgID,
-		Index:          req.Index,
-		TreeIndex:      0,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,
@@ -170,7 +165,6 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
-	req.Index = strings.TrimSpace(req.Index)
 	if err := validation.Struct(c, &req); err != nil {
 		return err
 	}
@@ -179,7 +173,6 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 		ID:             id,
 		OrganizationID: orgID,
 		WorkflowID:     workflowID,
-		Index:          req.Index,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,

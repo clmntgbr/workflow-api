@@ -54,6 +54,7 @@ type EndpointSnapshot struct {
 }
 
 type NewStepParams struct {
+	ID             uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
 	OrganizationID uuid.UUID
@@ -66,6 +67,10 @@ type NewStepParams struct {
 
 func NewStep(p NewStepParams) *Step {
 	now := time.Now().UTC()
+	id := p.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
 	headers := p.Endpoint.Headers
 	if headers == nil {
 		headers = map[string]string{}
@@ -80,7 +85,7 @@ func NewStep(p NewStepParams) *Step {
 	}
 
 	s := &Step{
-		ID:             uuid.New(),
+		ID:             id,
 		WorkflowID:     p.WorkflowID,
 		EndpointID:     p.EndpointID,
 		OrganizationID: p.OrganizationID,

@@ -7,11 +7,9 @@ type PositionRequest struct {
 
 type CreateStepRequest struct {
 	EndpointID string          `json:"endpointId" validate:"required,uuid"`
-	Index      string          `json:"index" validate:"required,min=1,max=255"`
 	Position   PositionRequest `json:"position"`
 }
 
 type UpdateStepPositionRequest struct {
-	Index    string          `json:"index" validate:"required,min=1,max=255"`
 	Position PositionRequest `json:"position"`
 }
