@@ -19,6 +19,7 @@ func Models() []any {
 		&write.WorkflowModel{},
 		&write.EndpointModel{},
 		&write.StepModel{},
+		&write.ConnectionModel{},
 		&outbox.OutboxEvent{},
 		&processed.ProcessedEvent{},
 	}

@@ -7,11 +7,13 @@ import (
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
 	orgcmd "go-api/internal/application/command/organization"
+	conncmd "go-api/internal/application/command/connection"
 	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryorganization "go-api/internal/application/query/organization"
+	queryconn "go-api/internal/application/query/connection"
 	querystep "go-api/internal/application/query/step"
 	queryuser "go-api/internal/application/query/user"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -35,6 +37,7 @@ type Container struct {
 	WorkflowHandler        *httphandler.WorkflowHandler
 	EndpointHandler        *httphandler.EndpointHandler
 	StepHandler            *httphandler.StepHandler
+	ConnectionHandler      *httphandler.ConnectionHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -54,6 +57,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	endpointReadRepo := read.NewEndpointReadRepository(db)
 	stepWriteRepo := write.NewStepWriteRepository(db)
 	stepReadRepo := read.NewStepReadRepository(db)
+	connWriteRepo := write.NewConnectionWriteRepository(db)
+	connReadRepo := read.NewConnectionReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -83,6 +88,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
 	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
+
+	createConnHandler := conncmd.NewCreateConnectionHandler(connWriteRepo, stepReadRepo, outboxRepo)
+	deleteConnHandler := conncmd.NewDeleteConnectionHandler(connWriteRepo, outboxRepo)
+	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
 	createStepHandler := stepcmd.NewCreateStepHandler(stepWriteRepo, endpointReadRepo, workflowReadRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(stepWriteRepo, outboxRepo)
@@ -131,6 +140,12 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			updateStepPositionHandler,
 			getStepByIDHandler,
 			listStepsByWorkflowHandler,
+			getWorkflowByIDHandler,
+		),
+		ConnectionHandler: httphandler.NewConnectionHandler(
+			createConnHandler,
+			deleteConnHandler,
+			listConnsByWorkflowHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),

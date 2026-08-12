@@ -6,12 +6,14 @@ import (
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventorganization "go-api/internal/application/event/organization"
+	eventconnection "go-api/internal/application/event/connection"
 	eventstep "go-api/internal/application/event/step"
 	eventuser "go-api/internal/application/event/user"
 	eventworkflow "go-api/internal/application/event/workflow"
 	"go-api/internal/application/registry"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domainorganization "go-api/internal/domain/organization"
+	domainconnection "go-api/internal/domain/connection"
 	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -58,6 +60,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -223,6 +226,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_step_updated_realtime",
 		publishStepRealtime.OnUpdated,
+	))
+
+	reg.Register(domainconnection.EventTypeConnectionCreated, dedup.With(
+		dedupRepo,
+		"connection_created",
+		eventconnection.NewConnectionCreatedHandler().Handle,
+	))
+	reg.Register(domainconnection.EventTypeConnectionCreated, dedup.With(
+		dedupRepo,
+		"publish_connection_created_realtime",
+		publishConnectionRealtime.OnCreated,
+	))
+	reg.Register(domainconnection.EventTypeConnectionDeleted, dedup.With(
+		dedupRepo,
+		"connection_deleted",
+		eventconnection.NewConnectionDeletedHandler().Handle,
+	))
+	reg.Register(domainconnection.EventTypeConnectionDeleted, dedup.With(
+		dedupRepo,
+		"publish_connection_deleted_realtime",
+		publishConnectionRealtime.OnDeleted,
 	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
