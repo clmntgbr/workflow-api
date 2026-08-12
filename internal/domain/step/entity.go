@@ -130,6 +130,24 @@ func NewStep(p NewStepParams) *Step {
 	return s
 }
 
+func (s *Step) ApplyPositionUpdate(index string, position Position) {
+	s.Index = index
+	s.ExecutionOrder = CalculateExecutionOrder(index)
+	s.Position = position
+	s.UpdatedAt = time.Now().UTC()
+
+	s.recordEvent(StepUpdated{
+		ID:             uuid.New().String(),
+		StepID:         s.ID.String(),
+		WorkflowID:     s.WorkflowID.String(),
+		OrganizationID: s.OrganizationID.String(),
+		Index:          s.Index,
+		ExecutionOrder: s.ExecutionOrder,
+		Position:       s.Position,
+		Timestamp:      s.UpdatedAt,
+	})
+}
+
 func (s *Step) PullEvents() []event.DomainEvent {
 	events := s.events
 	s.events = nil

@@ -32,6 +32,14 @@ func (r *stepWriteRepository) Save(ctx context.Context, step *domainstep.Step) e
 	return DBWithContext(ctx, r.db).Create(model).Error
 }
 
+func (r *stepWriteRepository) Update(ctx context.Context, step *domainstep.Step) error {
+	model, err := stepModelFromDomain(step)
+	if err != nil {
+		return err
+	}
+	return DBWithContext(ctx, r.db).Save(model).Error
+}
+
 func (r *stepWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainstep.Step, error) {
 	var model StepModel
 	err := DBWithContext(ctx, r.db).First(&model, "id = ?", id).Error

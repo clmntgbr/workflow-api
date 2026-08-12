@@ -18,6 +18,7 @@ import (
 
 type StepHandler struct {
 	createHandler         *stepcmd.CreateStepHandler
+	updatePositionHandler *stepcmd.UpdateStepPositionHandler
 	getByIDHandler        *querystep.GetStepByIDHandler
 	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler
 	getWorkflowHandler    *queryworkflow.GetWorkflowByIDHandler
@@ -25,12 +26,14 @@ type StepHandler struct {
 
 func NewStepHandler(
 	createHandler *stepcmd.CreateStepHandler,
+	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
 	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *StepHandler {
 	return &StepHandler{
 		createHandler:         createHandler,
+		updatePositionHandler: updatePositionHandler,
 		getByIDHandler:        getByIDHandler,
 		listByWorkflowHandler: listByWorkflowHandler,
 		getWorkflowHandler:    getWorkflowHandler,
@@ -145,4 +148,51 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewStepListResponseFromViews(views))
+}
+
+func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+	}
+
+	var req dto.UpdateStepPositionRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	req.Index = strings.TrimSpace(req.Index)
+	if err := validation.Struct(c, &req); err != nil {
+		return err
+	}
+
+	s, err := h.updatePositionHandler.Handle(c.Context(), stepcmd.UpdateStepPositionCommand{
+		ID:             id,
+		OrganizationID: orgID,
+		WorkflowID:     workflowID,
+		Index:          req.Index,
+		Position: domainstep.Position{
+			X: req.Position.X,
+			Y: req.Position.Y,
+		},
+	})
+	if err != nil {
+		switch err.Error() {
+		case "step not found":
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update step"})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewStepDetailResponseFromEntity(*s))
 }

@@ -214,6 +214,16 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_step_created_realtime",
 		publishStepRealtime.OnCreated,
 	))
+	reg.Register(domainstep.EventTypeStepUpdated, dedup.With(
+		dedupRepo,
+		"step_updated",
+		eventstep.NewStepUpdatedHandler().Handle,
+	))
+	reg.Register(domainstep.EventTypeStepUpdated, dedup.With(
+		dedupRepo,
+		"publish_step_updated_realtime",
+		publishStepRealtime.OnUpdated,
+	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
 

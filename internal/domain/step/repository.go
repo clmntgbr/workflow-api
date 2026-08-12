@@ -10,6 +10,7 @@ import (
 type StepWriteRepository interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	Save(ctx context.Context, step *Step) error
+	Update(ctx context.Context, step *Step) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Step, error)
 }
 
