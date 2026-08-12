@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	stepcmd "go-api/internal/application/command/step"
 	querystep "go-api/internal/application/query/step"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -16,6 +18,7 @@ import (
 
 type StepHandler struct {
 	createHandler         *stepcmd.CreateStepHandler
+	updateHandler         *stepcmd.UpdateStepHandler
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler
 	deleteHandler         *stepcmd.DeleteStepHandler
 	getByIDHandler        *querystep.GetStepByIDHandler
@@ -25,6 +28,7 @@ type StepHandler struct {
 
 func NewStepHandler(
 	createHandler *stepcmd.CreateStepHandler,
+	updateHandler *stepcmd.UpdateStepHandler,
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
 	deleteHandler *stepcmd.DeleteStepHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
@@ -33,6 +37,7 @@ func NewStepHandler(
 ) *StepHandler {
 	return &StepHandler{
 		createHandler:         createHandler,
+		updateHandler:         updateHandler,
 		updatePositionHandler: updatePositionHandler,
 		deleteHandler:         deleteHandler,
 		getByIDHandler:        getByIDHandler,
@@ -146,6 +151,73 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewStepListResponseFromViews(views))
+}
+
+func (h *StepHandler) Update(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+	}
+
+	var req dto.UpdateStepRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.Description = strings.TrimSpace(req.Description)
+	req.URL = strings.TrimSpace(req.URL)
+	req.Method = strings.TrimSpace(req.Method)
+	if err := validation.Struct(c, &req); err != nil {
+		return err
+	}
+
+	headers := req.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	queryParams := req.Query
+	if queryParams == nil {
+		queryParams = map[string]string{}
+	}
+	body := req.Body
+	if body == nil {
+		body = map[string]any{}
+	}
+
+	s, err := h.updateHandler.Handle(c.Context(), stepcmd.UpdateStepCommand{
+		ID:             id,
+		WorkflowID:     workflowID,
+		OrganizationID: orgID,
+		Name:           req.Name,
+		Description:    req.Description,
+		URL:            req.URL,
+		Method:         req.Method,
+		Headers:        headers,
+		Query:          queryParams,
+		Body:           body,
+		Timeout:        *req.Timeout,
+		RetryOnFailure: *req.RetryOnFailure,
+		RetryCount:     *req.RetryCount,
+		RetryDelay:     *req.RetryDelay,
+	})
+	if err != nil {
+		if err.Error() == "step not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update step"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewStepDetailResponseFromEntity(*s))
 }
 
 func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {

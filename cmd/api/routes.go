@@ -76,6 +76,7 @@ func setupStepRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows/:workflowId/steps", container.StepHandler.Create)
 	api.Get("/workflows/:workflowId/steps", container.StepHandler.ListByWorkflow)
 	api.Get("/workflows/:workflowId/steps/:id", container.StepHandler.GetByID)
+	api.Put("/workflows/:workflowId/steps/:id", container.StepHandler.Update)
 	api.Put("/workflows/:workflowId/steps/:id/position", container.StepHandler.UpdatePosition)
 	api.Delete("/workflows/:workflowId/steps/:id", container.StepHandler.Delete)
 }

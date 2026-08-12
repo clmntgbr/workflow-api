@@ -140,14 +140,72 @@ func (s *Step) ApplyPositionUpdate(index string, position Position) {
 	s.ExecutionOrder = CalculateExecutionOrder(index)
 	s.Position = position
 	s.UpdatedAt = time.Now().UTC()
+	s.recordUpdatedEvent()
+}
 
+type UpdateStepConfigParams struct {
+	Name           string
+	Description    string
+	URL            string
+	Method         string
+	Headers        map[string]string
+	Query          map[string]string
+	Body           map[string]any
+	Timeout        int
+	RetryOnFailure bool
+	RetryCount     int
+	RetryDelay     int
+}
+
+func (s *Step) ApplyConfigUpdate(p UpdateStepConfigParams) {
+	headers := p.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	query := p.Query
+	if query == nil {
+		query = map[string]string{}
+	}
+	body := p.Body
+	if body == nil {
+		body = map[string]any{}
+	}
+
+	s.Name = p.Name
+	s.Description = p.Description
+	s.URL = p.URL
+	s.Method = p.Method
+	s.Headers = headers
+	s.Query = query
+	s.Body = body
+	s.Timeout = p.Timeout
+	s.RetryOnFailure = p.RetryOnFailure
+	s.RetryCount = p.RetryCount
+	s.RetryDelay = p.RetryDelay
+	s.UpdatedAt = time.Now().UTC()
+	s.recordUpdatedEvent()
+}
+
+func (s *Step) recordUpdatedEvent() {
 	s.recordEvent(StepUpdated{
 		ID:             uuid.New().String(),
 		StepID:         s.ID.String(),
 		WorkflowID:     s.WorkflowID.String(),
 		OrganizationID: s.OrganizationID.String(),
+		Name:           s.Name,
+		Description:    s.Description,
+		URL:            s.URL,
+		Method:         s.Method,
+		Headers:        s.Headers,
+		Query:          s.Query,
+		Body:           s.Body,
+		Timeout:        s.Timeout,
+		RetryOnFailure: s.RetryOnFailure,
+		RetryCount:     s.RetryCount,
+		RetryDelay:     s.RetryDelay,
 		Index:          s.Index,
 		ExecutionOrder: s.ExecutionOrder,
+		TreeIndex:      s.TreeIndex,
 		Position:       s.Position,
 		Timestamp:      s.UpdatedAt,
 	})

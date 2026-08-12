@@ -37,14 +37,26 @@ func (e StepCreated) OccurredAt() time.Time { return e.Timestamp }
 const EventTypeStepUpdated = "step.updated.v1"
 
 type StepUpdated struct {
-	ID             string    `json:"eventId"`
-	StepID         string    `json:"stepId"`
-	WorkflowID     string    `json:"workflowId"`
-	OrganizationID string    `json:"organizationId"`
-	Index          string    `json:"index"`
-	ExecutionOrder int       `json:"executionOrder"`
-	Position       Position  `json:"position"`
-	Timestamp      time.Time `json:"timestamp"`
+	ID             string            `json:"eventId"`
+	StepID         string            `json:"stepId"`
+	WorkflowID     string            `json:"workflowId"`
+	OrganizationID string            `json:"organizationId"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description"`
+	URL            string            `json:"url"`
+	Method         string            `json:"method"`
+	Headers        map[string]string `json:"headers"`
+	Query          map[string]string `json:"query"`
+	Body           map[string]any    `json:"body"`
+	Timeout        int               `json:"timeout"`
+	RetryOnFailure bool              `json:"retryOnFailure"`
+	RetryCount     int               `json:"retryCount"`
+	RetryDelay     int               `json:"retryDelay"`
+	Index          string            `json:"index"`
+	ExecutionOrder int               `json:"executionOrder"`
+	TreeIndex      int               `json:"treeIndex"`
+	Position       Position          `json:"position"`
+	Timestamp      time.Time         `json:"timestamp"`
 }
 
 func (e StepUpdated) EventID() string       { return e.ID }

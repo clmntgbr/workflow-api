@@ -113,6 +113,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		workflowReadRepo,
 		outboxRepo,
 	)
+	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
 		stepReadRepo,
@@ -168,6 +169,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		StepHandler: httphandler.NewStepHandler(
 			createStepHandler,
+			updateStepHandler,
 			updateStepPositionHandler,
 			deleteStepHandler,
 			getStepByIDHandler,
