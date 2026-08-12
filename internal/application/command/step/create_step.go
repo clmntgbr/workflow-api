@@ -3,7 +3,6 @@ package step
 import (
 	"context"
 	"errors"
-
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -81,38 +80,32 @@ func (h *CreateStepHandler) Handle(
 		return nil, errors.New("endpoint not found")
 	}
 
-	var created *domainstep.Step
+	executionOrder := domainstep.CalculateExecutionOrder(cmd.Index)
+	s := domainstep.NewStep(domainstep.NewStepParams{
+		WorkflowID:     cmd.WorkflowID,
+		EndpointID:     cmd.EndpointID,
+		OrganizationID: cmd.OrganizationID,
+		Endpoint: domainstep.EndpointSnapshot{
+			ID:             endpoint.ID,
+			Name:           endpoint.Name,
+			Description:    endpoint.Description,
+			URL:            endpoint.URL,
+			Method:         string(endpoint.Method),
+			Headers:        endpoint.Headers,
+			Query:          endpoint.Query,
+			Body:           endpoint.Body,
+			Timeout:        endpoint.Timeout,
+			RetryOnFailure: endpoint.RetryOnFailure,
+			RetryCount:     endpoint.RetryCount,
+			RetryDelay:     endpoint.RetryDelay,
+		},
+		Index:          cmd.Index,
+		ExecutionOrder: executionOrder,
+		TreeIndex:      cmd.TreeIndex,
+		Position:       cmd.Position,
+	})
+
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		executionOrder, err := h.stepRepo.NextExecutionOrder(txCtx, cmd.WorkflowID)
-		if err != nil {
-			return errors.New("failed to compute execution order")
-		}
-
-		s := domainstep.NewStep(domainstep.NewStepParams{
-			WorkflowID:     cmd.WorkflowID,
-			EndpointID:     cmd.EndpointID,
-			OrganizationID: cmd.OrganizationID,
-			Endpoint: domainstep.EndpointSnapshot{
-				ID:             endpoint.ID,
-				Name:           endpoint.Name,
-				Description:    endpoint.Description,
-				URL:            endpoint.URL,
-				Method:         string(endpoint.Method),
-				Headers:        endpoint.Headers,
-				Query:          endpoint.Query,
-				Body:           endpoint.Body,
-				Timeout:        endpoint.Timeout,
-				RetryOnFailure: endpoint.RetryOnFailure,
-				RetryCount:     endpoint.RetryCount,
-				RetryDelay:     endpoint.RetryDelay,
-			},
-			Index:          cmd.Index,
-			ExecutionOrder: executionOrder,
-			TreeIndex:      cmd.TreeIndex,
-			Position:       cmd.Position,
-		})
-		created = s
-
 		if err := h.stepRepo.Save(txCtx, s); err != nil {
 			return err
 		}
@@ -122,5 +115,5 @@ func (h *CreateStepHandler) Handle(
 		return nil, errors.New("failed to create step")
 	}
 
-	return created, nil
+	return s, nil
 }

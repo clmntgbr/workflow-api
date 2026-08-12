@@ -11,7 +11,6 @@ type StepWriteRepository interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	Save(ctx context.Context, step *Step) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Step, error)
-	NextExecutionOrder(ctx context.Context, workflowID uuid.UUID) (int, error)
 }
 
 type StepReadRepository interface {

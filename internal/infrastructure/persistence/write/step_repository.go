@@ -43,15 +43,3 @@ func (r *stepWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	}
 	return stepDomainFromModel(&model)
 }
-
-func (r *stepWriteRepository) NextExecutionOrder(ctx context.Context, workflowID uuid.UUID) (int, error) {
-	var maxOrder int
-	err := DBWithContext(ctx, r.db).Model(&StepModel{}).
-		Where("workflow_id = ? AND status <> ?", workflowID, domainstep.StatusDeleted).
-		Select("COALESCE(MAX(execution_order), -1)").
-		Scan(&maxOrder).Error
-	if err != nil {
-		return 0, err
-	}
-	return maxOrder + 1, nil
-}
