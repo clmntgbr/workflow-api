@@ -37,13 +37,13 @@ func (e StepCreated) OccurredAt() time.Time { return e.Timestamp }
 const EventTypeStepUpdated = "step.updated.v1"
 
 type StepUpdated struct {
-	ID             string   `json:"eventId"`
-	StepID         string   `json:"stepId"`
-	WorkflowID     string   `json:"workflowId"`
-	OrganizationID string   `json:"organizationId"`
-	Index          string   `json:"index"`
-	ExecutionOrder int      `json:"executionOrder"`
-	Position       Position `json:"position"`
+	ID             string    `json:"eventId"`
+	StepID         string    `json:"stepId"`
+	WorkflowID     string    `json:"workflowId"`
+	OrganizationID string    `json:"organizationId"`
+	Index          string    `json:"index"`
+	ExecutionOrder int       `json:"executionOrder"`
+	Position       Position  `json:"position"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
@@ -51,3 +51,18 @@ func (e StepUpdated) EventID() string       { return e.ID }
 func (e StepUpdated) EventType() string     { return EventTypeStepUpdated }
 func (e StepUpdated) AggregateID() string   { return e.StepID }
 func (e StepUpdated) OccurredAt() time.Time { return e.Timestamp }
+
+const EventTypeStepDeleted = "step.deleted.v1"
+
+type StepDeleted struct {
+	ID             string    `json:"eventId"`
+	StepID         string    `json:"stepId"`
+	WorkflowID     string    `json:"workflowId"`
+	OrganizationID string    `json:"organizationId"`
+	Timestamp      time.Time `json:"timestamp"`
+}
+
+func (e StepDeleted) EventID() string       { return e.ID }
+func (e StepDeleted) EventType() string     { return EventTypeStepDeleted }
+func (e StepDeleted) AggregateID() string   { return e.StepID }
+func (e StepDeleted) OccurredAt() time.Time { return e.Timestamp }

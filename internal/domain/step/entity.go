@@ -153,6 +153,18 @@ func (s *Step) ApplyPositionUpdate(index string, position Position) {
 	})
 }
 
+func (s *Step) MarkDeleted() {
+	s.Status = StatusDeleted
+	s.UpdatedAt = time.Now().UTC()
+	s.recordEvent(StepDeleted{
+		ID:             uuid.New().String(),
+		StepID:         s.ID.String(),
+		WorkflowID:     s.WorkflowID.String(),
+		OrganizationID: s.OrganizationID.String(),
+		Timestamp:      s.UpdatedAt,
+	})
+}
+
 func (s *Step) PullEvents() []event.DomainEvent {
 	events := s.events
 	s.events = nil

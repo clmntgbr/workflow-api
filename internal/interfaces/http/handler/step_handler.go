@@ -17,6 +17,7 @@ import (
 type StepHandler struct {
 	createHandler         *stepcmd.CreateStepHandler
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler
+	deleteHandler         *stepcmd.DeleteStepHandler
 	getByIDHandler        *querystep.GetStepByIDHandler
 	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler
 	getWorkflowHandler    *queryworkflow.GetWorkflowByIDHandler
@@ -25,6 +26,7 @@ type StepHandler struct {
 func NewStepHandler(
 	createHandler *stepcmd.CreateStepHandler,
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
+	deleteHandler *stepcmd.DeleteStepHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
 	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
@@ -32,6 +34,7 @@ func NewStepHandler(
 	return &StepHandler{
 		createHandler:         createHandler,
 		updatePositionHandler: updatePositionHandler,
+		deleteHandler:         deleteHandler,
 		getByIDHandler:        getByIDHandler,
 		listByWorkflowHandler: listByWorkflowHandler,
 		getWorkflowHandler:    getWorkflowHandler,
@@ -188,4 +191,34 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewStepDetailResponseFromEntity(*s))
+}
+
+func (h *StepHandler) Delete(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+	}
+
+	if err := h.deleteHandler.Handle(c.Context(), stepcmd.DeleteStepCommand{
+		ID:             id,
+		WorkflowID:     workflowID,
+		OrganizationID: orgID,
+	}); err != nil {
+		if err.Error() == "step not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to delete step"})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }

@@ -3,17 +3,17 @@ package di
 import (
 	"log"
 
+	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventorganization "go-api/internal/application/event/organization"
-	eventconnection "go-api/internal/application/event/connection"
 	eventstep "go-api/internal/application/event/step"
 	eventuser "go-api/internal/application/event/user"
 	eventworkflow "go-api/internal/application/event/workflow"
 	"go-api/internal/application/registry"
+	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domainorganization "go-api/internal/domain/organization"
-	domainconnection "go-api/internal/domain/connection"
 	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -226,6 +226,16 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_step_updated_realtime",
 		publishStepRealtime.OnUpdated,
+	))
+	reg.Register(domainstep.EventTypeStepDeleted, dedup.With(
+		dedupRepo,
+		"step_deleted",
+		eventstep.NewStepDeletedHandler().Handle,
+	))
+	reg.Register(domainstep.EventTypeStepDeleted, dedup.With(
+		dedupRepo,
+		"publish_step_deleted_realtime",
+		publishStepRealtime.OnDeleted,
 	))
 
 	reg.Register(domainconnection.EventTypeConnectionCreated, dedup.With(

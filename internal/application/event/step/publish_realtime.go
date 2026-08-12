@@ -45,6 +45,14 @@ func (h *PublishRealtimeHandler) OnUpdated(ctx context.Context, payload []byte) 
 	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionUpdated, evt)
 }
 
+func (h *PublishRealtimeHandler) OnDeleted(ctx context.Context, payload []byte) error {
+	var evt domainstep.StepDeleted
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return messaging.NonRetryable(err)
+	}
+	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionDeleted, evt)
+}
+
 func (h *PublishRealtimeHandler) publishToOrganizationMembers(
 	ctx context.Context,
 	organizationIDRaw string,
