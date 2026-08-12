@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	workflowcmd "go-api/internal/application/command/workflow"
+	queryorganization "go-api/internal/application/query/organization"
 	queryworkflow "go-api/internal/application/query/workflow"
 	"go-api/internal/domain/paginate"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -17,11 +18,12 @@ import (
 )
 
 type WorkflowHandler struct {
-	createHandler    *workflowcmd.CreateWorkflowHandler
-	updateHandler    *workflowcmd.UpdateWorkflowHandler
-	deleteHandler    *workflowcmd.DeleteWorkflowHandler
-	getByIDHandler   *queryworkflow.GetWorkflowByIDHandler
-	listByOrgHandler *queryworkflow.ListWorkflowsByOrganizationHandler
+	createHandler     *workflowcmd.CreateWorkflowHandler
+	updateHandler     *workflowcmd.UpdateWorkflowHandler
+	deleteHandler     *workflowcmd.DeleteWorkflowHandler
+	getByIDHandler    *queryworkflow.GetWorkflowByIDHandler
+	listByOrgHandler  *queryworkflow.ListWorkflowsByOrganizationHandler
+	getOrgByIDHandler *queryorganization.GetOrganizationByIDHandler
 }
 
 func NewWorkflowHandler(
@@ -30,13 +32,15 @@ func NewWorkflowHandler(
 	deleteHandler *workflowcmd.DeleteWorkflowHandler,
 	getByIDHandler *queryworkflow.GetWorkflowByIDHandler,
 	listByOrgHandler *queryworkflow.ListWorkflowsByOrganizationHandler,
+	getOrgByIDHandler *queryorganization.GetOrganizationByIDHandler,
 ) *WorkflowHandler {
 	return &WorkflowHandler{
-		createHandler:    createHandler,
-		updateHandler:    updateHandler,
-		deleteHandler:    deleteHandler,
-		getByIDHandler:   getByIDHandler,
-		listByOrgHandler: listByOrgHandler,
+		createHandler:     createHandler,
+		updateHandler:     updateHandler,
+		deleteHandler:     deleteHandler,
+		getByIDHandler:    getByIDHandler,
+		listByOrgHandler:  listByOrgHandler,
+		getOrgByIDHandler: getOrgByIDHandler,
 	}
 }
 
@@ -75,6 +79,11 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
@@ -92,11 +101,33 @@ func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if view.OrganizationID != orgID {
+
+	if view.OrganizationID == orgID {
+		return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromView(*view))
+	}
+
+	org, err := h.getOrgByIDHandler.Handle(c.Context(), queryorganization.GetOrganizationByIDQuery{ID: view.OrganizationID})
+	if err != nil || org == nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromView(*view))
+	isMember := false
+	for _, memberID := range org.MemberIDs {
+		if memberID == user.ID {
+			isMember = true
+			break
+		}
+	}
+	if !isMember {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+	}
+
+	return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+		"code":             "WRONG_ORGANIZATION",
+		"message":          "Workflow belongs to another organization",
+		"organizationId":   org.ID.String(),
+		"organizationName": org.Name,
+	})
 }
 
 func (h *WorkflowHandler) ListByOrganization(c fiber.Ctx) error {

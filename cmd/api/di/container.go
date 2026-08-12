@@ -161,6 +161,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			deleteWorkflowHandler,
 			getWorkflowByIDHandler,
 			listWorkflowsByOrgHandler,
+			getOrgByIDHandler,
 		),
 		EndpointHandler: httphandler.NewEndpointHandler(
 			createEndpointHandler,
