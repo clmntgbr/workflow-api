@@ -35,13 +35,22 @@ func NewDeleteConnectionHandler(
 	}
 }
 
-func (h *DeleteConnectionHandler) Handle(ctx context.Context, id uuid.UUID) error {
-	conn, err := h.connRepo.GetByID(ctx, id)
+type DeleteConnectionCommand struct {
+	ID             uuid.UUID
+	WorkflowID     uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (h *DeleteConnectionHandler) Handle(ctx context.Context, cmd DeleteConnectionCommand) error {
+	conn, err := h.connRepo.GetByID(ctx, cmd.ID)
 	if err != nil {
 		return errors.New("failed to get connection")
 	}
 	if conn == nil {
-		return nil
+		return errors.New("connection not found")
+	}
+	if conn.OrganizationID != cmd.OrganizationID || conn.WorkflowID != cmd.WorkflowID {
+		return errors.New("connection not found")
 	}
 
 	steps, err := h.stepReadRepo.FindByWorkflowID(ctx, conn.WorkflowID)
@@ -63,7 +72,7 @@ func (h *DeleteConnectionHandler) Handle(ctx context.Context, id uuid.UUID) erro
 	}
 	edges := make([]domainstep.GraphEdge, 0, len(connections))
 	for _, connectionView := range connections {
-		if connectionView.ID == id {
+		if connectionView.ID == cmd.ID {
 			continue
 		}
 		edges = append(edges, domainstep.GraphEdge{

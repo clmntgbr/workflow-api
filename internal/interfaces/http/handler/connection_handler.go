@@ -14,9 +14,9 @@ import (
 )
 
 type ConnectionHandler struct {
-	createHandler     *conncmd.CreateConnectionHandler
-	deleteHandler     *conncmd.DeleteConnectionHandler
-	listByWorkflow    *queryconn.ListConnectionsByWorkflowHandler
+	createHandler      *conncmd.CreateConnectionHandler
+	deleteHandler      *conncmd.DeleteConnectionHandler
+	listByWorkflow     *queryconn.ListConnectionsByWorkflowHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
 }
 
@@ -88,7 +88,7 @@ func (h *ConnectionHandler) Delete(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
-	_, err = uuid.Parse(c.Params("workflowId"))
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -98,9 +98,14 @@ func (h *ConnectionHandler) Delete(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid connection id"})
 	}
 
-	_ = orgID
-
-	if err := h.deleteHandler.Handle(c.Context(), id); err != nil {
+	if err := h.deleteHandler.Handle(c.Context(), conncmd.DeleteConnectionCommand{
+		ID:             id,
+		WorkflowID:     workflowID,
+		OrganizationID: orgID,
+	}); err != nil {
+		if err.Error() == "connection not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Connection not found"})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to delete connection"})
 	}
 
