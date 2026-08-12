@@ -66,6 +66,7 @@ func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/endpoints", container.EndpointHandler.Create)
 	api.Get("/endpoints", container.EndpointHandler.ListByOrganization)
 	api.Get("/endpoints/:id", container.EndpointHandler.GetByID)
+	api.Put("/endpoints/:id", container.EndpointHandler.Update)
 }
 
 func setupRealtimeRoutes(api fiber.Router, container *di.Container) {

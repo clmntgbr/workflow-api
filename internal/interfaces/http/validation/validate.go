@@ -21,12 +21,22 @@ func init() {
 		return name
 	})
 	_ = validate.RegisterValidation("workflow_status", validateWorkflowStatus)
+	_ = validate.RegisterValidation("endpoint_status", validateEndpointStatus)
 	_ = validate.RegisterValidation("http_method", validateHTTPMethod)
 }
 
 func validateWorkflowStatus(fl validator.FieldLevel) bool {
 	switch fl.Field().String() {
 	case "active", "inactive", "canceled":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateEndpointStatus(fl validator.FieldLevel) bool {
+	switch fl.Field().String() {
+	case "active", "inactive":
 		return true
 	default:
 		return false
@@ -95,7 +105,7 @@ func messageFor(fieldErr validator.FieldError) string {
 			return fmt.Sprintf("must be at most %s characters", fieldErr.Param())
 		}
 		return fmt.Sprintf("must be at most %s", fieldErr.Param())
-	case "oneof", "workflow_status", "http_method":
+	case "oneof", "workflow_status", "endpoint_status", "http_method":
 		return "is invalid"
 	default:
 		return fmt.Sprintf("failed on '%s' validation", fieldErr.Tag())

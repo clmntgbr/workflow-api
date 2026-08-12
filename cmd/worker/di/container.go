@@ -190,6 +190,16 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_endpoint_created_realtime",
 		publishEndpointRealtime.OnCreated,
 	))
+	reg.Register(domainendpoint.EventTypeEndpointUpdated, dedup.With(
+		dedupRepo,
+		"endpoint_updated",
+		eventendpoint.NewEndpointUpdatedHandler().Handle,
+	))
+	reg.Register(domainendpoint.EventTypeEndpointUpdated, dedup.With(
+		dedupRepo,
+		"publish_endpoint_updated_realtime",
+		publishEndpointRealtime.OnUpdated,
+	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
 

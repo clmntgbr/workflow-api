@@ -12,6 +12,7 @@ import (
 type EndpointWriteRepository interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	Save(ctx context.Context, endpoint *Endpoint) error
+	Update(ctx context.Context, endpoint *Endpoint) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Endpoint, error)
 }
 

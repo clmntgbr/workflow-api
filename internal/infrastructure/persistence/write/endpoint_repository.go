@@ -32,6 +32,14 @@ func (r *endpointWriteRepository) Save(ctx context.Context, endpoint *domainendp
 	return DBWithContext(ctx, r.db).Create(model).Error
 }
 
+func (r *endpointWriteRepository) Update(ctx context.Context, endpoint *domainendpoint.Endpoint) error {
+	model, err := endpointModelFromDomain(endpoint)
+	if err != nil {
+		return err
+	}
+	return DBWithContext(ctx, r.db).Save(model).Error
+}
+
 func (r *endpointWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domainendpoint.Endpoint, error) {
 	var model EndpointModel
 	err := DBWithContext(ctx, r.db).First(&model, "id = ?", id).Error

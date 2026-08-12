@@ -104,6 +104,70 @@ func (e *Endpoint) PullEvents() []event.DomainEvent {
 	return events
 }
 
+type UpdateEndpointParams struct {
+	Name           string
+	Description    string
+	URL            string
+	Method         Method
+	Headers        map[string]string
+	Query          map[string]string
+	Timeout        int
+	RetryOnFailure bool
+	RetryCount     int
+	RetryDelay     int
+	Status         Status
+}
+
+func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
+	headers := p.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	query := p.Query
+	if query == nil {
+		query = map[string]string{}
+	}
+	timeout := p.Timeout
+	if timeout <= 0 {
+		timeout = 30000
+	}
+	retryDelay := p.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = 1000
+	}
+
+	e.Name = p.Name
+	e.Description = p.Description
+	e.URL = p.URL
+	e.Method = p.Method
+	e.Headers = headers
+	e.Query = query
+	e.Timeout = timeout
+	e.RetryOnFailure = p.RetryOnFailure
+	e.RetryCount = p.RetryCount
+	e.RetryDelay = retryDelay
+	e.Status = p.Status
+	e.UpdatedAt = time.Now().UTC()
+
+	e.recordEvent(EndpointUpdated{
+		ID:             uuid.New().String(),
+		EndpointID:     e.ID.String(),
+		OrganizationID: e.OrganizationID.String(),
+		Name:           e.Name,
+		Description:    e.Description,
+		URL:            e.URL,
+		Method:         string(e.Method),
+		Headers:        e.Headers,
+		Query:          e.Query,
+		Timeout:        e.Timeout,
+		RetryOnFailure: e.RetryOnFailure,
+		RetryCount:     e.RetryCount,
+		RetryDelay:     e.RetryDelay,
+		Status:         string(e.Status),
+		Timestamp:      e.UpdatedAt,
+	})
+}
+
 func (e *Endpoint) recordEvent(evt event.DomainEvent) {
 	e.events = append(e.events, evt)
 }
