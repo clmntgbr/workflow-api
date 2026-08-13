@@ -10,11 +10,12 @@ const (
 	TriggeredBySchedule TriggeredBy = "schedule"
 	TriggeredByWebhook  TriggeredBy = "webhook"
 	TriggeredByAPI      TriggeredBy = "api"
+	TriggeredByCLI      TriggeredBy = "cli"
 )
 
 func (t TriggeredBy) Valid() bool {
 	switch t {
-	case TriggeredByUser, TriggeredBySchedule, TriggeredByWebhook, TriggeredByAPI:
+	case TriggeredByUser, TriggeredBySchedule, TriggeredByWebhook, TriggeredByAPI, TriggeredByCLI:
 		return true
 	default:
 		return false

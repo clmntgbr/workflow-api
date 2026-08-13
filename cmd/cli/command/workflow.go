@@ -39,7 +39,7 @@ func newWorkflowRunCommand() *cobra.Command {
 
 			run, err := container.StartWorkflowRunHandler.Handle(cmd.Context(), workflowruncmd.StartWorkflowRunCommand{
 				WorkflowID:  workflowID,
-				TriggeredBy: domainworkflowrun.TriggeredByAPI,
+				TriggeredBy: domainworkflowrun.TriggeredByCLI,
 			})
 			if err != nil {
 				return err
