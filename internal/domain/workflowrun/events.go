@@ -3,10 +3,11 @@ package workflowrun
 import "time"
 
 const (
-	EventTypeWorkflowRunStarted   = "workflowRun.started.v1"
-	EventTypeWorkflowRunSucceeded = "workflowRun.succeeded.v1"
-	EventTypeWorkflowRunFailed    = "workflowRun.failed.v1"
-	EventTypeWorkflowRunCancelled = "workflowRun.cancelled.v1"
+	EventTypeWorkflowRunStarted          = "workflowRun.started.v1"
+	EventTypeWorkflowRunSucceeded        = "workflowRun.succeeded.v1"
+	EventTypeWorkflowRunFailed           = "workflowRun.failed.v1"
+	EventTypeWorkflowRunCancelled        = "workflowRun.cancelled.v1"
+	EventTypeWorkflowRunScheduledSkipped = "workflowRun.scheduledSkipped.v1"
 )
 
 type WorkflowRunStarted struct {
@@ -63,3 +64,19 @@ func (e WorkflowRunCancelled) EventID() string       { return e.ID }
 func (e WorkflowRunCancelled) EventType() string     { return EventTypeWorkflowRunCancelled }
 func (e WorkflowRunCancelled) AggregateID() string   { return e.WorkflowRunID }
 func (e WorkflowRunCancelled) OccurredAt() time.Time { return e.Timestamp }
+
+// WorkflowRunScheduledSkipped is emitted when the scheduler would start a run
+// but one is already pending/running for that workflow.
+type WorkflowRunScheduledSkipped struct {
+	ID         string    `json:"eventId"`
+	WorkflowID string    `json:"workflowId"`
+	Reason     string    `json:"reason"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+func (e WorkflowRunScheduledSkipped) EventID() string       { return e.ID }
+func (e WorkflowRunScheduledSkipped) EventType() string     { return EventTypeWorkflowRunScheduledSkipped }
+func (e WorkflowRunScheduledSkipped) AggregateID() string   { return e.WorkflowID }
+func (e WorkflowRunScheduledSkipped) OccurredAt() time.Time { return e.Timestamp }
+
+const ScheduledSkipReasonAlreadyInProgress = "already_in_progress"

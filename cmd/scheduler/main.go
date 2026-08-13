@@ -70,6 +70,10 @@ func tick(ctx context.Context, container *di.Container) {
 		})
 		if err != nil {
 			if errors.Is(err, domainworkflowrun.ErrAlreadyInProgress) {
+				log.Printf(
+					"scheduler: skipped workflow %s — run already in progress (event dispatched)",
+					workflow.ID,
+				)
 				continue
 			}
 			log.Printf("scheduler: failed to start workflow %s: %v", workflow.ID, err)

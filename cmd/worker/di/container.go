@@ -323,6 +323,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_workflow_run_cancelled_realtime",
 		publishWorkflowRunRealtime.OnCancelled,
 	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunScheduledSkipped, dedup.With(
+		dedupRepo,
+		"workflow_run_scheduled_skipped",
+		eventworkflowrun.NewScheduledSkippedHandler().Handle,
+	))
 
 	reg.Register(domainsteprun.EventTypeStepRunQueued, dedup.With(
 		dedupRepo,

@@ -8,7 +8,6 @@ import (
 	"go-api/internal/domain/paginate"
 	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
-	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -115,11 +114,6 @@ func (r *workflowReadRepository) GetWorkflowsForExecution(ctx context.Context) (
 		Where("status = ?", domainworkflow.StatusActive).
 		Where("next_run_at IS NOT NULL AND next_run_at <= ?", time.Now().UTC()).
 		Where("EXISTS (SELECT 1 FROM steps WHERE steps.workflow_id = workflows.id AND steps.status <> ?)", domainstep.StatusDeleted).
-		Where(`NOT EXISTS (
-			SELECT 1 FROM workflow_runs
-			WHERE workflow_runs.workflow_id = workflows.id
-			  AND workflow_runs.status IN (?, ?)
-		)`, domainworkflowrun.StatusPending, domainworkflowrun.StatusRunning).
 		Order("next_run_at ASC").
 		Find(&rows).Error
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -63,6 +64,11 @@ func (h *StartWorkflowRunHandler) Handle(
 		return nil, errors.New("failed to start workflow run")
 	}
 	if inProgress {
+		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
+			if err := h.recordScheduledSkip(ctx, workflow); err != nil {
+				return nil, errors.New("failed to start workflow run")
+			}
+		}
 		return nil, domainworkflowrun.ErrAlreadyInProgress
 	}
 
@@ -87,12 +93,38 @@ func (h *StartWorkflowRunHandler) Handle(
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
+			if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
+				if skipErr := h.recordScheduledSkip(ctx, workflow); skipErr != nil {
+					return nil, errors.New("failed to start workflow run")
+				}
+			}
 			return nil, domainworkflowrun.ErrAlreadyInProgress
 		}
 		return nil, errors.New("failed to start workflow run")
 	}
 
 	return run, nil
+}
+
+func (h *StartWorkflowRunHandler) recordScheduledSkip(
+	ctx context.Context,
+	workflow *domainworkflow.Workflow,
+) error {
+	now := time.Now().UTC()
+	workflow.AdvanceAfterScheduledStart(now)
+	skipped := domainworkflowrun.WorkflowRunScheduledSkipped{
+		ID:         uuid.New().String(),
+		WorkflowID: workflow.ID.String(),
+		Reason:     domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+		Timestamp:  now,
+	}
+
+	return h.workflowRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
+			return err
+		}
+		return h.outbox.StoreEvents(txCtx, []event.DomainEvent{skipped})
+	})
 }
 
 func isUniqueViolation(err error) bool {
