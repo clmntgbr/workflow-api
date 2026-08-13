@@ -9,19 +9,24 @@ const (
 )
 
 type WorkflowCreated struct {
-	ID                      string    `json:"eventId"`
-	WorkflowID              string    `json:"workflowId"`
-	OrganizationID          string    `json:"organizationId"`
-	Name                    string    `json:"name"`
-	Description             string    `json:"description"`
-	Status                  string    `json:"status"`
-	ScheduleIntervalMinutes int       `json:"scheduleIntervalMinutes"`
-	Concurrency             int       `json:"concurrency"`
-	NotificationsEnabled    bool      `json:"notificationsEnabled"`
-	NotifyOnSuccess         bool      `json:"notifyOnSuccess"`
-	NotifyOnFailure         bool      `json:"notifyOnFailure"`
-	NotifyOnCancel          bool      `json:"notifyOnCancel"`
-	Timestamp               time.Time `json:"timestamp"`
+	ID                    string     `json:"eventId"`
+	WorkflowID            string     `json:"workflowId"`
+	OrganizationID        string     `json:"organizationId"`
+	Name                  string     `json:"name"`
+	Description           string     `json:"description"`
+	Status                string     `json:"status"`
+	ScheduleType          string     `json:"scheduleType"`
+	ScheduleIntervalValue int        `json:"scheduleIntervalValue"`
+	ScheduleIntervalUnit  string     `json:"scheduleIntervalUnit"`
+	ScheduleAt            *time.Time `json:"scheduleAt"`
+	ScheduleTimezone      string     `json:"scheduleTimezone"`
+	NextRunAt             *time.Time `json:"nextRunAt"`
+	Concurrency           int        `json:"concurrency"`
+	NotificationsEnabled  bool       `json:"notificationsEnabled"`
+	NotifyOnSuccess       bool       `json:"notifyOnSuccess"`
+	NotifyOnFailure       bool       `json:"notifyOnFailure"`
+	NotifyOnCancel        bool       `json:"notifyOnCancel"`
+	Timestamp             time.Time  `json:"timestamp"`
 }
 
 func (e WorkflowCreated) EventID() string       { return e.ID }
@@ -30,19 +35,24 @@ func (e WorkflowCreated) AggregateID() string   { return e.WorkflowID }
 func (e WorkflowCreated) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowUpdated struct {
-	ID                      string    `json:"eventId"`
-	WorkflowID              string    `json:"workflowId"`
-	OrganizationID          string    `json:"organizationId"`
-	Name                    string    `json:"name"`
-	Description             string    `json:"description"`
-	Status                  string    `json:"status"`
-	ScheduleIntervalMinutes int       `json:"scheduleIntervalMinutes"`
-	Concurrency             int       `json:"concurrency"`
-	NotificationsEnabled    bool      `json:"notificationsEnabled"`
-	NotifyOnSuccess         bool      `json:"notifyOnSuccess"`
-	NotifyOnFailure         bool      `json:"notifyOnFailure"`
-	NotifyOnCancel          bool      `json:"notifyOnCancel"`
-	Timestamp               time.Time `json:"timestamp"`
+	ID                    string     `json:"eventId"`
+	WorkflowID            string     `json:"workflowId"`
+	OrganizationID        string     `json:"organizationId"`
+	Name                  string     `json:"name"`
+	Description           string     `json:"description"`
+	Status                string     `json:"status"`
+	ScheduleType          string     `json:"scheduleType"`
+	ScheduleIntervalValue int        `json:"scheduleIntervalValue"`
+	ScheduleIntervalUnit  string     `json:"scheduleIntervalUnit"`
+	ScheduleAt            *time.Time `json:"scheduleAt"`
+	ScheduleTimezone      string     `json:"scheduleTimezone"`
+	NextRunAt             *time.Time `json:"nextRunAt"`
+	Concurrency           int        `json:"concurrency"`
+	NotificationsEnabled  bool       `json:"notificationsEnabled"`
+	NotifyOnSuccess       bool       `json:"notifyOnSuccess"`
+	NotifyOnFailure       bool       `json:"notifyOnFailure"`
+	NotifyOnCancel        bool       `json:"notifyOnCancel"`
+	Timestamp             time.Time  `json:"timestamp"`
 }
 
 func (e WorkflowUpdated) EventID() string       { return e.ID }

@@ -6,29 +6,45 @@ import (
 	"time"
 
 	"go-api/internal/domain/paginate"
+	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
+	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type workflowRow struct {
-	ID                      uuid.UUID
-	Name                    string
-	Description             string
-	Status                  string
-	OrganizationID          uuid.UUID
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                    uuid.UUID
+	Name                  string
+	Description           string
+	Status                string
+	OrganizationID        uuid.UUID
+	ScheduleType          string
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  *string
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	NextRunAt             *time.Time
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 func (workflowRow) TableName() string { return "workflows" }
+
+var workflowSelectColumns = []string{
+	"id", "name", "description", "status", "organization_id",
+	"schedule_type", "schedule_interval_value", "schedule_interval_unit",
+	"schedule_at", "schedule_timezone", "next_run_at",
+	"concurrency",
+	"notifications_enabled", "notify_on_success", "notify_on_failure", "notify_on_cancel",
+	"created_at", "updated_at",
+}
 
 type workflowReadRepository struct {
 	db *gorm.DB
@@ -41,12 +57,7 @@ func NewWorkflowReadRepository(db *gorm.DB) domainworkflow.WorkflowReadRepositor
 func (r *workflowReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainworkflow.WorkflowView, error) {
 	var row workflowRow
 	err := r.db.WithContext(ctx).
-		Select(
-			"id", "name", "description", "status", "organization_id",
-			"schedule_interval_minutes", "concurrency",
-			"notifications_enabled", "notify_on_success", "notify_on_failure", "notify_on_cancel",
-			"created_at", "updated_at",
-		).
+		Select(workflowSelectColumns).
 		First(&row, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -85,14 +96,7 @@ func (r *workflowReadRepository) FindByOrganizationID(
 	}
 
 	var rows []workflowRow
-	err = db.
-		Select(
-			"id", "name", "description", "status", "organization_id",
-			"schedule_interval_minutes", "concurrency",
-			"notifications_enabled", "notify_on_success", "notify_on_failure", "notify_on_cancel",
-			"created_at", "updated_at",
-		).
-		Find(&rows).Error
+	err = db.Select(workflowSelectColumns).Find(&rows).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -104,20 +108,59 @@ func (r *workflowReadRepository) FindByOrganizationID(
 	return views, total, nil
 }
 
+func (r *workflowReadRepository) GetWorkflowsForExecution(ctx context.Context) ([]domainworkflow.WorkflowView, error) {
+	var rows []workflowRow
+	err := r.db.WithContext(ctx).
+		Model(&workflowRow{}).
+		Where("status = ?", domainworkflow.StatusActive).
+		Where("next_run_at IS NOT NULL AND next_run_at <= ?", time.Now().UTC()).
+		Where("EXISTS (SELECT 1 FROM steps WHERE steps.workflow_id = workflows.id AND steps.status <> ?)", domainstep.StatusDeleted).
+		Where(`NOT EXISTS (
+			SELECT 1 FROM workflow_runs
+			WHERE workflow_runs.workflow_id = workflows.id
+			  AND workflow_runs.status IN (?, ?)
+		)`, domainworkflowrun.StatusPending, domainworkflowrun.StatusRunning).
+		Order("next_run_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]domainworkflow.WorkflowView, 0, len(rows))
+	for _, row := range rows {
+		views = append(views, *toWorkflowView(row))
+	}
+	return views, nil
+}
+
 func toWorkflowView(row workflowRow) *domainworkflow.WorkflowView {
+	unit := domainworkflow.ScheduleUnit("")
+	if row.ScheduleIntervalUnit != nil {
+		unit = domainworkflow.ScheduleUnit(*row.ScheduleIntervalUnit)
+	}
+	timezone := row.ScheduleTimezone
+	if timezone == "" {
+		timezone = "UTC"
+	}
+
 	return &domainworkflow.WorkflowView{
-		ID:                      row.ID,
-		Name:                    row.Name,
-		Description:             row.Description,
-		Status:                  domainworkflow.Status(row.Status),
-		OrganizationID:          row.OrganizationID,
-		ScheduleIntervalMinutes: row.ScheduleIntervalMinutes,
-		Concurrency:             row.Concurrency,
-		NotificationsEnabled:    row.NotificationsEnabled,
-		NotifyOnSuccess:         row.NotifyOnSuccess,
-		NotifyOnFailure:         row.NotifyOnFailure,
-		NotifyOnCancel:          row.NotifyOnCancel,
-		CreatedAt:               row.CreatedAt,
-		UpdatedAt:               row.UpdatedAt,
+		ID:                    row.ID,
+		Name:                  row.Name,
+		Description:           row.Description,
+		Status:                domainworkflow.Status(row.Status),
+		OrganizationID:        row.OrganizationID,
+		ScheduleType:          domainworkflow.ScheduleType(row.ScheduleType),
+		ScheduleIntervalValue: row.ScheduleIntervalValue,
+		ScheduleIntervalUnit:  unit,
+		ScheduleAt:            row.ScheduleAt,
+		ScheduleTimezone:      timezone,
+		NextRunAt:             row.NextRunAt,
+		Concurrency:           row.Concurrency,
+		NotificationsEnabled:  row.NotificationsEnabled,
+		NotifyOnSuccess:       row.NotifyOnSuccess,
+		NotifyOnFailure:       row.NotifyOnFailure,
+		NotifyOnCancel:        row.NotifyOnCancel,
+		CreatedAt:             row.CreatedAt,
+		UpdatedAt:             row.UpdatedAt,
 	}
 }

@@ -8,15 +8,19 @@ import (
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventorganization "go-api/internal/application/event/organization"
 	eventstep "go-api/internal/application/event/step"
+	eventsteprun "go-api/internal/application/event/steprun"
 	eventuser "go-api/internal/application/event/user"
 	eventworkflow "go-api/internal/application/event/workflow"
+	eventworkflowrun "go-api/internal/application/event/workflowrun"
 	"go-api/internal/application/registry"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domainorganization "go-api/internal/domain/organization"
 	domainstep "go-api/internal/domain/step"
+	domainsteprun "go-api/internal/domain/steprun"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
+	domainworkflowrun "go-api/internal/domain/workflowrun"
 	"go-api/internal/infrastructure/centrifugo"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/messaging/rabbitmq"
@@ -24,6 +28,7 @@ import (
 	"go-api/internal/infrastructure/persistence/outbox"
 	"go-api/internal/infrastructure/persistence/processed"
 	"go-api/internal/infrastructure/persistence/read"
+	"go-api/internal/infrastructure/persistence/write"
 
 	"gorm.io/gorm"
 )
@@ -42,12 +47,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		env.RabbitMQRetryTTLMS,
 	)
 
-	conn, err := rabbitmq.Connect(env.RabbitMQURL, topology)
+	executorTopology := rabbitmq.DefaultTopology(
+		env.RabbitMQExecutorExchange,
+		env.RabbitMQExecutorQueue,
+		env.RabbitMQExecutorRoutingKey,
+		env.RabbitMQRetryTTLMS,
+	)
+
+	conn, err := rabbitmq.Connect(env.RabbitMQURL, topology, executorTopology)
 	if err != nil {
 		log.Fatalf("failed to connect to rabbitmq: %v", err)
 	}
 
 	publisher := rabbitmq.NewPublisher(conn, env.RabbitMQExchange)
+	executorPublisher := rabbitmq.NewPublisher(conn, env.RabbitMQExecutorExchange)
+	stepRunExecutor := rabbitmq.NewStepRunExecutor(executorPublisher)
 	outboxRepo := outbox.NewRepository(db)
 	relay := outbox.NewRelay(outboxRepo, publisher, env.OutboxPollInterval, 50)
 
@@ -55,12 +69,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	notifier := notification.NewLogNotifier()
 	realtimePublisher := centrifugo.NewPublisher(env)
 	orgReadRepo := read.NewOrganizationReadRepository(db)
+	workflowReadRepo := read.NewWorkflowReadRepository(db)
+	stepReadRepo := read.NewStepReadRepository(db)
+	connReadRepo := read.NewConnectionReadRepository(db)
+	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
+	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
+	orchestrator := eventworkflowrun.NewOrchestrator(
+		workflowRunWriteRepo,
+		stepRunWriteRepo,
+		stepReadRepo,
+		connReadRepo,
+		outboxRepo,
+	)
+	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
 	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
 	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, orgReadRepo)
+	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -267,6 +296,63 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_connection_deleted_realtime",
 		publishConnectionRealtime.OnDeleted,
+	))
+
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunStarted, dedup.With(
+		dedupRepo,
+		"orchestrate_workflow_run_started",
+		orchestrator.OnStarted,
+	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunStarted, dedup.With(
+		dedupRepo,
+		"publish_workflow_run_started_realtime",
+		publishWorkflowRunRealtime.OnStarted,
+	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunSucceeded, dedup.With(
+		dedupRepo,
+		"publish_workflow_run_succeeded_realtime",
+		publishWorkflowRunRealtime.OnSucceeded,
+	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunFailed, dedup.With(
+		dedupRepo,
+		"publish_workflow_run_failed_realtime",
+		publishWorkflowRunRealtime.OnFailed,
+	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunCancelled, dedup.With(
+		dedupRepo,
+		"publish_workflow_run_cancelled_realtime",
+		publishWorkflowRunRealtime.OnCancelled,
+	))
+
+	reg.Register(domainsteprun.EventTypeStepRunQueued, dedup.With(
+		dedupRepo,
+		"enqueue_step_run_execute",
+		enqueueStepRun.Handle,
+	))
+	reg.Register(domainsteprun.EventTypeStepRunStarted, dedup.With(
+		dedupRepo,
+		"publish_step_run_started_realtime",
+		publishStepRunRealtime.OnStarted,
+	))
+	reg.Register(domainsteprun.EventTypeStepRunSucceeded, dedup.With(
+		dedupRepo,
+		"orchestrate_step_run_succeeded",
+		orchestrator.OnSucceeded,
+	))
+	reg.Register(domainsteprun.EventTypeStepRunSucceeded, dedup.With(
+		dedupRepo,
+		"publish_step_run_succeeded_realtime",
+		publishStepRunRealtime.OnSucceeded,
+	))
+	reg.Register(domainsteprun.EventTypeStepRunFailed, dedup.With(
+		dedupRepo,
+		"orchestrate_step_run_failed",
+		orchestrator.OnFailed,
+	))
+	reg.Register(domainsteprun.EventTypeStepRunFailed, dedup.With(
+		dedupRepo,
+		"publish_step_run_failed_realtime",
+		publishStepRunRealtime.OnFailed,
 	))
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)

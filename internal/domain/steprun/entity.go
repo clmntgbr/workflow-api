@@ -101,6 +101,17 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 	}
 }
 
+// Queue records that this pending StepRun is ready for the executor.
+func (s *StepRun) Queue() {
+	s.recordEvent(StepRunQueued{
+		ID:            uuid.New().String(),
+		StepRunID:     s.ID.String(),
+		WorkflowRunID: s.WorkflowRunID.String(),
+		StepID:        s.StepID.String(),
+		Timestamp:     time.Now().UTC(),
+	})
+}
+
 func (s *StepRun) MarkStarted() error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
@@ -234,6 +245,7 @@ func (s *StepRun) succeededEvent(at time.Time) StepRunSucceeded {
 		StepRunID:        s.ID.String(),
 		WorkflowRunID:    s.WorkflowRunID.String(),
 		StepID:           s.StepID.String(),
+		OrganizationID:   s.OrganizationID.String(),
 		Status:           string(s.Status),
 		Attempt:          s.Attempt,
 		ResponseSnapshot: s.ResponseSnapshot,
@@ -247,6 +259,7 @@ func (s *StepRun) failedEvent(at time.Time) StepRunFailed {
 		StepRunID:        s.ID.String(),
 		WorkflowRunID:    s.WorkflowRunID.String(),
 		StepID:           s.StepID.String(),
+		OrganizationID:   s.OrganizationID.String(),
 		Status:           string(s.Status),
 		Attempt:          s.Attempt,
 		ResponseSnapshot: s.ResponseSnapshot,

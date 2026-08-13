@@ -64,6 +64,46 @@ services:
       - api
     restart: unless-stopped
 
+  executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: executor
+    command: ["go", "run", "./cmd/executor"]
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    env_file:
+      - .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - api
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: scheduler
+    command: ["go", "run", "./cmd/scheduler"]
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - api
+    restart: unless-stopped
+
   database:
     container_name: datastore
     image: postgres:${POSTGRES_VERSION:-16}-alpine

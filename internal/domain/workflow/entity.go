@@ -16,8 +16,14 @@ type Workflow struct {
 
 	OrganizationID uuid.UUID
 
-	ScheduleIntervalMinutes int
-	Concurrency             int
+	ScheduleType          ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	NextRunAt             *time.Time
+
+	Concurrency int
 
 	NotificationsEnabled bool
 	NotifyOnSuccess      bool
@@ -31,55 +37,61 @@ type Workflow struct {
 }
 
 type NewWorkflowParams struct {
-	Name                    string
-	Description             string
-	OrganizationID          uuid.UUID
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
+	Name                  string
+	Description           string
+	OrganizationID        uuid.UUID
+	ScheduleType          ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
 }
 
-func NewWorkflow(p NewWorkflowParams) *Workflow {
+func NewWorkflow(p NewWorkflowParams) (*Workflow, error) {
 	now := time.Now().UTC()
 	concurrency := p.Concurrency
 	if concurrency <= 0 {
 		concurrency = 1
 	}
+	scheduleType := p.ScheduleType
+	if scheduleType == "" {
+		scheduleType = ScheduleTypeNone
+	}
+	timezone := p.ScheduleTimezone
+	if timezone == "" {
+		timezone = "UTC"
+	}
 
 	w := &Workflow{
-		ID:                      uuid.New(),
-		Name:                    p.Name,
-		Description:             p.Description,
-		Status:                  StatusInactive,
-		OrganizationID:          p.OrganizationID,
-		ScheduleIntervalMinutes: p.ScheduleIntervalMinutes,
-		Concurrency:             concurrency,
-		NotificationsEnabled:    p.NotificationsEnabled,
-		NotifyOnSuccess:         p.NotifyOnSuccess,
-		NotifyOnFailure:         p.NotifyOnFailure,
-		NotifyOnCancel:          p.NotifyOnCancel,
-		CreatedAt:               now,
-		UpdatedAt:               now,
+		ID:                    uuid.New(),
+		Name:                  p.Name,
+		Description:           p.Description,
+		Status:                StatusInactive,
+		OrganizationID:        p.OrganizationID,
+		ScheduleType:          scheduleType,
+		ScheduleIntervalValue: p.ScheduleIntervalValue,
+		ScheduleIntervalUnit:  p.ScheduleIntervalUnit,
+		ScheduleAt:            p.ScheduleAt,
+		ScheduleTimezone:      timezone,
+		Concurrency:           concurrency,
+		NotificationsEnabled:  p.NotificationsEnabled,
+		NotifyOnSuccess:       p.NotifyOnSuccess,
+		NotifyOnFailure:       p.NotifyOnFailure,
+		NotifyOnCancel:        p.NotifyOnCancel,
+		CreatedAt:             now,
+		UpdatedAt:             now,
 	}
-	w.recordEvent(WorkflowCreated{
-		ID:                      uuid.New().String(),
-		WorkflowID:              w.ID.String(),
-		OrganizationID:          w.OrganizationID.String(),
-		Name:                    w.Name,
-		Description:             w.Description,
-		Status:                  string(w.Status),
-		ScheduleIntervalMinutes: w.ScheduleIntervalMinutes,
-		Concurrency:             w.Concurrency,
-		NotificationsEnabled:    w.NotificationsEnabled,
-		NotifyOnSuccess:         w.NotifyOnSuccess,
-		NotifyOnFailure:         w.NotifyOnFailure,
-		NotifyOnCancel:          w.NotifyOnCancel,
-		Timestamp:               now,
-	})
-	return w
+	if err := w.validateSchedule(); err != nil {
+		return nil, err
+	}
+	w.RecalculateNextRunAt(now)
+	w.recordEvent(w.createdEvent(now))
+	return w, nil
 }
 
 func (w *Workflow) PullEvents() []event.DomainEvent {
@@ -93,27 +105,43 @@ func (w *Workflow) recordEvent(e event.DomainEvent) {
 }
 
 type UpdateWorkflowParams struct {
-	Name                    string
-	Description             string
-	Status                  Status
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
+	Name                  string
+	Description           string
+	Status                Status
+	ScheduleType          ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
 }
 
-func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) {
+func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) error {
 	concurrency := p.Concurrency
 	if concurrency <= 0 {
 		concurrency = 1
+	}
+	timezone := p.ScheduleTimezone
+	if timezone == "" {
+		timezone = "UTC"
+	}
+	scheduleType := p.ScheduleType
+	if scheduleType == "" {
+		scheduleType = ScheduleTypeNone
 	}
 
 	w.Name = p.Name
 	w.Description = p.Description
 	w.Status = p.Status
-	w.ScheduleIntervalMinutes = p.ScheduleIntervalMinutes
+	w.ScheduleType = scheduleType
+	w.ScheduleIntervalValue = p.ScheduleIntervalValue
+	w.ScheduleIntervalUnit = p.ScheduleIntervalUnit
+	w.ScheduleAt = p.ScheduleAt
+	w.ScheduleTimezone = timezone
 	w.Concurrency = concurrency
 	w.NotificationsEnabled = p.NotificationsEnabled
 	w.NotifyOnSuccess = p.NotifyOnSuccess
@@ -121,25 +149,18 @@ func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) {
 	w.NotifyOnCancel = p.NotifyOnCancel
 	w.UpdatedAt = time.Now().UTC()
 
-	w.recordEvent(WorkflowUpdated{
-		ID:                      uuid.New().String(),
-		WorkflowID:              w.ID.String(),
-		OrganizationID:          w.OrganizationID.String(),
-		Name:                    w.Name,
-		Description:             w.Description,
-		Status:                  string(w.Status),
-		ScheduleIntervalMinutes: w.ScheduleIntervalMinutes,
-		Concurrency:             w.Concurrency,
-		NotificationsEnabled:    w.NotificationsEnabled,
-		NotifyOnSuccess:         w.NotifyOnSuccess,
-		NotifyOnFailure:         w.NotifyOnFailure,
-		NotifyOnCancel:          w.NotifyOnCancel,
-		Timestamp:               w.UpdatedAt,
-	})
+	if err := w.validateSchedule(); err != nil {
+		return err
+	}
+	w.RecalculateNextRunAt(w.UpdatedAt)
+	w.recordEvent(w.updatedEvent(w.UpdatedAt))
+	return nil
 }
 
 func (w *Workflow) MarkDeleted() {
 	w.Status = StatusDeleted
+	w.ScheduleType = ScheduleTypeNone
+	w.NextRunAt = nil
 	w.UpdatedAt = time.Now().UTC()
 	w.recordEvent(WorkflowDeleted{
 		ID:             uuid.New().String(),
@@ -147,4 +168,50 @@ func (w *Workflow) MarkDeleted() {
 		OrganizationID: w.OrganizationID.String(),
 		Timestamp:      w.UpdatedAt,
 	})
+}
+
+func (w *Workflow) createdEvent(at time.Time) WorkflowCreated {
+	return WorkflowCreated{
+		ID:                    uuid.New().String(),
+		WorkflowID:            w.ID.String(),
+		OrganizationID:        w.OrganizationID.String(),
+		Name:                  w.Name,
+		Description:           w.Description,
+		Status:                string(w.Status),
+		ScheduleType:          string(w.ScheduleType),
+		ScheduleIntervalValue: w.ScheduleIntervalValue,
+		ScheduleIntervalUnit:  string(w.ScheduleIntervalUnit),
+		ScheduleAt:            w.ScheduleAt,
+		ScheduleTimezone:      w.ScheduleTimezone,
+		NextRunAt:             w.NextRunAt,
+		Concurrency:           w.Concurrency,
+		NotificationsEnabled:  w.NotificationsEnabled,
+		NotifyOnSuccess:       w.NotifyOnSuccess,
+		NotifyOnFailure:       w.NotifyOnFailure,
+		NotifyOnCancel:        w.NotifyOnCancel,
+		Timestamp:             at,
+	}
+}
+
+func (w *Workflow) updatedEvent(at time.Time) WorkflowUpdated {
+	return WorkflowUpdated{
+		ID:                    uuid.New().String(),
+		WorkflowID:            w.ID.String(),
+		OrganizationID:        w.OrganizationID.String(),
+		Name:                  w.Name,
+		Description:           w.Description,
+		Status:                string(w.Status),
+		ScheduleType:          string(w.ScheduleType),
+		ScheduleIntervalValue: w.ScheduleIntervalValue,
+		ScheduleIntervalUnit:  string(w.ScheduleIntervalUnit),
+		ScheduleAt:            w.ScheduleAt,
+		ScheduleTimezone:      w.ScheduleTimezone,
+		NextRunAt:             w.NextRunAt,
+		Concurrency:           w.Concurrency,
+		NotificationsEnabled:  w.NotificationsEnabled,
+		NotifyOnSuccess:       w.NotifyOnSuccess,
+		NotifyOnFailure:       w.NotifyOnFailure,
+		NotifyOnCancel:        w.NotifyOnCancel,
+		Timestamp:             at,
+	}
 }

@@ -24,20 +24,26 @@ type WorkflowReadRepository interface {
 		organizationID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowView, int64, error)
+	GetWorkflowsForExecution(ctx context.Context) ([]WorkflowView, error)
 }
 
 type WorkflowView struct {
-	ID                      uuid.UUID
-	Name                    string
-	Description             string
-	Status                  Status
-	OrganizationID          uuid.UUID
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                    uuid.UUID
+	Name                  string
+	Description           string
+	Status                Status
+	OrganizationID        uuid.UUID
+	ScheduleType          ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	NextRunAt             *time.Time
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }

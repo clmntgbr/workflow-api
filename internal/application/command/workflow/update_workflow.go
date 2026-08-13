@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -11,16 +12,20 @@ import (
 )
 
 type UpdateWorkflowCommand struct {
-	ID                      uuid.UUID
-	Name                    string
-	Description             string
-	Status                  domainworkflow.Status
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
+	ID                    uuid.UUID
+	Name                  string
+	Description           string
+	Status                domainworkflow.Status
+	ScheduleType          domainworkflow.ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  domainworkflow.ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
 }
 
 type UpdateWorkflowHandler struct {
@@ -55,17 +60,23 @@ func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCo
 			return errors.New("workflow not found")
 		}
 
-		w.ApplyUpdate(domainworkflow.UpdateWorkflowParams{
-			Name:                    cmd.Name,
-			Description:             cmd.Description,
-			Status:                  cmd.Status,
-			ScheduleIntervalMinutes: cmd.ScheduleIntervalMinutes,
-			Concurrency:             cmd.Concurrency,
-			NotificationsEnabled:    cmd.NotificationsEnabled,
-			NotifyOnSuccess:         cmd.NotifyOnSuccess,
-			NotifyOnFailure:         cmd.NotifyOnFailure,
-			NotifyOnCancel:          cmd.NotifyOnCancel,
-		})
+		if err := w.ApplyUpdate(domainworkflow.UpdateWorkflowParams{
+			Name:                  cmd.Name,
+			Description:           cmd.Description,
+			Status:                cmd.Status,
+			ScheduleType:          cmd.ScheduleType,
+			ScheduleIntervalValue: cmd.ScheduleIntervalValue,
+			ScheduleIntervalUnit:  cmd.ScheduleIntervalUnit,
+			ScheduleAt:            cmd.ScheduleAt,
+			ScheduleTimezone:      cmd.ScheduleTimezone,
+			Concurrency:           cmd.Concurrency,
+			NotificationsEnabled:  cmd.NotificationsEnabled,
+			NotifyOnSuccess:       cmd.NotifyOnSuccess,
+			NotifyOnFailure:       cmd.NotifyOnFailure,
+			NotifyOnCancel:        cmd.NotifyOnCancel,
+		}); err != nil {
+			return err
+		}
 
 		if err := h.repo.Update(txCtx, w); err != nil {
 			return errors.New("failed to update workflow")

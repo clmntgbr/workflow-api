@@ -7,10 +7,24 @@ import (
 )
 
 const (
+	EventTypeStepRunQueued    = "stepRun.queued.v1"
 	EventTypeStepRunStarted   = "stepRun.started.v1"
 	EventTypeStepRunSucceeded = "stepRun.succeeded.v1"
 	EventTypeStepRunFailed    = "stepRun.failed.v1"
 )
+
+type StepRunQueued struct {
+	ID            string    `json:"eventId"`
+	StepRunID     string    `json:"stepRunId"`
+	WorkflowRunID string    `json:"workflowRunId"`
+	StepID        string    `json:"stepId"`
+	Timestamp     time.Time `json:"timestamp"`
+}
+
+func (e StepRunQueued) EventID() string       { return e.ID }
+func (e StepRunQueued) EventType() string     { return EventTypeStepRunQueued }
+func (e StepRunQueued) AggregateID() string   { return e.StepRunID }
+func (e StepRunQueued) OccurredAt() time.Time { return e.Timestamp }
 
 type StepRunStarted struct {
 	ID             string              `json:"eventId"`
@@ -50,6 +64,7 @@ type StepRunSucceeded struct {
 	StepRunID        string            `json:"stepRunId"`
 	WorkflowRunID    string            `json:"workflowRunId"`
 	StepID           string            `json:"stepId"`
+	OrganizationID   string            `json:"organizationId"`
 	Status           string            `json:"status"`
 	Attempt          int               `json:"attempt"`
 	ResponseSnapshot *ResponseSnapshot `json:"responseSnapshot"`
@@ -66,6 +81,7 @@ type StepRunFailed struct {
 	StepRunID        string            `json:"stepRunId"`
 	WorkflowRunID    string            `json:"workflowRunId"`
 	StepID           string            `json:"stepId"`
+	OrganizationID   string            `json:"organizationId"`
 	Status           string            `json:"status"`
 	Attempt          int               `json:"attempt"`
 	ResponseSnapshot *ResponseSnapshot `json:"responseSnapshot"`

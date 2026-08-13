@@ -11,7 +11,7 @@ dev-down:
 	$(COMPOSE_DEV) down
 
 dev-logs:
-	$(COMPOSE_DEV) logs -f api worker
+	$(COMPOSE_DEV) logs -f api worker executor scheduler
 
 api-logs:
 	$(COMPOSE_DEV) logs -f api
@@ -19,8 +19,14 @@ api-logs:
 worker-logs:
 	$(COMPOSE_DEV) logs -f worker
 
+executor-logs:
+	$(COMPOSE_DEV) logs -f executor
+
+scheduler-logs:
+	$(COMPOSE_DEV) logs -f scheduler
+
 dev-restart:
-	$(COMPOSE_DEV) restart api worker
+	$(COMPOSE_DEV) restart api worker executor scheduler
 
 lint:
 	$(COMPOSE_DEV) exec api golangci-lint run --fix
@@ -49,3 +55,6 @@ migrate-check: cli-build
 
 shell:
 	$(COMPOSE_DEV) exec api sh
+
+workflow-run: cli-build
+	@$(COMPOSE_DEV) exec api ./bin/cli workflow run 0e314a64-1352-4f9e-9dc3-472e0d80afda

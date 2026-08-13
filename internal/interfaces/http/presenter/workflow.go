@@ -7,55 +7,70 @@ import (
 )
 
 type WorkflowDetailResponse struct {
-	ID                      string    `json:"id"`
-	Name                    string    `json:"name"`
-	Description             *string   `json:"description"`
-	Status                  string    `json:"status"`
-	OrganizationID          string    `json:"organizationId"`
-	ScheduleIntervalMinutes int       `json:"scheduleIntervalMinutes"`
-	Concurrency             int       `json:"concurrency"`
-	NotificationsEnabled    bool      `json:"notificationsEnabled"`
-	NotifyOnSuccess         bool      `json:"notifyOnSuccess"`
-	NotifyOnFailure         bool      `json:"notifyOnFailure"`
-	NotifyOnCancel          bool      `json:"notifyOnCancel"`
-	CreatedAt               time.Time `json:"createdAt"`
-	UpdatedAt               time.Time `json:"updatedAt"`
+	ID                    string     `json:"id"`
+	Name                  string     `json:"name"`
+	Description           *string    `json:"description"`
+	Status                string     `json:"status"`
+	OrganizationID        string     `json:"organizationId"`
+	ScheduleType          string     `json:"scheduleType"`
+	ScheduleIntervalValue int        `json:"scheduleIntervalValue"`
+	ScheduleIntervalUnit  *string    `json:"scheduleIntervalUnit"`
+	ScheduleAt            *time.Time `json:"scheduleAt"`
+	ScheduleTimezone      string     `json:"scheduleTimezone"`
+	NextRunAt             *time.Time `json:"nextRunAt"`
+	Concurrency           int        `json:"concurrency"`
+	NotificationsEnabled  bool       `json:"notificationsEnabled"`
+	NotifyOnSuccess       bool       `json:"notifyOnSuccess"`
+	NotifyOnFailure       bool       `json:"notifyOnFailure"`
+	NotifyOnCancel        bool       `json:"notifyOnCancel"`
+	CreatedAt             time.Time  `json:"createdAt"`
+	UpdatedAt             time.Time  `json:"updatedAt"`
 }
 
 func NewWorkflowDetailResponseFromView(view domainworkflow.WorkflowView) WorkflowDetailResponse {
-	return WorkflowDetailResponse{
-		ID:                      view.ID.String(),
-		Name:                    view.Name,
-		Description:             optionalNonEmptyString(view.Description),
-		Status:                  string(view.Status),
-		OrganizationID:          view.OrganizationID.String(),
-		ScheduleIntervalMinutes: view.ScheduleIntervalMinutes,
-		Concurrency:             view.Concurrency,
-		NotificationsEnabled:    view.NotificationsEnabled,
-		NotifyOnSuccess:         view.NotifyOnSuccess,
-		NotifyOnFailure:         view.NotifyOnFailure,
-		NotifyOnCancel:          view.NotifyOnCancel,
-		CreatedAt:               view.CreatedAt,
-		UpdatedAt:               view.UpdatedAt,
-	}
+	return workflowDetailResponse(
+		view.ID.String(),
+		view.Name,
+		view.Description,
+		string(view.Status),
+		view.OrganizationID.String(),
+		string(view.ScheduleType),
+		view.ScheduleIntervalValue,
+		view.ScheduleIntervalUnit,
+		view.ScheduleAt,
+		view.ScheduleTimezone,
+		view.NextRunAt,
+		view.Concurrency,
+		view.NotificationsEnabled,
+		view.NotifyOnSuccess,
+		view.NotifyOnFailure,
+		view.NotifyOnCancel,
+		view.CreatedAt,
+		view.UpdatedAt,
+	)
 }
 
 func NewWorkflowDetailResponseFromEntity(w domainworkflow.Workflow) WorkflowDetailResponse {
-	return WorkflowDetailResponse{
-		ID:                      w.ID.String(),
-		Name:                    w.Name,
-		Description:             optionalNonEmptyString(w.Description),
-		Status:                  string(w.Status),
-		OrganizationID:          w.OrganizationID.String(),
-		ScheduleIntervalMinutes: w.ScheduleIntervalMinutes,
-		Concurrency:             w.Concurrency,
-		NotificationsEnabled:    w.NotificationsEnabled,
-		NotifyOnSuccess:         w.NotifyOnSuccess,
-		NotifyOnFailure:         w.NotifyOnFailure,
-		NotifyOnCancel:          w.NotifyOnCancel,
-		CreatedAt:               w.CreatedAt,
-		UpdatedAt:               w.UpdatedAt,
-	}
+	return workflowDetailResponse(
+		w.ID.String(),
+		w.Name,
+		w.Description,
+		string(w.Status),
+		w.OrganizationID.String(),
+		string(w.ScheduleType),
+		w.ScheduleIntervalValue,
+		w.ScheduleIntervalUnit,
+		w.ScheduleAt,
+		w.ScheduleTimezone,
+		w.NextRunAt,
+		w.Concurrency,
+		w.NotificationsEnabled,
+		w.NotifyOnSuccess,
+		w.NotifyOnFailure,
+		w.NotifyOnCancel,
+		w.CreatedAt,
+		w.UpdatedAt,
+	)
 }
 
 func NewWorkflowListResponseFromViews(views []domainworkflow.WorkflowView) []WorkflowDetailResponse {
@@ -64,6 +79,54 @@ func NewWorkflowListResponseFromViews(views []domainworkflow.WorkflowView) []Wor
 		items = append(items, NewWorkflowDetailResponseFromView(view))
 	}
 	return items
+}
+
+func workflowDetailResponse(
+	id string,
+	name string,
+	description string,
+	status string,
+	organizationID string,
+	scheduleType string,
+	scheduleIntervalValue int,
+	scheduleIntervalUnit domainworkflow.ScheduleUnit,
+	scheduleAt *time.Time,
+	scheduleTimezone string,
+	nextRunAt *time.Time,
+	concurrency int,
+	notificationsEnabled bool,
+	notifyOnSuccess bool,
+	notifyOnFailure bool,
+	notifyOnCancel bool,
+	createdAt time.Time,
+	updatedAt time.Time,
+) WorkflowDetailResponse {
+	if scheduleType == "" {
+		scheduleType = string(domainworkflow.ScheduleTypeNone)
+	}
+	if scheduleTimezone == "" {
+		scheduleTimezone = "UTC"
+	}
+	return WorkflowDetailResponse{
+		ID:                    id,
+		Name:                  name,
+		Description:           optionalNonEmptyString(description),
+		Status:                status,
+		OrganizationID:        organizationID,
+		ScheduleType:          scheduleType,
+		ScheduleIntervalValue: scheduleIntervalValue,
+		ScheduleIntervalUnit:  optionalNonEmptyString(string(scheduleIntervalUnit)),
+		ScheduleAt:            scheduleAt,
+		ScheduleTimezone:      scheduleTimezone,
+		NextRunAt:             nextRunAt,
+		Concurrency:           concurrency,
+		NotificationsEnabled:  notificationsEnabled,
+		NotifyOnSuccess:       notifyOnSuccess,
+		NotifyOnFailure:       notifyOnFailure,
+		NotifyOnCancel:        notifyOnCancel,
+		CreatedAt:             createdAt,
+		UpdatedAt:             updatedAt,
+	}
 }
 
 func optionalNonEmptyString(value string) *string {

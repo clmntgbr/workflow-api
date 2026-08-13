@@ -23,6 +23,8 @@ func init() {
 	_ = validate.RegisterValidation("workflow_status", validateWorkflowStatus)
 	_ = validate.RegisterValidation("endpoint_status", validateEndpointStatus)
 	_ = validate.RegisterValidation("http_method", validateHTTPMethod)
+	_ = validate.RegisterValidation("schedule_type", validateScheduleType)
+	_ = validate.RegisterValidation("schedule_unit", validateScheduleUnit)
 }
 
 func validateWorkflowStatus(fl validator.FieldLevel) bool {
@@ -46,6 +48,24 @@ func validateEndpointStatus(fl validator.FieldLevel) bool {
 func validateHTTPMethod(fl validator.FieldLevel) bool {
 	switch strings.ToUpper(fl.Field().String()) {
 	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateScheduleType(fl validator.FieldLevel) bool {
+	switch fl.Field().String() {
+	case "none", "recurring", "once":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateScheduleUnit(fl validator.FieldLevel) bool {
+	switch fl.Field().String() {
+	case "minute", "hour", "day", "week", "month", "year":
 		return true
 	default:
 		return false
@@ -105,7 +125,7 @@ func messageFor(fieldErr validator.FieldError) string {
 			return fmt.Sprintf("must be at most %s characters", fieldErr.Param())
 		}
 		return fmt.Sprintf("must be at most %s", fieldErr.Param())
-	case "oneof", "workflow_status", "endpoint_status", "http_method":
+	case "oneof", "workflow_status", "endpoint_status", "http_method", "schedule_type", "schedule_unit":
 		return "is invalid"
 	default:
 		return fmt.Sprintf("failed on '%s' validation", fieldErr.Tag())

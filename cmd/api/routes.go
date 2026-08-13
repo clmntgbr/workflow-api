@@ -33,6 +33,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupEndpointRoutes(api, container)
 	setupStepRoutes(api, container)
 	setupConnectionRoutes(api, container)
+	setupWorkflowRunRoutes(api, container)
 	setupRealtimeRoutes(api, container)
 }
 
@@ -87,6 +88,13 @@ func setupConnectionRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows/:workflowId/connections", container.ConnectionHandler.Create)
 	api.Get("/workflows/:workflowId/connections", container.ConnectionHandler.ListByWorkflow)
 	api.Delete("/workflows/:workflowId/connections/:id", container.ConnectionHandler.Delete)
+}
+
+func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
+	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Post("/workflows/:workflowId/runs", container.WorkflowRunHandler.Start)
+	api.Get("/workflows/:workflowId/runs", container.WorkflowRunHandler.ListByWorkflow)
+	api.Get("/workflows/:workflowId/runs/:id", container.WorkflowRunHandler.GetByID)
 }
 
 func setupRealtimeRoutes(api fiber.Router, container *di.Container) {

@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -11,15 +12,19 @@ import (
 )
 
 type CreateWorkflowCommand struct {
-	Name                    string
-	Description             string
-	OrganizationID          uuid.UUID
-	ScheduleIntervalMinutes int
-	Concurrency             int
-	NotificationsEnabled    bool
-	NotifyOnSuccess         bool
-	NotifyOnFailure         bool
-	NotifyOnCancel          bool
+	Name                  string
+	Description           string
+	OrganizationID        uuid.UUID
+	ScheduleType          domainworkflow.ScheduleType
+	ScheduleIntervalValue int
+	ScheduleIntervalUnit  domainworkflow.ScheduleUnit
+	ScheduleAt            *time.Time
+	ScheduleTimezone      string
+	Concurrency           int
+	NotificationsEnabled  bool
+	NotifyOnSuccess       bool
+	NotifyOnFailure       bool
+	NotifyOnCancel        bool
 }
 
 type CreateWorkflowHandler struct {
@@ -45,19 +50,26 @@ func (h *CreateWorkflowHandler) Handle(
 		return nil, errors.New("organizationId is required")
 	}
 
-	w := domainworkflow.NewWorkflow(domainworkflow.NewWorkflowParams{
-		Name:                    cmd.Name,
-		Description:             cmd.Description,
-		OrganizationID:          cmd.OrganizationID,
-		ScheduleIntervalMinutes: cmd.ScheduleIntervalMinutes,
-		Concurrency:             cmd.Concurrency,
-		NotificationsEnabled:    cmd.NotificationsEnabled,
-		NotifyOnSuccess:         cmd.NotifyOnSuccess,
-		NotifyOnFailure:         cmd.NotifyOnFailure,
-		NotifyOnCancel:          cmd.NotifyOnCancel,
+	w, err := domainworkflow.NewWorkflow(domainworkflow.NewWorkflowParams{
+		Name:                  cmd.Name,
+		Description:           cmd.Description,
+		OrganizationID:        cmd.OrganizationID,
+		ScheduleType:          cmd.ScheduleType,
+		ScheduleIntervalValue: cmd.ScheduleIntervalValue,
+		ScheduleIntervalUnit:  cmd.ScheduleIntervalUnit,
+		ScheduleAt:            cmd.ScheduleAt,
+		ScheduleTimezone:      cmd.ScheduleTimezone,
+		Concurrency:           cmd.Concurrency,
+		NotificationsEnabled:  cmd.NotificationsEnabled,
+		NotifyOnSuccess:       cmd.NotifyOnSuccess,
+		NotifyOnFailure:       cmd.NotifyOnFailure,
+		NotifyOnCancel:        cmd.NotifyOnCancel,
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	err := h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
+	err = h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.repo.Save(txCtx, w); err != nil {
 			return err
 		}

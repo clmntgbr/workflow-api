@@ -14,6 +14,7 @@ type WorkflowRunWriteRepository interface {
 	Save(ctx context.Context, run *WorkflowRun) error
 	Update(ctx context.Context, run *WorkflowRun) error
 	GetByID(ctx context.Context, id uuid.UUID) (*WorkflowRun, error)
+	HasInProgress(ctx context.Context, workflowID uuid.UUID) (bool, error)
 }
 
 type WorkflowRunReadRepository interface {

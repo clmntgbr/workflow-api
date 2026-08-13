@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strings"
 
 	workflowcmd "go-api/internal/application/command/workflow"
@@ -61,17 +62,24 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 	}
 
 	w, err := h.createHandler.Handle(c.Context(), workflowcmd.CreateWorkflowCommand{
-		Name:                    req.Name,
-		Description:             req.Description,
-		OrganizationID:          orgID,
-		ScheduleIntervalMinutes: intOrDefault(req.ScheduleIntervalMinutes, 0),
-		Concurrency:             intOrDefault(req.Concurrency, 1),
-		NotificationsEnabled:    boolOrDefault(req.NotificationsEnabled, true),
-		NotifyOnSuccess:         boolOrDefault(req.NotifyOnSuccess, true),
-		NotifyOnFailure:         boolOrDefault(req.NotifyOnFailure, true),
-		NotifyOnCancel:          boolOrDefault(req.NotifyOnCancel, true),
+		Name:                  req.Name,
+		Description:           req.Description,
+		OrganizationID:        orgID,
+		ScheduleType:          parseScheduleTypeOrNone(req.ScheduleType),
+		ScheduleIntervalValue: intOrDefault(req.ScheduleIntervalValue, 0),
+		ScheduleIntervalUnit:  domainworkflow.ScheduleUnit(req.ScheduleIntervalUnit),
+		ScheduleAt:            req.ScheduleAt,
+		ScheduleTimezone:      strings.TrimSpace(req.ScheduleTimezone),
+		Concurrency:           intOrDefault(req.Concurrency, 1),
+		NotificationsEnabled:  boolOrDefault(req.NotificationsEnabled, true),
+		NotifyOnSuccess:       boolOrDefault(req.NotifyOnSuccess, true),
+		NotifyOnFailure:       boolOrDefault(req.NotifyOnFailure, true),
+		NotifyOnCancel:        boolOrDefault(req.NotifyOnCancel, true),
 	})
 	if err != nil {
+		if status, message := scheduleError(err); status != 0 {
+			return c.Status(status).JSON(fiber.Map{"message": message})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create workflow"})
 	}
 
@@ -207,16 +215,20 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 	}
 
 	err = h.updateHandler.Handle(c.Context(), workflowcmd.UpdateWorkflowCommand{
-		ID:                      id,
-		Name:                    req.Name,
-		Description:             req.Description,
-		Status:                  status,
-		ScheduleIntervalMinutes: *req.ScheduleIntervalMinutes,
-		Concurrency:             *req.Concurrency,
-		NotificationsEnabled:    *req.NotificationsEnabled,
-		NotifyOnSuccess:         *req.NotifyOnSuccess,
-		NotifyOnFailure:         *req.NotifyOnFailure,
-		NotifyOnCancel:          *req.NotifyOnCancel,
+		ID:                    id,
+		Name:                  req.Name,
+		Description:           req.Description,
+		Status:                status,
+		ScheduleType:          parseScheduleTypeOrNone(req.ScheduleType),
+		ScheduleIntervalValue: intOrDefault(req.ScheduleIntervalValue, 0),
+		ScheduleIntervalUnit:  domainworkflow.ScheduleUnit(req.ScheduleIntervalUnit),
+		ScheduleAt:            req.ScheduleAt,
+		ScheduleTimezone:      strings.TrimSpace(req.ScheduleTimezone),
+		Concurrency:           *req.Concurrency,
+		NotificationsEnabled:  *req.NotificationsEnabled,
+		NotifyOnSuccess:       *req.NotifyOnSuccess,
+		NotifyOnFailure:       *req.NotifyOnFailure,
+		NotifyOnCancel:        *req.NotifyOnCancel,
 	})
 	if err != nil {
 		if err.Error() == "workflow not found" {
@@ -224,6 +236,9 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 		}
 		if err.Error() == "invalid status" || err.Error() == "use delete to mark a workflow as deleted" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		if status, message := scheduleError(err); status != 0 {
+			return c.Status(status).JSON(fiber.Map{"message": message})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update workflow"})
 	}
@@ -277,4 +292,22 @@ func intOrDefault(value *int, fallback int) int {
 		return fallback
 	}
 	return *value
+}
+
+func parseScheduleTypeOrNone(value string) domainworkflow.ScheduleType {
+	if value == "" {
+		return domainworkflow.ScheduleTypeNone
+	}
+	return domainworkflow.ScheduleType(value)
+}
+
+func scheduleError(err error) (int, string) {
+	switch {
+	case errors.Is(err, domainworkflow.ErrScheduleIntervalTooShort):
+		return fiber.StatusBadRequest, err.Error()
+	case errors.Is(err, domainworkflow.ErrInvalidSchedule), errors.Is(err, domainworkflow.ErrInvalidScheduleTimezone):
+		return fiber.StatusBadRequest, err.Error()
+	default:
+		return 0, ""
+	}
 }

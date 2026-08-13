@@ -12,7 +12,7 @@ type Connection struct {
 	topology Topology
 }
 
-func Connect(url string, topology Topology) (*Connection, error) {
+func Connect(url string, topology Topology, extra ...Topology) (*Connection, error) {
 	conn, err := amqp.Dial(url)
 	if err != nil {
 		return nil, fmt.Errorf("rabbitmq dial: %w", err)
@@ -28,6 +28,13 @@ func Connect(url string, topology Topology) (*Connection, error) {
 		_ = ch.Close()
 		_ = conn.Close()
 		return nil, err
+	}
+	for _, extraTopology := range extra {
+		if err := extraTopology.declare(ch); err != nil {
+			_ = ch.Close()
+			_ = conn.Close()
+			return nil, err
+		}
 	}
 
 	return &Connection{conn: conn, channel: ch, topology: topology}, nil

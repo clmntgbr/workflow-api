@@ -17,6 +17,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		cliCommand.NewMigrateCommand(),
+		cliCommand.NewWorkflowCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

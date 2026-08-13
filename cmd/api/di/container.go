@@ -11,12 +11,15 @@ import (
 	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
 	workflowcmd "go-api/internal/application/command/workflow"
+	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryorganization "go-api/internal/application/query/organization"
 	querystep "go-api/internal/application/query/step"
+	querysteprun "go-api/internal/application/query/steprun"
 	queryuser "go-api/internal/application/query/user"
 	queryworkflow "go-api/internal/application/query/workflow"
+	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	infraClerk "go-api/internal/infrastructure/clerk"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/persistence/outbox"
@@ -38,6 +41,7 @@ type Container struct {
 	EndpointHandler        *httphandler.EndpointHandler
 	StepHandler            *httphandler.StepHandler
 	ConnectionHandler      *httphandler.ConnectionHandler
+	WorkflowRunHandler     *httphandler.WorkflowRunHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -59,6 +63,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	stepReadRepo := read.NewStepReadRepository(db)
 	connWriteRepo := write.NewConnectionWriteRepository(db)
 	connReadRepo := read.NewConnectionReadRepository(db)
+	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
+	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
+	stepRunReadRepo := read.NewStepRunReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -131,6 +138,15 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
 	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
 
+	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(
+		workflowWriteRepo,
+		workflowRunWriteRepo,
+		outboxRepo,
+	)
+	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
+	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
+	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
+
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
 			validateTokenHandler,
@@ -183,6 +199,13 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			createConnHandler,
 			deleteConnHandler,
 			listConnsByWorkflowHandler,
+			getWorkflowByIDHandler,
+		),
+		WorkflowRunHandler: httphandler.NewWorkflowRunHandler(
+			startWorkflowRunHandler,
+			getWorkflowRunByIDHandler,
+			listWorkflowRunsHandler,
+			listStepRunsHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
