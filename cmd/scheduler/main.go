@@ -55,12 +55,14 @@ func runScheduler(ctx context.Context, container *di.Container, interval time.Du
 }
 
 func tick(ctx context.Context, container *di.Container) {
+	log.Println("scheduler: tick")
 	workflows, err := container.WorkflowReadRepo.GetWorkflowsForExecution(ctx)
 	if err != nil {
 		log.Printf("scheduler: failed to list executable workflows: %v", err)
 		return
 	}
 
+	log.Println("scheduler: workflows", len(workflows))
 	for _, workflow := range workflows {
 		run, err := container.StartWorkflowRunHandler.Handle(ctx, workflowruncmd.StartWorkflowRunCommand{
 			WorkflowID:  workflow.ID,
@@ -75,4 +77,5 @@ func tick(ctx context.Context, container *di.Container) {
 		}
 		log.Printf("scheduler: started workflow run %s for workflow %s", run.ID, workflow.ID)
 	}
+	log.Println("scheduler: done")
 }
