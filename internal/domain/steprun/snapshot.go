@@ -6,7 +6,7 @@ type ResponseSnapshot struct {
 	Body    any               `json:"body"`
 }
 
-func (s ResponseSnapshot) normalized() ResponseSnapshot {
+func (s ResponseSnapshot) Normalized() ResponseSnapshot {
 	headers := s.Headers
 	if headers == nil {
 		headers = map[string]string{}

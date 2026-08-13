@@ -139,6 +139,10 @@ func (s *StepRun) IncrementAttempt() error {
 	return nil
 }
 
+func (s *StepRun) CanRetry() bool {
+	return s.RetryOnFailure && s.Attempt < s.RetryCount
+}
+
 func (s *StepRun) MarkSucceeded(response ResponseSnapshot) error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
@@ -148,7 +152,7 @@ func (s *StepRun) MarkSucceeded(response ResponseSnapshot) error {
 	}
 
 	now := time.Now().UTC()
-	normalized := response.normalized()
+	normalized := response.Normalized()
 	s.Status = StatusSuccess
 	s.ResponseSnapshot = &normalized
 	s.Error = ""
@@ -171,7 +175,7 @@ func (s *StepRun) MarkFailed(errMsg string, response *ResponseSnapshot) error {
 		s.StartedAt = &now
 	}
 	if response != nil {
-		normalized := response.normalized()
+		normalized := response.Normalized()
 		s.ResponseSnapshot = &normalized
 	}
 	s.Status = StatusFailed
