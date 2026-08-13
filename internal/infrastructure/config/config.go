@@ -74,7 +74,7 @@ func Load() *Config {
 		RabbitMQExecutorExchange:   getEnvOrDefault("RABBITMQ_EXECUTOR_EXCHANGE", "step_run.execute"),
 		RabbitMQExecutorQueue:      getEnvOrDefault("RABBITMQ_EXECUTOR_QUEUE", "step_run.execute"),
 		RabbitMQExecutorRoutingKey: getEnvOrDefault("RABBITMQ_EXECUTOR_ROUTING_KEY", "step_run.execute"),
-		SchedulerInterval:          getEnvDuration("SCHEDULER_INTERVAL", 10*time.Minute),
+		SchedulerInterval:          getEnvDuration("SCHEDULER_INTERVAL", time.Minute),
 	}
 }
 

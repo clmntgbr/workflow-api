@@ -2,7 +2,7 @@ package workflow
 
 import "time"
 
-const minScheduleIntervalMinutes = 10
+const minScheduleIntervalMinutes = 1
 
 func (w *Workflow) validateSchedule() error {
 	if !w.ScheduleType.Valid() {

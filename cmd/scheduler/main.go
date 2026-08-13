@@ -34,7 +34,7 @@ func main() {
 
 func runScheduler(ctx context.Context, container *di.Container, interval time.Duration) {
 	if interval <= 0 {
-		interval = 10 * time.Minute
+		interval = time.Minute
 	}
 
 	log.Printf("scheduler started (interval=%s)", interval)
