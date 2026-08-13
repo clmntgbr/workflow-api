@@ -1,154 +1,117 @@
-# Go API Template
+# Workflow API
 
-Go/Fiber API template with **Clean Architecture**, **CQRS**, **Outbox pattern**, **RabbitMQ**, **PostgreSQL**, and **Clerk** authentication.
+Backend for a visual HTTP workflow builder. Teams define reusable **endpoints**, compose them into **workflows** as a graph of **steps** and **connections**, then collaborate in realtime across organizations.
 
-## Features
+This service is the source of truth for that graph: it owns persistence, auth, ordering (`executionOrder` / `treeIndex`), and event fan-out.
 
-- CQRS: command / query / event handlers under `internal/application`
-- Domain events (`user.created.v1`) + transactional outbox
-- RabbitMQ worker (outbox relay + consumer + handler registry)
-- Clerk JWT auth + webhook sync (Svix)
-- Docker Compose local stack (API, worker, Postgres, RabbitMQ, ngrok)
+## What it does
 
-## Tech Stack
+- **Organizations** — multi-tenant workspaces, members, active organization on the user
+- **Workflows** — named graphs scoped to an organization (soft delete)
+- **Endpoints** — reusable HTTP templates (method, URL, headers, query, body, retries)
+- **Steps** — endpoint snapshot on a canvas; position drives execution order; connections drive branches
+- **Connections** — directed edges between steps (`sourceStepId` → `targetStepId`)
+- **Realtime** — Centrifugo events so the canvas stays in sync across clients
 
-| Layer | Technology |
+Resources are scoped to the caller’s **active organization**. Shared workflow URLs that belong to another org the user is a member of return `409 WRONG_ORGANIZATION` so the client can switch org.
+
+## Tech stack
+
+| Layer | Choice |
 |---|---|
 | Language | Go 1.25 |
 | HTTP | Fiber v3 |
-| ORM | GORM + PostgreSQL |
-| Auth | Clerk (JWKS + webhooks) |
-| Messaging | RabbitMQ (topic exchange) |
+| Persistence | PostgreSQL + GORM (writes) / SQL views (reads) |
+| Migrations | Goose (`migrations/*.sql`) |
+| Auth | Clerk (JWT / JWKS + Svix webhooks) |
+| Messaging | RabbitMQ (topic exchange, retry + DLQ) |
+| Realtime | Centrifugo |
 | CLI | Cobra |
-| Dev | Docker, Air, golangci-lint |
+| Local | Docker Compose, Air, golangci-lint |
 
-## Architecture
+Architecture: **Clean Architecture + CQRS**. HTTP handlers call command/query handlers directly. Domain events go through a **transactional outbox**, then a **worker** publishes to RabbitMQ and dispatches handlers (dedup + Centrifugo).
+
+## Layout
 
 ```
 cmd/
-  api/          HTTP server
-  worker/       Outbox relay + RabbitMQ consumer
-  cli/          Migrations
+  api/       HTTP server
+  worker/    Outbox relay + RabbitMQ consumer
+  cli/       Goose migrations + schema drift check
 internal/
-  domain/                 Aggregates, events, ports, paginate
-  application/
-    command/              Write-side handlers
-    query/                Read-side handlers
-    event/                Async event handlers
-    registry/             Event handler registry
-  infrastructure/
-    persistence/write|read|outbox
-    messaging/rabbitmq
-    clerk|config
-  interfaces/http/        Handlers, middleware, DTO, presenter
+  domain/            Aggregates (user, organization, workflow, endpoint, step, connection)
+  application/       command / query / event / realtime / registry
+  infrastructure/    persistence, rabbitmq, clerk, centrifugo, config
+  interfaces/http/   handlers, DTOs, presenters, validation
+migrations/          Schema source of truth
 ```
 
-### Sync command + async event flow
+Conventions: [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).
 
-```
-HTTP / webhook
-  → CreateUser command (same DB transaction)
-      → save User aggregate
-      → StoreEvents(outbox)
-  → 201 response
+## Domain events
 
-worker (outbox relay)
-  → poll unpublished outbox rows
-  → publish to RabbitMQ
-  → mark published_at
+Versioned types on the bus (`*.v1`). Realtime types drop the version (`entity.action`).
 
-worker (consumer)
-  → HandlerRegistry.Dispatch(event type)
-  → UserCreatedHandler / NotifyUserOnCreatedHandler
-  → UserUpdatedHandler / UserDeletedHandler
-```
+| Domain | Realtime | When |
+|---|---|---|
+| `workflow.created.v1` / `updated.v1` / `deleted.v1` | `workflow.*` | Workflow CRUD |
+| `endpoint.created.v1` / `updated.v1` / `deleted.v1` | `endpoint.*` | Endpoint CRUD |
+| `step.created.v1` / `updated.v1` / `deleted.v1` | `step.*` | Step CRUD / move |
+| `connection.created.v1` / `deleted.v1` | `connection.*` | Link / unlink steps |
 
-Supported domain events: `user.created.v1`, `user.updated.v1`, `user.deleted.v1` (all written to outbox on the matching command).
+Plus user and organization events (`user.*`, `organization.*`).
 
-### Idempotence + retry / DLQ
+On step create/move and connection create/delete, the API **synchronously** recalculates `index`, `executionOrder`, and `treeIndex` from canvas position and the directed graph. Deleting a step also deletes its connections.
 
-- Each domain event has a stable `eventId` (set when recorded on the aggregate).
-- Handlers are wrapped with dedup on `(event_id, handler_name)` via `processed_events`.
-- RabbitMQ topology: `domain.events` → `domain.events.retry` (TTL) → back to main; non-retryable / max attempts → `domain.events.dlq`.
-- Never `Nack(requeue=true)` — retries go through the TTL retry queue.
-
-If queue declare fails after changing args, delete the old queues (or recreate the RabbitMQ volume) then restart the worker.
-
-## Getting Started
+## Getting started
 
 ```bash
 cp .env.dist .env
-# fill Clerk keys
+# fill Clerk, Postgres, RabbitMQ, Centrifugo
 
 make dev
 make migrate
 ```
 
-| Service | Host port | Notes |
+| Service | Port | Notes |
 |---|---|---|
 | API | `4000` | Air hot reload |
-| Worker | — | relay + consumer |
+| Worker | — | Outbox relay + consumer |
 | Postgres | `9543` | |
-| RabbitMQ | `5672` / UI `15672` | user/password from `.env` |
-| ngrok | `4040` | webhook tunnel |
+| RabbitMQ | `5672` / UI `15672` | Credentials from `.env` |
+| ngrok | `4040` | Clerk webhook tunnel |
 
 ## Makefile
 
 | Command | Description |
 |---|---|
-| `make dev` | Start compose.dev stack (build) |
+| `make dev` | Start compose.dev stack |
 | `make dev-down` | Stop stack |
-| `make dev-logs` | Follow API + worker logs |
-| `make worker-logs` | Follow worker logs only |
-| `make migrate` | Apply SQL migrations + schema drift check |
-| `make migrate-check` | Fail if persistence models ≠ DB columns |
-| `make migrate-status` | Goose migration status |
+| `make dev-logs` | Follow API + worker |
+| `make migrate` | Apply SQL + fail on model/DB drift |
+| `make migrate-check` | Schema drift check only |
 | `make lint` | golangci-lint --fix |
-| `make shell` | Shell into API container |
+| `make shell` | Shell into the API container |
 
-## API
+## HTTP surface
 
-### Health
+Health: `GET /livez`, `/readyz`, `/startupz`
 
-- `GET /livez`, `/readyz`, `/startupz`
+Auth: Bearer Clerk JWT on `/api/*`. Webhook: `POST /webhooks/clerk` (Svix).
 
-### Protected
+| Area | Routes |
+|---|---|
+| User | `GET /api/users/me`, `PUT /api/users/me/active-organization` |
+| Organizations | `GET/POST /api/organizations`, `GET/PUT/DELETE /api/organizations/:id`, members, activate |
+| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id` |
+| Endpoints | `GET/POST /api/endpoints`, `GET/PUT/DELETE /api/endpoints/:id` |
+| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT .../position`) |
+| Connections | nested under `/api/workflows/:workflowId/connections` |
+| Realtime | `GET /api/realtime/connection` |
 
-- `GET /api/users/me` — Bearer Clerk JWT (query side / read repository)
+## Messaging
 
-### Webhooks
-
-- `POST /webhooks/clerk` — Svix-verified; `user.created` / `updated` / `deleted`
-
-## CQRS notes
-
-- Commands write through aggregates (`NewUser` records `UserCreated`) and persist events in `outbox_events` in the **same** GORM transaction.
-- Queries use `UserReadRepository` (SQL projection / `UserView`), not domain mutation.
-- Event types are versioned (`user.created.v1`).
-- One worker process runs outbox relay + consumer; scale the worker horizontally as needed.
-- Start with a single queue (`domain.events`); split queues later if throughput requires it.
-
-## Environment
-
-See `.env.dist`. Required extras for messaging:
-
-- `RABBITMQ_URL`
-- `RABBITMQ_EXCHANGE` (default `domain.events`)
-- `RABBITMQ_QUEUE` (default `domain.events`)
-- `RABBITMQ_ROUTING_KEY` (default `user.#`)
-- `OUTBOX_POLL_INTERVAL` (default `2s`)
-- `WORKER_CONCURRENCY` (default `4`)
-
-## Extending
-
-1. Add aggregate under `internal/domain/<name>/` (`entity.go`, `events.go`, `repository.go`)
-2. Add command/query handlers under `internal/application/...`
-3. Implement write/read repos under `internal/infrastructure/persistence/`
-4. Register event handlers in `cmd/worker/di`
-5. Wire HTTP in `cmd/api/di` + `routes.go`
-6. Add a SQL migration in `migrations/` and a persistence model under `internal/infrastructure/persistence/`
-7. Run `make migrate` (applies SQL + fails on model/DB drift)
-
-## Architecture rules
-
-Conventions for CQRS, outbox, events, and RabbitMQ live in [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).
+- Commands persist the aggregate **and** outbox rows in the same transaction.
+- Worker polls unpublished rows, publishes an envelope (`eventId`, `type`, `aggregateId`, `occurredAt`, `payload`), then sets `published_at`.
+- Dedup key: `(event_id, handler_name)` in `processed_events`.
+- Topology: main queue → TTL retry → main; poison / non-retryable → DLQ. Never `Nack(requeue=true)`.
