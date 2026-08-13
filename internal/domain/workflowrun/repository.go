@@ -24,6 +24,11 @@ type WorkflowRunReadRepository interface {
 		workflowID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowRunView, int64, error)
+	FindByOrganizationID(
+		ctx context.Context,
+		organizationID uuid.UUID,
+		query paginate.PaginateQuery,
+	) ([]WorkflowRunView, int64, error)
 }
 
 type WorkflowRunView struct {

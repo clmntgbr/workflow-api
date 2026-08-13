@@ -106,6 +106,36 @@ func (r *stepRunReadRepository) FindByWorkflowRunID(
 	return views, nil
 }
 
+func (r *stepRunReadRepository) FindByWorkflowRunIDs(
+	ctx context.Context,
+	workflowRunIDs []uuid.UUID,
+) ([]domainsteprun.StepRunView, error) {
+	if len(workflowRunIDs) == 0 {
+		return []domainsteprun.StepRunView{}, nil
+	}
+
+	var rows []stepRunRow
+	err := r.db.WithContext(ctx).
+		Model(&stepRunRow{}).
+		Select(stepRunSelectColumns).
+		Where("workflow_run_id IN ?", workflowRunIDs).
+		Order("execution_order ASC, created_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]domainsteprun.StepRunView, 0, len(rows))
+	for _, row := range rows {
+		view, err := toStepRunView(row)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, *view)
+	}
+	return views, nil
+}
+
 func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 	headers := map[string]string{}
 	if len(row.Headers) > 0 {

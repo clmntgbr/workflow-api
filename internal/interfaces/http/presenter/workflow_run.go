@@ -76,6 +76,17 @@ func NewWorkflowRunListResponseFromViews(views []domainworkflowrun.WorkflowRunVi
 	return items
 }
 
+func NewWorkflowRunListWithStepRunsFromViews(
+	views []domainworkflowrun.WorkflowRunView,
+	stepRunsByWorkflowRunID map[uuid.UUID][]domainsteprun.StepRunView,
+) []WorkflowRunDetailResponse {
+	items := make([]WorkflowRunDetailResponse, 0, len(views))
+	for _, view := range views {
+		items = append(items, NewWorkflowRunDetailResponseFromView(view, stepRunsByWorkflowRunID[view.ID]))
+	}
+	return items
+}
+
 func optionalUUID(id *uuid.UUID) *string {
 	if id == nil {
 		return nil

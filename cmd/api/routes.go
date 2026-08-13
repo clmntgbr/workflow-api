@@ -92,6 +92,8 @@ func setupConnectionRoutes(api fiber.Router, container *di.Container) {
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Get("/workflow-runs", container.WorkflowRunHandler.List)
+	api.Get("/workflow-runs/:id", container.WorkflowRunHandler.Get)
 	api.Post("/workflows/:workflowId/runs", container.WorkflowRunHandler.Start)
 	api.Get("/workflows/:workflowId/runs", container.WorkflowRunHandler.ListByWorkflow)
 	api.Get("/workflows/:workflowId/runs/:id", container.WorkflowRunHandler.GetByID)

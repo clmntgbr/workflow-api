@@ -8,6 +8,7 @@ import (
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	"go-api/internal/domain/paginate"
+	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -22,7 +23,9 @@ type WorkflowRunHandler struct {
 	startHandler       *workflowruncmd.StartWorkflowRunHandler
 	getByIDHandler     *queryworkflowrun.GetWorkflowRunByIDHandler
 	listByWorkflow     *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
+	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler
 	listStepRuns       *querysteprun.ListStepRunsByWorkflowRunHandler
+	listStepRunsByIDs  *querysteprun.ListStepRunsByWorkflowRunIDsHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
 }
 
@@ -30,14 +33,18 @@ func NewWorkflowRunHandler(
 	startHandler *workflowruncmd.StartWorkflowRunHandler,
 	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
 	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
+	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler,
 	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
+	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
 		startHandler:       startHandler,
 		getByIDHandler:     getByIDHandler,
 		listByWorkflow:     listByWorkflow,
+		listByOrganization: listByOrganization,
 		listStepRuns:       listStepRuns,
+		listStepRunsByIDs:  listStepRunsByIDs,
 		getWorkflowHandler: getWorkflowHandler,
 	}
 }
@@ -189,6 +196,97 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow run"})
 	}
 	if view.WorkflowID != workflowID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
+	}
+
+	stepRuns, err := h.listStepRuns.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunQuery{
+		WorkflowRunID: view.ID,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns))
+}
+
+func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid query parameters",
+			"errors":  err.Error(),
+		})
+	}
+
+	orderBy := query.OrderBy
+	sortBy := query.SortBy
+	query.Normalize()
+	if sortBy == "" {
+		query.SortBy = "workflow_runs.created_at"
+	}
+	if orderBy == "" {
+		query.OrderBy = paginate.OrderByDesc
+	}
+
+	views, total, err := h.listByOrganization.Handle(c.Context(), queryworkflowrun.ListWorkflowRunsByOrganizationQuery{
+		OrganizationID: orgID,
+		Query:          query,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list workflow runs"})
+	}
+
+	ids := make([]uuid.UUID, 0, len(views))
+	for _, view := range views {
+		ids = append(ids, view.ID)
+	}
+
+	stepRuns, err := h.listStepRunsByIDs.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunIDsQuery{
+		WorkflowRunIDs: ids,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
+	}
+
+	stepRunsByWorkflowRunID := make(map[uuid.UUID][]domainsteprun.StepRunView, len(views))
+	for _, stepRun := range stepRuns {
+		stepRunsByWorkflowRunID[stepRun.WorkflowRunID] = append(
+			stepRunsByWorkflowRunID[stepRun.WorkflowRunID],
+			stepRun,
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
+		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID),
+		int(total),
+		query,
+	))
+}
+
+func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow run id"})
+	}
+
+	view, err := h.getByIDHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunByIDQuery{ID: id})
+	if err != nil {
+		if err.Error() == "workflow run not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow run"})
+	}
+	if view.OrganizationID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
 	}
 

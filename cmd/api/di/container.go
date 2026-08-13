@@ -145,7 +145,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	)
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
 	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
+	listWorkflowRunsByOrgHandler := queryworkflowrun.NewListWorkflowRunsByOrganizationHandler(workflowRunReadRepo)
 	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
+	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
 
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
@@ -205,7 +207,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			startWorkflowRunHandler,
 			getWorkflowRunByIDHandler,
 			listWorkflowRunsHandler,
+			listWorkflowRunsByOrgHandler,
 			listStepRunsHandler,
+			listStepRunsByIDsHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),

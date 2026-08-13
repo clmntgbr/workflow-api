@@ -20,6 +20,7 @@ type StepRunWriteRepository interface {
 type StepRunReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*StepRunView, error)
 	FindByWorkflowRunID(ctx context.Context, workflowRunID uuid.UUID) ([]StepRunView, error)
+	FindByWorkflowRunIDs(ctx context.Context, workflowRunIDs []uuid.UUID) ([]StepRunView, error)
 }
 
 type StepRunView struct {
