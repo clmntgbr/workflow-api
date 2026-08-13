@@ -3,10 +3,10 @@ package presenter
 import domainconnection "go-api/internal/domain/connection"
 
 type ConnectionDetailResponse struct {
-	ID           string    `json:"id"`
-	WorkflowID   string    `json:"workflowId"`
-	SourceStepID string    `json:"sourceStepId"`
-	TargetStepID string    `json:"targetStepId"`
+	ID           string `json:"id"`
+	WorkflowID   string `json:"workflowId"`
+	SourceStepID string `json:"sourceStepId"`
+	TargetStepID string `json:"targetStepId"`
 }
 
 func NewConnectionDetailResponseFromEntity(c domainconnection.Connection) ConnectionDetailResponse {

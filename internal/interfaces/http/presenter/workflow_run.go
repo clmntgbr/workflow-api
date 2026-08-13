@@ -3,6 +3,7 @@ package presenter
 import (
 	"time"
 
+	domaininsight "go-api/internal/domain/insight"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
@@ -48,6 +49,7 @@ func NewWorkflowRunDetailResponseFromEntity(
 func NewWorkflowRunDetailResponseFromView(
 	view domainworkflowrun.WorkflowRunView,
 	stepRuns []domainsteprun.StepRunView,
+	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
 ) WorkflowRunDetailResponse {
 	return WorkflowRunDetailResponse{
 		ID:                view.ID.String(),
@@ -62,14 +64,14 @@ func NewWorkflowRunDetailResponseFromView(
 		Error:             optionalNonEmptyString(view.Error),
 		CreatedAt:         view.CreatedAt,
 		UpdatedAt:         view.UpdatedAt,
-		StepRuns:          NewStepRunListResponseFromViews(stepRuns),
+		StepRuns:          NewStepRunListResponseFromViews(stepRuns, insightsByStepRunID),
 	}
 }
 
 func NewWorkflowRunListResponseFromViews(views []domainworkflowrun.WorkflowRunView) []WorkflowRunDetailResponse {
 	items := make([]WorkflowRunDetailResponse, 0, len(views))
 	for _, view := range views {
-		item := NewWorkflowRunDetailResponseFromView(view, nil)
+		item := NewWorkflowRunDetailResponseFromView(view, nil, nil)
 		item.StepRuns = nil
 		items = append(items, item)
 	}
@@ -79,10 +81,15 @@ func NewWorkflowRunListResponseFromViews(views []domainworkflowrun.WorkflowRunVi
 func NewWorkflowRunListWithStepRunsFromViews(
 	views []domainworkflowrun.WorkflowRunView,
 	stepRunsByWorkflowRunID map[uuid.UUID][]domainsteprun.StepRunView,
+	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
 ) []WorkflowRunDetailResponse {
 	items := make([]WorkflowRunDetailResponse, 0, len(views))
 	for _, view := range views {
-		items = append(items, NewWorkflowRunDetailResponseFromView(view, stepRunsByWorkflowRunID[view.ID]))
+		items = append(items, NewWorkflowRunDetailResponseFromView(
+			view,
+			stepRunsByWorkflowRunID[view.ID],
+			insightsByStepRunID,
+		))
 	}
 	return items
 }

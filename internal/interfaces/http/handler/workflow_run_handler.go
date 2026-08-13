@@ -4,9 +4,11 @@ import (
 	"errors"
 
 	workflowruncmd "go-api/internal/application/command/workflowrun"
+	queryinsight "go-api/internal/application/query/insight"
 	querysteprun "go-api/internal/application/query/steprun"
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
+	domaininsight "go-api/internal/domain/insight"
 	"go-api/internal/domain/paginate"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -26,6 +28,7 @@ type WorkflowRunHandler struct {
 	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler
 	listStepRuns       *querysteprun.ListStepRunsByWorkflowRunHandler
 	listStepRunsByIDs  *querysteprun.ListStepRunsByWorkflowRunIDsHandler
+	listInsightsByIDs  *queryinsight.ListInsightsByStepRunIDsHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
 }
 
@@ -36,6 +39,7 @@ func NewWorkflowRunHandler(
 	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler,
 	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
 	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
+	listInsightsByIDs *queryinsight.ListInsightsByStepRunIDsHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
@@ -45,6 +49,7 @@ func NewWorkflowRunHandler(
 		listByOrganization: listByOrganization,
 		listStepRuns:       listStepRuns,
 		listStepRunsByIDs:  listStepRunsByIDs,
+		listInsightsByIDs:  listInsightsByIDs,
 		getWorkflowHandler: getWorkflowHandler,
 	}
 }
@@ -206,7 +211,12 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns))
+	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns, insightsByStepRunID))
 }
 
 func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
@@ -261,8 +271,13 @@ func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
 		)
 	}
 
+	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
-		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID),
+		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID, insightsByStepRunID),
 		int(total),
 		query,
 	))
@@ -297,5 +312,33 @@ func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns))
+	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns, insightsByStepRunID))
+}
+
+func (h *WorkflowRunHandler) loadInsightsByStepRuns(
+	c fiber.Ctx,
+	stepRuns []domainsteprun.StepRunView,
+) (map[uuid.UUID][]domaininsight.InsightView, error) {
+	ids := make([]uuid.UUID, 0, len(stepRuns))
+	for _, stepRun := range stepRuns {
+		ids = append(ids, stepRun.ID)
+	}
+
+	insights, err := h.listInsightsByIDs.Handle(c.Context(), queryinsight.ListInsightsByStepRunIDsQuery{
+		StepRunIDs: ids,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uuid.UUID][]domaininsight.InsightView, len(ids))
+	for _, insight := range insights {
+		out[insight.StepRunID] = append(out[insight.StepRunID], insight)
+	}
+	return out, nil
 }

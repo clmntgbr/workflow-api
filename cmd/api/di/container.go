@@ -14,6 +14,7 @@ import (
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
+	queryinsight "go-api/internal/application/query/insight"
 	queryorganization "go-api/internal/application/query/organization"
 	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
@@ -66,6 +67,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
 	stepRunReadRepo := read.NewStepRunReadRepository(db)
+	insightReadRepo := read.NewInsightReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -148,6 +150,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listWorkflowRunsByOrgHandler := queryworkflowrun.NewListWorkflowRunsByOrganizationHandler(workflowRunReadRepo)
 	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
 	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
+	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
 
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
@@ -210,6 +213,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			listWorkflowRunsByOrgHandler,
 			listStepRunsHandler,
 			listStepRunsByIDsHandler,
+			listInsightsByIDsHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),

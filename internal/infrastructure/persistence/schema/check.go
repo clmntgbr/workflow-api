@@ -21,6 +21,7 @@ func Models() []any {
 		&write.ConnectionModel{},
 		&write.WorkflowRunModel{},
 		&write.StepRunModel{},
+		&write.InsightModel{},
 		&outbox.OutboxEvent{},
 		&processed.ProcessedEvent{},
 	}

@@ -14,10 +14,24 @@ type HTTPRequest struct {
 	Timeout time.Duration
 }
 
+type HTTPTiming struct {
+	StartTime         time.Time
+	EndTime           time.Time
+	DNSLookupDuration time.Duration
+	TCPConnectionTime time.Duration
+	TLSHandshakeTime  time.Duration
+	TTFB              time.Duration
+	Duration          time.Duration
+	RequestSize       int64
+	ResponseSize      int64
+	ErrorType         string
+}
+
 type HTTPResponse struct {
 	Status  int
 	Headers map[string]string
 	Body    any
+	Timing  HTTPTiming
 }
 
 type HTTPExecutor interface {

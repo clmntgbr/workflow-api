@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	insightcmd "go-api/internal/application/command/insight"
 	stepruncmd "go-api/internal/application/command/steprun"
 	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
@@ -22,12 +23,13 @@ type ExecuteJob struct {
 }
 
 type ExecuteHandler struct {
-	stepRunRepo domainsteprun.StepRunWriteRepository
-	http        port.HTTPExecutor
-	start       *stepruncmd.StartStepRunHandler
-	succeed     *stepruncmd.SucceedStepRunHandler
-	fail        *stepruncmd.FailStepRunHandler
-	increment   *stepruncmd.IncrementStepRunAttemptHandler
+	stepRunRepo   domainsteprun.StepRunWriteRepository
+	http          port.HTTPExecutor
+	start         *stepruncmd.StartStepRunHandler
+	succeed       *stepruncmd.SucceedStepRunHandler
+	fail          *stepruncmd.FailStepRunHandler
+	increment     *stepruncmd.IncrementStepRunAttemptHandler
+	createInsight *insightcmd.CreateInsightHandler
 }
 
 func NewExecuteHandler(
@@ -37,14 +39,16 @@ func NewExecuteHandler(
 	succeed *stepruncmd.SucceedStepRunHandler,
 	fail *stepruncmd.FailStepRunHandler,
 	increment *stepruncmd.IncrementStepRunAttemptHandler,
+	createInsight *insightcmd.CreateInsightHandler,
 ) *ExecuteHandler {
 	return &ExecuteHandler{
-		stepRunRepo: stepRunRepo,
-		http:        httpClient,
-		start:       start,
-		succeed:     succeed,
-		fail:        fail,
-		increment:   increment,
+		stepRunRepo:   stepRunRepo,
+		http:          httpClient,
+		start:         start,
+		succeed:       succeed,
+		fail:          fail,
+		increment:     increment,
+		createInsight: createInsight,
 	}
 }
 
@@ -87,6 +91,11 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 		return nil
 	}
 
+	attemptQueueAnchor := run.CreatedAt
+	if run.StartedAt != nil {
+		attemptQueueAnchor = *run.StartedAt
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -102,15 +111,64 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 			Body:    run.Body,
 			Timeout: timeoutDuration(run.Timeout),
 		})
+
+		timing := port.HTTPTiming{}
+		if response != nil {
+			timing = response.Timing
+		}
+		if timing.StartTime.IsZero() {
+			timing.StartTime = time.Now().UTC()
+		}
+		if timing.EndTime.IsZero() {
+			timing.EndTime = time.Now().UTC()
+		}
+
+		queueTime := timing.StartTime.Sub(attemptQueueAnchor)
+		if queueTime < 0 {
+			queueTime = 0
+		}
+
+		errMsg := ""
+		errType := ""
+		hasStatus := false
+		statusCode := 0
+		var snapshot *domainsteprun.ResponseSnapshot
+
 		if execErr == nil {
-			snapshot := domainsteprun.ResponseSnapshot{
+			hasStatus = true
+			statusCode = response.Status
+			s := domainsteprun.ResponseSnapshot{
 				Status:  response.Status,
 				Headers: response.Headers,
 				Body:    response.Body,
 			}
+			snapshot = &s
+		} else {
+			errMsg = execErr.Error()
+			errType = timing.ErrorType
+			if errType == "" {
+				errType = "unknown"
+			}
+			if response != nil && response.Status > 0 {
+				hasStatus = true
+				statusCode = response.Status
+				s := domainsteprun.ResponseSnapshot{
+					Status:  response.Status,
+					Headers: response.Headers,
+					Body:    response.Body,
+				}
+				snapshot = &s
+			}
+		}
+
+		if err := h.saveInsight(ctx, run, timing, queueTime, statusCode, hasStatus, errMsg, errType); err != nil {
+			return messaging.Retryable(err)
+		}
+
+		if execErr == nil {
 			_, err = h.succeed.Handle(ctx, stepruncmd.SucceedStepRunCommand{
 				StepRunID: stepRunID,
-				Response:  snapshot,
+				Response:  *snapshot,
 			})
 			if err != nil {
 				return messaging.Retryable(err)
@@ -122,17 +180,6 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 				response.Status,
 			)
 			return nil
-		}
-
-		errMsg := execErr.Error()
-		var snapshot *domainsteprun.ResponseSnapshot
-		if response != nil {
-			s := domainsteprun.ResponseSnapshot{
-				Status:  response.Status,
-				Headers: response.Headers,
-				Body:    response.Body,
-			}
-			snapshot = &s
 		}
 
 		if !run.CanRetry() {
@@ -170,10 +217,49 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 			errMsg,
 		)
 
-		if err := sleep(ctx, retryDelayDuration(run.RetryDelay)); err != nil {
+		delay := retryDelayDuration(run.RetryDelay)
+		attemptQueueAnchor = time.Now().UTC()
+		if err := sleep(ctx, delay); err != nil {
 			return messaging.Retryable(err)
 		}
 	}
+}
+
+func (h *ExecuteHandler) saveInsight(
+	ctx context.Context,
+	run *domainsteprun.StepRun,
+	timing port.HTTPTiming,
+	queueTime time.Duration,
+	statusCode int,
+	hasStatus bool,
+	errMsg string,
+	errType string,
+) error {
+	totalAttempts := 1
+	if run.RetryOnFailure && run.RetryCount > 0 {
+		totalAttempts = run.RetryCount
+	}
+
+	_, err := h.createInsight.Handle(ctx, insightcmd.CreateInsightCommand{
+		StepRunID:         run.ID,
+		StartTime:         timing.StartTime,
+		EndTime:           timing.EndTime,
+		QueueTime:         queueTime,
+		DNSLookupDuration: timing.DNSLookupDuration,
+		TCPConnectionTime: timing.TCPConnectionTime,
+		TLSHandshakeTime:  timing.TLSHandshakeTime,
+		TTFB:              timing.TTFB,
+		Duration:          timing.Duration,
+		StatusCode:        statusCode,
+		HasStatusCode:     hasStatus,
+		ResponseSize:      timing.ResponseSize,
+		RequestSize:       timing.RequestSize,
+		AttemptNumber:     run.Attempt,
+		TotalAttempts:     totalAttempts,
+		ErrorMessage:      errMsg,
+		ErrorType:         errType,
+	})
+	return err
 }
 
 func timeoutDuration(timeoutMS int) time.Duration {

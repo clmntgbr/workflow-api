@@ -3,6 +3,7 @@ package di
 import (
 	"log"
 
+	insightcmd "go-api/internal/application/command/insight"
 	stepruncmd "go-api/internal/application/command/steprun"
 	eventsteprun "go-api/internal/application/event/steprun"
 	"go-api/internal/application/registry"
@@ -35,6 +36,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	}
 
 	stepRunRepo := write.NewStepRunWriteRepository(db)
+	insightRepo := write.NewInsightWriteRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	httpClient := httpexecutor.New()
 
@@ -42,6 +44,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	succeedHandler := stepruncmd.NewSucceedStepRunHandler(stepRunRepo, outboxRepo)
 	failHandler := stepruncmd.NewFailStepRunHandler(stepRunRepo, outboxRepo)
 	incrementHandler := stepruncmd.NewIncrementStepRunAttemptHandler(stepRunRepo)
+	createInsightHandler := insightcmd.NewCreateInsightHandler(insightRepo)
 
 	executeHandler := eventsteprun.NewExecuteHandler(
 		stepRunRepo,
@@ -50,6 +53,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		succeedHandler,
 		failHandler,
 		incrementHandler,
+		createInsightHandler,
 	)
 
 	reg := registry.NewHandlerRegistry()

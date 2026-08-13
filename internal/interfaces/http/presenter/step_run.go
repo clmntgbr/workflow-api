@@ -3,42 +3,49 @@ package presenter
 import (
 	"time"
 
+	domaininsight "go-api/internal/domain/insight"
 	domainsteprun "go-api/internal/domain/steprun"
+
+	"github.com/google/uuid"
 )
 
 type StepRunResponse struct {
-	ID               string                         `json:"id"`
-	WorkflowRunID    string                         `json:"workflowRunId"`
-	StepID           string                         `json:"stepId"`
-	WorkflowID       string                         `json:"workflowId"`
-	EndpointID       string                         `json:"endpointId"`
-	OrganizationID   string                         `json:"organizationId"`
-	Name             string                         `json:"name"`
-	Description      *string                        `json:"description"`
-	URL              string                         `json:"url"`
-	Method           string                         `json:"method"`
-	Headers          map[string]string              `json:"headers"`
-	Query            map[string]string              `json:"query"`
-	Body             map[string]any                 `json:"body"`
-	Timeout          int                            `json:"timeout"`
-	RetryOnFailure   bool                           `json:"retryOnFailure"`
-	RetryCount       int                            `json:"retryCount"`
-	RetryDelay       int                            `json:"retryDelay"`
-	Index            string                         `json:"index"`
-	ExecutionOrder   int                            `json:"executionOrder"`
-	TreeIndex        int                            `json:"treeIndex"`
-	Position         StepPositionResponse           `json:"position"`
-	Status           string                         `json:"status"`
-	Attempt          int                            `json:"attempt"`
+	ID               string                          `json:"id"`
+	WorkflowRunID    string                          `json:"workflowRunId"`
+	StepID           string                          `json:"stepId"`
+	WorkflowID       string                          `json:"workflowId"`
+	EndpointID       string                          `json:"endpointId"`
+	OrganizationID   string                          `json:"organizationId"`
+	Name             string                          `json:"name"`
+	Description      *string                         `json:"description"`
+	URL              string                          `json:"url"`
+	Method           string                          `json:"method"`
+	Headers          map[string]string               `json:"headers"`
+	Query            map[string]string               `json:"query"`
+	Body             map[string]any                  `json:"body"`
+	Timeout          int                             `json:"timeout"`
+	RetryOnFailure   bool                            `json:"retryOnFailure"`
+	RetryCount       int                             `json:"retryCount"`
+	RetryDelay       int                             `json:"retryDelay"`
+	Index            string                          `json:"index"`
+	ExecutionOrder   int                             `json:"executionOrder"`
+	TreeIndex        int                             `json:"treeIndex"`
+	Position         StepPositionResponse            `json:"position"`
+	Status           string                          `json:"status"`
+	Attempt          int                             `json:"attempt"`
 	ResponseSnapshot *domainsteprun.ResponseSnapshot `json:"responseSnapshot"`
-	StartedAt        *time.Time                     `json:"startedAt"`
-	FinishedAt       *time.Time                     `json:"finishedAt"`
-	Error            *string                        `json:"error"`
-	CreatedAt        time.Time                      `json:"createdAt"`
-	UpdatedAt        time.Time                      `json:"updatedAt"`
+	Insights         []InsightResponse               `json:"insights,omitempty"`
+	StartedAt        *time.Time                      `json:"startedAt"`
+	FinishedAt       *time.Time                      `json:"finishedAt"`
+	Error            *string                         `json:"error"`
+	CreatedAt        time.Time                       `json:"createdAt"`
+	UpdatedAt        time.Time                       `json:"updatedAt"`
 }
 
-func NewStepRunResponseFromView(view domainsteprun.StepRunView) StepRunResponse {
+func NewStepRunResponseFromView(
+	view domainsteprun.StepRunView,
+	insights []domaininsight.InsightView,
+) StepRunResponse {
 	return StepRunResponse{
 		ID:             view.ID.String(),
 		WorkflowRunID:  view.WorkflowRunID.String(),
@@ -67,6 +74,7 @@ func NewStepRunResponseFromView(view domainsteprun.StepRunView) StepRunResponse 
 		Status:           string(view.Status),
 		Attempt:          view.Attempt,
 		ResponseSnapshot: view.ResponseSnapshot,
+		Insights:         NewInsightListResponseFromViews(insights),
 		StartedAt:        view.StartedAt,
 		FinishedAt:       view.FinishedAt,
 		Error:            optionalNonEmptyString(view.Error),
@@ -75,13 +83,19 @@ func NewStepRunResponseFromView(view domainsteprun.StepRunView) StepRunResponse 
 	}
 }
 
-func NewStepRunListResponseFromViews(views []domainsteprun.StepRunView) []StepRunResponse {
+func NewStepRunListResponseFromViews(
+	views []domainsteprun.StepRunView,
+	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
+) []StepRunResponse {
 	if len(views) == 0 {
 		return nil
 	}
+	if insightsByStepRunID == nil {
+		insightsByStepRunID = map[uuid.UUID][]domaininsight.InsightView{}
+	}
 	items := make([]StepRunResponse, 0, len(views))
 	for _, view := range views {
-		items = append(items, NewStepRunResponseFromView(view))
+		items = append(items, NewStepRunResponseFromView(view, insightsByStepRunID[view.ID]))
 	}
 	return items
 }
