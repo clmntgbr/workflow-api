@@ -1,6 +1,5 @@
 package steprun
 
-// ResponseSnapshot is the HTTP response received for this step run.
 type ResponseSnapshot struct {
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`

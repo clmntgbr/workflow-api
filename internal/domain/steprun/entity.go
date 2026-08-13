@@ -101,7 +101,6 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 	}
 }
 
-// Queue records that this pending StepRun is ready for the executor.
 func (s *StepRun) Queue() {
 	s.recordEvent(StepRunQueued{
 		ID:            uuid.New().String(),
@@ -131,7 +130,6 @@ func (s *StepRun) MarkStarted() error {
 	return nil
 }
 
-// IncrementAttempt records another try on the same row. Status stays running.
 func (s *StepRun) IncrementAttempt() error {
 	if s.Status != StatusRunning {
 		return ErrInvalidStatusTransition

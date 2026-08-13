@@ -2,7 +2,6 @@ package workflowrun
 
 import "fmt"
 
-// TriggeredBy is how a workflow run was started.
 type TriggeredBy string
 
 const (

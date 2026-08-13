@@ -114,7 +114,6 @@ func (c *Consumer) handleDelivery(ctx context.Context, m amqp.Delivery) {
 		attempts,
 		err,
 	)
-	// Never requeue=true: dead-letter to retry queue (TTL), then back to main.
 	_ = m.Nack(false, false)
 }
 

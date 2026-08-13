@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Models lists persistence models that must match the live database schema.
 func Models() []any {
 	return []any{
 		&write.UserModel{},
@@ -27,7 +26,6 @@ func Models() []any {
 	}
 }
 
-// AssertModelsMatchDB fails when model columns and DB columns diverge.
 func AssertModelsMatchDB(db *gorm.DB) error {
 	for _, model := range Models() {
 		if err := assertModelMatchesDB(db, model); err != nil {

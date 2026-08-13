@@ -39,6 +39,9 @@ type Config struct {
 	RabbitMQExecutorQueue      string
 	RabbitMQExecutorRoutingKey string
 	SchedulerInterval          time.Duration
+	SchedulerBatchSize         int
+	SchedulerConcurrency       int
+	SchedulerMaxBatchesPerTick int
 }
 
 func Load() *Config {
@@ -75,6 +78,9 @@ func Load() *Config {
 		RabbitMQExecutorQueue:      getEnvOrDefault("RABBITMQ_EXECUTOR_QUEUE", "step_run.execute"),
 		RabbitMQExecutorRoutingKey: getEnvOrDefault("RABBITMQ_EXECUTOR_ROUTING_KEY", "step_run.execute"),
 		SchedulerInterval:          getEnvDuration("SCHEDULER_INTERVAL", time.Minute),
+		SchedulerBatchSize:         getEnvIntOrDefault("SCHEDULER_BATCH_SIZE", 100),
+		SchedulerConcurrency:       getEnvIntOrDefault("SCHEDULER_CONCURRENCY", 32),
+		SchedulerMaxBatchesPerTick: getEnvIntOrDefault("SCHEDULER_MAX_BATCHES_PER_TICK", 100),
 	}
 }
 

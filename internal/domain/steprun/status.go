@@ -2,7 +2,6 @@ package steprun
 
 import "fmt"
 
-// Status is the lifecycle state of a step run.
 type Status string
 
 const (

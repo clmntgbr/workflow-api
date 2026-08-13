@@ -6,7 +6,6 @@ import (
 	"fmt"
 )
 
-// JSONB stores JSON as text for pgx/Postgres jsonb (avoids bytea binding issues).
 type JSONB []byte
 
 func (j JSONB) Value() (driver.Value, error) {

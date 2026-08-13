@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// StepRunModel is the persistence mapping for table step_runs.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type StepRunModel struct {
 	ID               uuid.UUID    `gorm:"column:id;primaryKey"`
 	WorkflowRunID    uuid.UUID    `gorm:"column:workflow_run_id"`

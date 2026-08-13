@@ -15,6 +15,7 @@ type WorkflowWriteRepository interface {
 	Update(ctx context.Context, workflow *Workflow) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Workflow, error)
+	ClaimDueForExecution(ctx context.Context, now time.Time, limit int) ([]*Workflow, error)
 }
 
 type WorkflowReadRepository interface {

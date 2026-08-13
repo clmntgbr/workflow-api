@@ -19,8 +19,6 @@ type processedEventReleaser interface {
 	UnmarkProcessed(ctx context.Context, eventID, handlerName string) error
 }
 
-// With wraps a handler so each (eventId, handlerName) is processed at most once.
-// Mark happens before next; on retryable failure the mark is released so the event can retry.
 func With(repo port.ProcessedEventRepository, handlerName string, next registry.EventHandler) registry.EventHandler {
 	return func(ctx context.Context, payload []byte) error {
 		var meta eventIDPayload

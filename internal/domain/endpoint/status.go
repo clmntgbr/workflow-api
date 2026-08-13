@@ -2,7 +2,6 @@ package endpoint
 
 import "fmt"
 
-// Status is the lifecycle state of an endpoint.
 type Status string
 
 const (

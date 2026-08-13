@@ -61,8 +61,6 @@ func (w *Workflow) RecalculateNextRunAt(now time.Time) {
 	}
 }
 
-// AdvanceAfterScheduledStart moves the schedule forward after the scheduler
-// successfully started a run (strict cadence from the previous NextRunAt).
 func (w *Workflow) AdvanceAfterScheduledStart(now time.Time) {
 	switch w.ScheduleType {
 	case ScheduleTypeRecurring:

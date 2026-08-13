@@ -86,8 +86,6 @@ func (u *User) MarkDeleted() {
 	})
 }
 
-// SetActiveOrganization switches the user's active organization context.
-// Returns false when the organization is already active (no-op).
 func (u *User) SetActiveOrganization(organizationID uuid.UUID) bool {
 	if u.ActiveOrganizationID != nil && *u.ActiveOrganizationID == organizationID {
 		return false
@@ -104,8 +102,6 @@ func (u *User) SetActiveOrganization(organizationID uuid.UUID) bool {
 	return true
 }
 
-// ClearActiveOrganization removes the active organization context.
-// Returns false when there was none (no-op).
 func (u *User) ClearActiveOrganization() bool {
 	if u.ActiveOrganizationID == nil {
 		return false

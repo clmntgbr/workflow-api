@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// OrganizationModel is the persistence mapping for table organizations.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type OrganizationModel struct {
 	ID        uuid.UUID `gorm:"column:id;primaryKey"`
 	Name      string    `gorm:"column:name"`
@@ -21,7 +19,6 @@ func (OrganizationModel) TableName() string {
 	return "organizations"
 }
 
-// UserOrganizationModel is the persistence mapping for table user_organizations.
 type UserOrganizationModel struct {
 	UserID         uuid.UUID `gorm:"column:user_id;primaryKey"`
 	OrganizationID uuid.UUID `gorm:"column:organization_id;primaryKey"`

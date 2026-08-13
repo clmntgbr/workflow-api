@@ -16,10 +16,11 @@ import (
 )
 
 type StartWorkflowRunCommand struct {
-	WorkflowID        uuid.UUID
-	TriggeredBy       domainworkflowrun.TriggeredBy
-	TriggeredByUserID *uuid.UUID
-	Context           map[string]any
+	WorkflowID              uuid.UUID
+	TriggeredBy             domainworkflowrun.TriggeredBy
+	TriggeredByUserID       *uuid.UUID
+	Context                 map[string]any
+	ScheduleAlreadyAdvanced bool
 }
 
 type StartWorkflowRunHandler struct {
@@ -65,7 +66,7 @@ func (h *StartWorkflowRunHandler) Handle(
 	}
 	if inProgress {
 		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
-			if err := h.recordScheduledSkip(ctx, workflow); err != nil {
+			if err := h.recordScheduledSkip(ctx, workflow, cmd.ScheduleAlreadyAdvanced); err != nil {
 				return nil, errors.New("failed to start workflow run")
 			}
 		}
@@ -83,7 +84,7 @@ func (h *StartWorkflowRunHandler) Handle(
 		if err := h.runRepo.Save(txCtx, run); err != nil {
 			return err
 		}
-		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
+		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule && !cmd.ScheduleAlreadyAdvanced {
 			workflow.AdvanceAfterScheduledStart(time.Now().UTC())
 			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
 				return err
@@ -94,7 +95,7 @@ func (h *StartWorkflowRunHandler) Handle(
 	if err != nil {
 		if isUniqueViolation(err) {
 			if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
-				if skipErr := h.recordScheduledSkip(ctx, workflow); skipErr != nil {
+				if skipErr := h.recordScheduledSkip(ctx, workflow, cmd.ScheduleAlreadyAdvanced); skipErr != nil {
 					return nil, errors.New("failed to start workflow run")
 				}
 			}
@@ -109,9 +110,9 @@ func (h *StartWorkflowRunHandler) Handle(
 func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	ctx context.Context,
 	workflow *domainworkflow.Workflow,
+	scheduleAlreadyAdvanced bool,
 ) error {
 	now := time.Now().UTC()
-	workflow.AdvanceAfterScheduledStart(now)
 	skipped := domainworkflowrun.WorkflowRunScheduledSkipped{
 		ID:         uuid.New().String(),
 		WorkflowID: workflow.ID.String(),
@@ -119,9 +120,12 @@ func (h *StartWorkflowRunHandler) recordScheduledSkip(
 		Timestamp:  now,
 	}
 
-	return h.workflowRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
-			return err
+	return h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if !scheduleAlreadyAdvanced {
+			workflow.AdvanceAfterScheduledStart(now)
+			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
+				return err
+			}
 		}
 		return h.outbox.StoreEvents(txCtx, []event.DomainEvent{skipped})
 	})

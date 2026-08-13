@@ -72,7 +72,6 @@ func validateScheduleUnit(fl validator.FieldLevel) bool {
 	}
 }
 
-// BindBody binds the request body then validates the destination struct.
 func BindBody(c fiber.Ctx, dst any) error {
 	if err := c.Bind().Body(dst); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -82,7 +81,6 @@ func BindBody(c fiber.Ctx, dst any) error {
 	return Struct(c, dst)
 }
 
-// Struct validates an already-bound payload.
 func Struct(c fiber.Ctx, dst any) error {
 	if err := validate.Struct(dst); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

@@ -65,8 +65,6 @@ func (e WorkflowRunCancelled) EventType() string     { return EventTypeWorkflowR
 func (e WorkflowRunCancelled) AggregateID() string   { return e.WorkflowRunID }
 func (e WorkflowRunCancelled) OccurredAt() time.Time { return e.Timestamp }
 
-// WorkflowRunScheduledSkipped is emitted when the scheduler would start a run
-// but one is already pending/running for that workflow.
 type WorkflowRunScheduledSkipped struct {
 	ID         string    `json:"eventId"`
 	WorkflowID string    `json:"workflowId"`

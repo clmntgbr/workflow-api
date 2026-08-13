@@ -33,7 +33,6 @@ func CalculateOrderingByPosition(steps []PositionedStep, edges []GraphEdge) map[
 		children[step.ID] = []uuid.UUID{}
 	}
 
-	// At a split, prefer leftmost then topmost branch.
 	compare := func(a, b uuid.UUID) bool {
 		sa := byID[a]
 		sb := byID[b]

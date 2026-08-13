@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// OutboxEvent is the persistence mapping for table outbox_events.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type OutboxEvent struct {
 	ID          uuid.UUID    `gorm:"column:id;primaryKey"`
 	AggregateID string       `gorm:"column:aggregate_id"`

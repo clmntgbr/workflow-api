@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserModel is the persistence mapping for table users.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type UserModel struct {
 	ID                   uuid.UUID  `gorm:"column:id;primaryKey"`
 	ClerkID              string     `gorm:"column:clerk_id"`

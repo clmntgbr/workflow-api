@@ -3,11 +3,14 @@ package write
 import (
 	"context"
 	"errors"
+	"time"
 
+	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type workflowWriteRepository struct {
@@ -46,4 +49,51 @@ func (r *workflowWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		return nil, err
 	}
 	return workflowDomainFromModel(&model), nil
+}
+
+func (r *workflowWriteRepository) ClaimDueForExecution(
+	ctx context.Context,
+	now time.Time,
+	limit int,
+) ([]*domainworkflow.Workflow, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	var claimed []*domainworkflow.Workflow
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var models []WorkflowModel
+		err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("status = ?", domainworkflow.StatusActive).
+			Where("next_run_at IS NOT NULL AND next_run_at <= ?", now).
+			Where(
+				"EXISTS (SELECT 1 FROM steps WHERE steps.workflow_id = workflows.id AND steps.status <> ?)",
+				domainstep.StatusDeleted,
+			).
+			Order("next_run_at ASC").
+			Limit(limit).
+			Find(&models).Error
+		if err != nil {
+			return err
+		}
+		if len(models) == 0 {
+			return nil
+		}
+
+		claimed = make([]*domainworkflow.Workflow, 0, len(models))
+		for i := range models {
+			workflow := workflowDomainFromModel(&models[i])
+			workflow.AdvanceAfterScheduledStart(now)
+			if err := tx.Save(workflowModelFromDomain(workflow)).Error; err != nil {
+				return err
+			}
+			claimed = append(claimed, workflow)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return claimed, nil
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// WorkflowModel is the persistence mapping for table workflows.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type WorkflowModel struct {
 	ID                    uuid.UUID  `gorm:"column:id;primaryKey"`
 	Name                  string     `gorm:"column:name"`

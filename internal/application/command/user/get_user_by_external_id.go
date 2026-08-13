@@ -7,7 +7,6 @@ import (
 	domainuser "go-api/internal/domain/user"
 )
 
-// GetUserByExternalIDHandler loads the write-side aggregate (used by webhook update path).
 type GetUserByExternalIDHandler struct {
 	repo domainuser.UserWriteRepository
 }

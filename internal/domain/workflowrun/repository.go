@@ -26,8 +26,6 @@ type WorkflowRunReadRepository interface {
 	) ([]WorkflowRunView, int64, error)
 }
 
-// WorkflowRunView is the read model. OrganizationID comes from workflows.organization_id
-// (the run table does not store a tenant column).
 type WorkflowRunView struct {
 	ID                uuid.UUID
 	WorkflowID        uuid.UUID

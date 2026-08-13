@@ -8,9 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Organization is the aggregate root for an organization and its memberships.
-// Members are referenced by user ID only — User remains a separate aggregate.
-// Whether an organization is "active" for a user is derived from User.ActiveOrganizationID.
 type Organization struct {
 	ID        uuid.UUID
 	Name      string

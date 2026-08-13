@@ -2,7 +2,6 @@ package workflow
 
 import "fmt"
 
-// Status is the lifecycle state of a workflow.
 type Status string
 
 const (

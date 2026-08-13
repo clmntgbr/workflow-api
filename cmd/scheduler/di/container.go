@@ -5,7 +5,6 @@ import (
 	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/persistence/outbox"
-	"go-api/internal/infrastructure/persistence/read"
 	"go-api/internal/infrastructure/persistence/write"
 
 	"gorm.io/gorm"
@@ -13,15 +12,29 @@ import (
 
 type Container struct {
 	StartWorkflowRunHandler *workflowruncmd.StartWorkflowRunHandler
-	WorkflowReadRepo        domainworkflow.WorkflowReadRepository
+	WorkflowWriteRepo       domainworkflow.WorkflowWriteRepository
+	BatchSize               int
+	Concurrency             int
+	MaxBatchesPerTick       int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
-	_ = env
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
-	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	outboxRepo := outbox.NewRepository(db)
+
+	batchSize := env.SchedulerBatchSize
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+	concurrency := env.SchedulerConcurrency
+	if concurrency <= 0 {
+		concurrency = 32
+	}
+	maxBatches := env.SchedulerMaxBatchesPerTick
+	if maxBatches <= 0 {
+		maxBatches = 100
+	}
 
 	return &Container{
 		StartWorkflowRunHandler: workflowruncmd.NewStartWorkflowRunHandler(
@@ -29,6 +42,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			workflowRunWriteRepo,
 			outboxRepo,
 		),
-		WorkflowReadRepo: workflowReadRepo,
+		WorkflowWriteRepo: workflowWriteRepo,
+		BatchSize:         batchSize,
+		Concurrency:       concurrency,
+		MaxBatchesPerTick: maxBatches,
 	}
 }

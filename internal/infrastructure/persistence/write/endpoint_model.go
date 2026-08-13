@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// EndpointModel is the persistence mapping for table endpoints.
-// Schema is owned by SQL migrations — do not encode DDL in tags.
 type EndpointModel struct {
 	ID             uuid.UUID    `gorm:"column:id;primaryKey"`
 	Name           string       `gorm:"column:name"`
