@@ -90,8 +90,6 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 		Key:            req.Key,
 		Description:    req.Description,
 		Path:           req.Path,
-		IsSecret:       req.IsSecret,
-		DefaultValue:   req.DefaultValue,
 	})
 	if err != nil {
 		switch {
@@ -209,12 +207,10 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 		ID:             id,
 		WorkflowID:     workflowID,
 		OrganizationID: orgID,
-		Name:           req.Name,
-		Key:            req.Key,
-		Description:    req.Description,
-		Path:           req.Path,
-		IsSecret:       req.IsSecret,
-		DefaultValue:   req.DefaultValue,
+		Name:        req.Name,
+		Key:         req.Key,
+		Description: req.Description,
+		Path:        req.Path,
 	})
 	if err != nil {
 		switch {

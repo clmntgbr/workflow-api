@@ -52,7 +52,6 @@ type StepRun struct {
 type VariableExtract struct {
 	VariableID uuid.UUID `json:"variableId"`
 	Path       string    `json:"path"`
-	IsSecret   bool      `json:"isSecret"`
 }
 
 type NewStepRunParams struct {

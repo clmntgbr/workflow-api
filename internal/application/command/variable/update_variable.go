@@ -2,7 +2,6 @@ package variable
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -19,8 +18,6 @@ type UpdateVariableCommand struct {
 	Key            string
 	Description    string
 	Path           string
-	IsSecret       bool
-	DefaultValue   json.RawMessage
 }
 
 type UpdateVariableHandler struct {
@@ -45,12 +42,10 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 	}
 
 	variable.Update(domainvariable.UpdateVariableParams{
-		Name:         strings.TrimSpace(cmd.Name),
-		Key:          strings.TrimSpace(cmd.Key),
-		Description:  strings.TrimSpace(cmd.Description),
-		Path:         strings.TrimSpace(cmd.Path),
-		IsSecret:     cmd.IsSecret,
-		DefaultValue: cmd.DefaultValue,
+		Name:        strings.TrimSpace(cmd.Name),
+		Key:         strings.TrimSpace(cmd.Key),
+		Description: strings.TrimSpace(cmd.Description),
+		Path:        strings.TrimSpace(cmd.Path),
 	})
 
 	if err := h.variableRepo.Update(ctx, variable); err != nil {

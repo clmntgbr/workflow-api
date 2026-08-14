@@ -76,7 +76,6 @@ func (h *Orchestrator) buildStepRun(
 		extracts = append(extracts, domainsteprun.VariableExtract{
 			VariableID: variable.ID,
 			Path:       variable.Path,
-			IsSecret:   variable.IsSecret,
 		})
 	}
 

@@ -2,30 +2,25 @@ package read
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
 	domainvariable "go-api/internal/domain/variable"
-	"go-api/internal/infrastructure/persistence/dbtype"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type variableRow struct {
-	ID           uuid.UUID
-	Name         string
-	Key          string
-	Description  string
-	Path         string
-	StepID       uuid.UUID
-	WorkflowID   uuid.UUID
-	IsSecret     bool
-	DefaultValue dbtype.JSONB
-	LastValue    dbtype.JSONB
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID          uuid.UUID
+	Name        string
+	Key         string
+	Description string
+	Path        string
+	StepID      uuid.UUID
+	WorkflowID  uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (variableRow) TableName() string { return "variables" }
@@ -108,17 +103,14 @@ func toVariableViews(rows []variableRow) []domainvariable.VariableView {
 
 func toVariableView(row variableRow) domainvariable.VariableView {
 	return domainvariable.VariableView{
-		ID:           row.ID,
-		Name:         row.Name,
-		Key:          row.Key,
-		Description:  row.Description,
-		Path:         row.Path,
-		StepID:       row.StepID,
-		WorkflowID:   row.WorkflowID,
-		IsSecret:     row.IsSecret,
-		DefaultValue: json.RawMessage(row.DefaultValue),
-		LastValue:    json.RawMessage(row.LastValue),
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
+		ID:         row.ID,
+		Name:       row.Name,
+		Key:        row.Key,
+		Description: row.Description,
+		Path:       row.Path,
+		StepID:     row.StepID,
+		WorkflowID: row.WorkflowID,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
 	}
 }

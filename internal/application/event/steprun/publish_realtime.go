@@ -68,18 +68,8 @@ func maskExtractedForRealtime(
 	if values == nil {
 		return map[string]any{}
 	}
-	secretIDs := map[string]struct{}{}
-	for _, extract := range extracts {
-		if extract.IsSecret {
-			secretIDs[extract.VariableID.String()] = struct{}{}
-		}
-	}
 	out := make(map[string]any, len(values))
 	for key, value := range values {
-		if _, ok := secretIDs[key]; ok {
-			out[key] = "***"
-			continue
-		}
 		out[key] = value
 	}
 	return out

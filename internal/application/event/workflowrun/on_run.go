@@ -9,7 +9,6 @@ import (
 	domainconnection "go-api/internal/domain/connection"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
-	domainvariable "go-api/internal/domain/variable"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
@@ -177,9 +176,6 @@ func (h *Orchestrator) advanceAfterStep(
 			if err := h.runRepo.Update(txCtx, run); err != nil {
 				return err
 			}
-			if err := h.updateVariableLastValues(txCtx, extractedVariables); err != nil {
-				return err
-			}
 		}
 
 		changed := make([]*domainsteprun.StepRun, 0)
@@ -227,30 +223,6 @@ func (h *Orchestrator) advanceAfterStep(
 	return nil
 }
 
-func (h *Orchestrator) updateVariableLastValues(ctx context.Context, extracted map[string]any) error {
-	for rawID, value := range extracted {
-		id, err := uuid.Parse(rawID)
-		if err != nil {
-			continue
-		}
-		variable, err := h.variableRepo.GetByID(ctx, id)
-		if err != nil {
-			return err
-		}
-		if variable == nil || variable.IsSecret {
-			continue
-		}
-		raw, err := domainvariable.ToRawMessage(value)
-		if err != nil {
-			return err
-		}
-		variable.SetLastValue(raw)
-		if err := h.variableRepo.Update(ctx, variable); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func (h *Orchestrator) skipBranch(
 	ctx context.Context,

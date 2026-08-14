@@ -2,7 +2,6 @@ package variable
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -20,8 +19,6 @@ type CreateVariableCommand struct {
 	Key            string
 	Description    string
 	Path           string
-	IsSecret       bool
-	DefaultValue   json.RawMessage
 }
 
 type CreateVariableHandler struct {
@@ -53,14 +50,12 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 	}
 
 	variable := domainvariable.NewVariable(domainvariable.NewVariableParams{
-		Name:         strings.TrimSpace(cmd.Name),
-		Key:          strings.TrimSpace(cmd.Key),
-		Description:  strings.TrimSpace(cmd.Description),
-		Path:         strings.TrimSpace(cmd.Path),
-		StepID:       cmd.StepID,
-		WorkflowID:   cmd.WorkflowID,
-		IsSecret:     cmd.IsSecret,
-		DefaultValue: cmd.DefaultValue,
+		Name:        strings.TrimSpace(cmd.Name),
+		Key:         strings.TrimSpace(cmd.Key),
+		Description: strings.TrimSpace(cmd.Description),
+		Path:        strings.TrimSpace(cmd.Path),
+		StepID:      cmd.StepID,
+		WorkflowID:  cmd.WorkflowID,
 	})
 
 	if err := h.variableRepo.Save(ctx, variable); err != nil {

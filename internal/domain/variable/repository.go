@@ -2,7 +2,6 @@ package variable
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,16 +24,13 @@ type VariableReadRepository interface {
 }
 
 type VariableView struct {
-	ID           uuid.UUID
-	Name         string
-	Key          string
-	Description  string
-	Path         string
-	StepID       uuid.UUID
-	WorkflowID   uuid.UUID
-	IsSecret     bool
-	DefaultValue json.RawMessage
-	LastValue    json.RawMessage
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID          uuid.UUID
+	Name        string
+	Key         string
+	Description string
+	Path        string
+	StepID      uuid.UUID
+	WorkflowID  uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

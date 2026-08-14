@@ -87,49 +87,19 @@ func NewStepRunResponseFromView(
 
 func maskExtractedVariables(
 	values map[string]any,
-	extracts []domainsteprun.VariableExtract,
+	_ []domainsteprun.VariableExtract,
 ) map[string]any {
 	if values == nil {
 		return map[string]any{}
 	}
-	secretIDs := map[string]struct{}{}
-	for _, extract := range extracts {
-		if extract.IsSecret {
-			secretIDs[extract.VariableID.String()] = struct{}{}
-		}
-	}
-	out := make(map[string]any, len(values))
-	for key, value := range values {
-		if _, ok := secretIDs[key]; ok {
-			out[key] = "***"
-			continue
-		}
-		out[key] = value
-	}
-	return out
+	return values
 }
 
 func MaskSecretContext(context map[string]any, stepRuns []domainsteprun.StepRunView) map[string]any {
 	if context == nil {
 		return map[string]any{}
 	}
-	secretIDs := map[string]struct{}{}
-	for _, stepRun := range stepRuns {
-		for _, extract := range stepRun.VariableExtracts {
-			if extract.IsSecret {
-				secretIDs[extract.VariableID.String()] = struct{}{}
-			}
-		}
-	}
-	out := make(map[string]any, len(context))
-	for key, value := range context {
-		if _, ok := secretIDs[key]; ok {
-			out[key] = "***"
-			continue
-		}
-		out[key] = value
-	}
-	return out
+	return context
 }
 
 func NewStepRunListResponseFromViews(
