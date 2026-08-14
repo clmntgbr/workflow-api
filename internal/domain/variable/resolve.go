@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var placeholderPattern = regexp.MustCompile(`\{\{([a-zA-Z0-9_-]+)\}\}`)
+var placeholderPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}`)
 
 type MissingVariableError struct {
 	Key string
