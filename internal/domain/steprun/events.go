@@ -60,15 +60,16 @@ func (e StepRunStarted) AggregateID() string   { return e.StepRunID }
 func (e StepRunStarted) OccurredAt() time.Time { return e.Timestamp }
 
 type StepRunSucceeded struct {
-	ID               string            `json:"eventId"`
-	StepRunID        string            `json:"stepRunId"`
-	WorkflowRunID    string            `json:"workflowRunId"`
-	StepID           string            `json:"stepId"`
-	OrganizationID   string            `json:"organizationId"`
-	Status           string            `json:"status"`
-	Attempt          int               `json:"attempt"`
-	ResponseSnapshot *ResponseSnapshot `json:"responseSnapshot"`
-	Timestamp        time.Time         `json:"timestamp"`
+	ID                 string            `json:"eventId"`
+	StepRunID          string            `json:"stepRunId"`
+	WorkflowRunID      string            `json:"workflowRunId"`
+	StepID             string            `json:"stepId"`
+	OrganizationID     string            `json:"organizationId"`
+	Status             string            `json:"status"`
+	Attempt            int               `json:"attempt"`
+	ResponseSnapshot   *ResponseSnapshot `json:"responseSnapshot"`
+	ExtractedVariables map[string]any    `json:"extractedVariables"`
+	Timestamp          time.Time         `json:"timestamp"`
 }
 
 func (e StepRunSucceeded) EventID() string       { return e.ID }

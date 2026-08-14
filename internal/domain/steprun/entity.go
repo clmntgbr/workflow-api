@@ -36,7 +36,9 @@ type StepRun struct {
 	Status  Status
 	Attempt int
 
-	ResponseSnapshot *ResponseSnapshot
+	VariableExtracts   []VariableExtract
+	ResponseSnapshot   *ResponseSnapshot
+	ExtractedVariables map[string]any
 
 	StartedAt  *time.Time
 	FinishedAt *time.Time
@@ -45,6 +47,12 @@ type StepRun struct {
 	UpdatedAt  time.Time
 
 	events []event.DomainEvent
+}
+
+type VariableExtract struct {
+	VariableID uuid.UUID `json:"variableId"`
+	Path       string    `json:"path"`
+	IsSecret   bool      `json:"isSecret"`
 }
 
 type NewStepRunParams struct {
@@ -68,6 +76,7 @@ type NewStepRunParams struct {
 	ExecutionOrder int
 	TreeIndex      int
 	Position       domainstep.Position
+	VariableExtracts []VariableExtract
 }
 
 func NewStepRun(p NewStepRunParams) *StepRun {
@@ -88,16 +97,18 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 		Body:           normalizeAnyMap(p.Body),
 		Timeout:        p.Timeout,
 		RetryOnFailure: p.RetryOnFailure,
-		RetryCount:     p.RetryCount,
-		RetryDelay:     p.RetryDelay,
-		Index:          p.Index,
-		ExecutionOrder: p.ExecutionOrder,
-		TreeIndex:      p.TreeIndex,
-		Position:       p.Position,
-		Status:         StatusPending,
-		Attempt:        0,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		RetryCount:         p.RetryCount,
+		RetryDelay:         p.RetryDelay,
+		Index:              p.Index,
+		ExecutionOrder:     p.ExecutionOrder,
+		TreeIndex:          p.TreeIndex,
+		Position:           p.Position,
+		VariableExtracts:   append([]VariableExtract(nil), p.VariableExtracts...),
+		ExtractedVariables: map[string]any{},
+		Status:             StatusPending,
+		Attempt:            0,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 }
 
@@ -143,7 +154,7 @@ func (s *StepRun) CanRetry() bool {
 	return s.RetryOnFailure && s.Attempt < s.RetryCount
 }
 
-func (s *StepRun) MarkSucceeded(response ResponseSnapshot) error {
+func (s *StepRun) MarkSucceeded(response ResponseSnapshot, extracted map[string]any) error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
 	}
@@ -155,6 +166,10 @@ func (s *StepRun) MarkSucceeded(response ResponseSnapshot) error {
 	normalized := response.Normalized()
 	s.Status = StatusSuccess
 	s.ResponseSnapshot = &normalized
+	if extracted == nil {
+		extracted = map[string]any{}
+	}
+	s.ExtractedVariables = extracted
 	s.Error = ""
 	s.FinishedAt = &now
 	s.UpdatedAt = now
@@ -243,15 +258,16 @@ func (s *StepRun) startedEvent(at time.Time) StepRunStarted {
 
 func (s *StepRun) succeededEvent(at time.Time) StepRunSucceeded {
 	return StepRunSucceeded{
-		ID:               uuid.New().String(),
-		StepRunID:        s.ID.String(),
-		WorkflowRunID:    s.WorkflowRunID.String(),
-		StepID:           s.StepID.String(),
-		OrganizationID:   s.OrganizationID.String(),
-		Status:           string(s.Status),
-		Attempt:          s.Attempt,
-		ResponseSnapshot: s.ResponseSnapshot,
-		Timestamp:        at,
+		ID:                 uuid.New().String(),
+		StepRunID:          s.ID.String(),
+		WorkflowRunID:      s.WorkflowRunID.String(),
+		StepID:             s.StepID.String(),
+		OrganizationID:     s.OrganizationID.String(),
+		Status:             string(s.Status),
+		Attempt:            s.Attempt,
+		ResponseSnapshot:   s.ResponseSnapshot,
+		ExtractedVariables: s.ExtractedVariables,
+		Timestamp:          at,
 	}
 }
 

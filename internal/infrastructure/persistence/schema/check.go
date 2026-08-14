@@ -22,6 +22,7 @@ func Models() []any {
 		&write.WorkflowRunModel{},
 		&write.StepRunModel{},
 		&write.InsightModel{},
+		&write.VariableModel{},
 		&outbox.OutboxEvent{},
 		&processed.ProcessedEvent{},
 	}

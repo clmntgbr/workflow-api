@@ -8,6 +8,7 @@ import (
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
+	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +24,7 @@ type DeleteStepHandler struct {
 	stepReadRepo domainstep.StepReadRepository
 	connRepo     domainconnection.ConnectionWriteRepository
 	connReadRepo domainconnection.ConnectionReadRepository
+	variableRepo domainvariable.VariableWriteRepository
 	outbox       port.OutboxRepository
 }
 
@@ -31,6 +33,7 @@ func NewDeleteStepHandler(
 	stepReadRepo domainstep.StepReadRepository,
 	connRepo domainconnection.ConnectionWriteRepository,
 	connReadRepo domainconnection.ConnectionReadRepository,
+	variableRepo domainvariable.VariableWriteRepository,
 	outbox port.OutboxRepository,
 ) *DeleteStepHandler {
 	return &DeleteStepHandler{
@@ -38,6 +41,7 @@ func NewDeleteStepHandler(
 		stepReadRepo: stepReadRepo,
 		connRepo:     connRepo,
 		connReadRepo: connReadRepo,
+		variableRepo: variableRepo,
 		outbox:       outbox,
 	}
 }
@@ -118,6 +122,10 @@ func (h *DeleteStepHandler) Handle(ctx context.Context, cmd DeleteStepCommand) e
 			return errors.New("failed to delete step")
 		}
 		events = append(events, s.PullEvents()...)
+
+		if err := h.variableRepo.DeleteByStepID(txCtx, s.ID); err != nil {
+			return errors.New("failed to delete variables")
+		}
 
 		if err := h.stepRepo.UpdateOrdering(txCtx, ordering); err != nil {
 			return err

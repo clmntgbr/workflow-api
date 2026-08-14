@@ -10,6 +10,7 @@ import (
 	orgcmd "go-api/internal/application/command/organization"
 	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
+	variablecmd "go-api/internal/application/command/variable"
 	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryconn "go-api/internal/application/query/connection"
@@ -19,6 +20,7 @@ import (
 	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
 	queryuser "go-api/internal/application/query/user"
+	queryvariable "go-api/internal/application/query/variable"
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	infraClerk "go-api/internal/infrastructure/clerk"
@@ -43,6 +45,7 @@ type Container struct {
 	StepHandler            *httphandler.StepHandler
 	ConnectionHandler      *httphandler.ConnectionHandler
 	WorkflowRunHandler     *httphandler.WorkflowRunHandler
+	VariableHandler        *httphandler.VariableHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -68,6 +71,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
 	stepRunReadRepo := read.NewStepRunReadRepository(db)
 	insightReadRepo := read.NewInsightReadRepository(db)
+	variableWriteRepo := write.NewVariableWriteRepository(db)
+	variableReadRepo := read.NewVariableReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -123,7 +128,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		workflowReadRepo,
 		outboxRepo,
 	)
-	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
+	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, connReadRepo, variableReadRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
 		stepReadRepo,
@@ -135,10 +140,18 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		stepReadRepo,
 		connWriteRepo,
 		connReadRepo,
+		variableWriteRepo,
 		outboxRepo,
 	)
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
 	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
+
+	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, stepWriteRepo)
+	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo)
+	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo)
+	getVariableByIDHandler := queryvariable.NewGetVariableByIDHandler(variableReadRepo)
+	listVariablesByWorkflowHandler := queryvariable.NewListVariablesByWorkflowHandler(variableReadRepo)
+	listAvailableVariablesHandler := queryvariable.NewListAvailableVariablesHandler(variableReadRepo, connReadRepo)
 
 	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(
 		workflowWriteRepo,
@@ -214,6 +227,15 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			listStepRunsHandler,
 			listStepRunsByIDsHandler,
 			listInsightsByIDsHandler,
+			getWorkflowByIDHandler,
+		),
+		VariableHandler: httphandler.NewVariableHandler(
+			createVariableHandler,
+			updateVariableHandler,
+			deleteVariableHandler,
+			getVariableByIDHandler,
+			listVariablesByWorkflowHandler,
+			listAvailableVariablesHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),

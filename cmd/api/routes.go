@@ -33,6 +33,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupEndpointRoutes(api, container)
 	setupStepRoutes(api, container)
 	setupConnectionRoutes(api, container)
+	setupVariableRoutes(api, container)
 	setupWorkflowRunRoutes(api, container)
 	setupRealtimeRoutes(api, container)
 }
@@ -88,6 +89,16 @@ func setupConnectionRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows/:workflowId/connections", container.ConnectionHandler.Create)
 	api.Get("/workflows/:workflowId/connections", container.ConnectionHandler.ListByWorkflow)
 	api.Delete("/workflows/:workflowId/connections/:id", container.ConnectionHandler.Delete)
+}
+
+func setupVariableRoutes(api fiber.Router, container *di.Container) {
+	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Post("/workflows/:workflowId/variables", container.VariableHandler.Create)
+	api.Get("/workflows/:workflowId/variables", container.VariableHandler.List)
+	api.Get("/workflows/:workflowId/steps/:stepId/available-variables", container.VariableHandler.ListAvailable)
+	api.Get("/workflows/:workflowId/variables/:id", container.VariableHandler.GetByID)
+	api.Put("/workflows/:workflowId/variables/:id", container.VariableHandler.Update)
+	api.Delete("/workflows/:workflowId/variables/:id", container.VariableHandler.Delete)
 }
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {

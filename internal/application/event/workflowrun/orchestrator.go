@@ -2,6 +2,8 @@ package workflowrun
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"go-api/internal/application/messaging"
 	domainconnection "go-api/internal/domain/connection"
@@ -9,6 +11,7 @@ import (
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
+	domainvariable "go-api/internal/domain/variable"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
@@ -19,6 +22,8 @@ type Orchestrator struct {
 	stepRunRepo  domainsteprun.StepRunWriteRepository
 	stepReadRepo domainstep.StepReadRepository
 	connReadRepo domainconnection.ConnectionReadRepository
+	variableRepo domainvariable.VariableWriteRepository
+	variableRead domainvariable.VariableReadRepository
 	outbox       port.OutboxRepository
 }
 
@@ -27,6 +32,8 @@ func NewOrchestrator(
 	stepRunRepo domainsteprun.StepRunWriteRepository,
 	stepReadRepo domainstep.StepReadRepository,
 	connReadRepo domainconnection.ConnectionReadRepository,
+	variableRepo domainvariable.VariableWriteRepository,
+	variableRead domainvariable.VariableReadRepository,
 	outbox port.OutboxRepository,
 ) *Orchestrator {
 	return &Orchestrator{
@@ -34,6 +41,8 @@ func NewOrchestrator(
 		stepRunRepo:  stepRunRepo,
 		stepReadRepo: stepReadRepo,
 		connReadRepo: connReadRepo,
+		variableRepo: variableRepo,
+		variableRead: variableRead,
 		outbox:       outbox,
 	}
 }
@@ -53,29 +62,71 @@ func (h *Orchestrator) loadGraph(
 	return steps, connections, nil
 }
 
-func newStepRunFromStep(workflowRunID uuid.UUID, step domainstep.StepView) *domainsteprun.StepRun {
-	return domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
-		WorkflowRunID:  workflowRunID,
-		StepID:         step.ID,
-		WorkflowID:     step.WorkflowID,
-		EndpointID:     step.EndpointID,
-		OrganizationID: step.OrganizationID,
-		Name:           step.Name,
-		Description:    step.Description,
-		URL:            step.URL,
-		Method:         step.Method,
-		Headers:        step.Headers,
-		Query:          step.Query,
-		Body:           step.Body,
-		Timeout:        step.Timeout,
-		RetryOnFailure: step.RetryOnFailure,
-		RetryCount:     step.RetryCount,
-		RetryDelay:     step.RetryDelay,
-		Index:          step.Index,
-		ExecutionOrder: step.ExecutionOrder,
-		TreeIndex:      step.TreeIndex,
-		Position:       step.Position,
+func (h *Orchestrator) buildStepRun(
+	ctx context.Context,
+	run *domainworkflowrun.WorkflowRun,
+	step domainstep.StepView,
+) (*domainsteprun.StepRun, error) {
+	variables, err := h.variableRead.FindByStepID(ctx, step.ID)
+	if err != nil {
+		return nil, err
+	}
+	extracts := make([]domainsteprun.VariableExtract, 0, len(variables))
+	for _, variable := range variables {
+		extracts = append(extracts, domainsteprun.VariableExtract{
+			VariableID: variable.ID,
+			Path:       variable.Path,
+			IsSecret:   variable.IsSecret,
+		})
+	}
+
+	resolvedURL, resolvedHeaders, resolvedQuery, resolvedBody, resolveErr := domainvariable.ResolveTemplates(
+		step.URL,
+		step.Headers,
+		step.Query,
+		step.Body,
+		run.Context,
+	)
+
+	stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
+		WorkflowRunID:    run.ID,
+		StepID:           step.ID,
+		WorkflowID:       step.WorkflowID,
+		EndpointID:       step.EndpointID,
+		OrganizationID:   step.OrganizationID,
+		Name:             step.Name,
+		Description:      step.Description,
+		URL:              step.URL,
+		Method:           step.Method,
+		Headers:          step.Headers,
+		Query:            step.Query,
+		Body:             step.Body,
+		Timeout:          step.Timeout,
+		RetryOnFailure:   step.RetryOnFailure,
+		RetryCount:       step.RetryCount,
+		RetryDelay:       step.RetryDelay,
+		Index:            step.Index,
+		ExecutionOrder:   step.ExecutionOrder,
+		TreeIndex:        step.TreeIndex,
+		Position:         step.Position,
+		VariableExtracts: extracts,
 	})
+
+	var missing domainvariable.MissingVariableError
+	if resolveErr != nil {
+		if errors.As(resolveErr, &missing) {
+			_ = stepRun.MarkFailed(fmt.Sprintf("variable %s not found", missing.VariableID), nil)
+			return stepRun, nil
+		}
+		return nil, resolveErr
+	}
+
+	stepRun.URL = resolvedURL
+	stepRun.Headers = resolvedHeaders
+	stepRun.Query = resolvedQuery
+	stepRun.Body = resolvedBody
+	stepRun.Queue()
+	return stepRun, nil
 }
 
 func stepRunsByStepID(runs []*domainsteprun.StepRun) map[uuid.UUID]*domainsteprun.StepRun {

@@ -9,6 +9,7 @@ import (
 	domainconnection "go-api/internal/domain/connection"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
+	domainvariable "go-api/internal/domain/variable"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
@@ -74,8 +75,10 @@ func (h *Orchestrator) OnStarted(ctx context.Context, payload []byte) error {
 			if _, ok := existingByStep[step.ID]; ok {
 				continue
 			}
-			stepRun := newStepRunFromStep(run.ID, step)
-			stepRun.Queue()
+			stepRun, err := h.buildStepRun(txCtx, run, step)
+			if err != nil {
+				return err
+			}
 			if err := h.stepRunRepo.Save(txCtx, stepRun); err != nil {
 				return err
 			}
@@ -112,8 +115,12 @@ func (h *Orchestrator) OnSucceeded(ctx context.Context, payload []byte) error {
 	if err != nil {
 		return messaging.NonRetryable(err)
 	}
+	stepRunID, err := uuid.Parse(evt.StepRunID)
+	if err != nil {
+		return messaging.NonRetryable(err)
+	}
 
-	return h.advanceAfterStep(ctx, workflowRunID, stepID)
+	return h.advanceAfterStep(ctx, workflowRunID, stepID, stepRunID, evt.ExtractedVariables)
 }
 
 func (h *Orchestrator) OnFailed(ctx context.Context, payload []byte) error {
@@ -131,13 +138,15 @@ func (h *Orchestrator) OnFailed(ctx context.Context, payload []byte) error {
 		return messaging.NonRetryable(err)
 	}
 
-	return h.advanceAfterStep(ctx, workflowRunID, stepID)
+	return h.advanceAfterStep(ctx, workflowRunID, stepID, uuid.Nil, nil)
 }
 
 func (h *Orchestrator) advanceAfterStep(
 	ctx context.Context,
 	workflowRunID uuid.UUID,
 	completedStepID uuid.UUID,
+	completedStepRunID uuid.UUID,
+	extractedVariables map[string]any,
 ) error {
 	run, err := h.runRepo.GetByID(ctx, workflowRunID)
 	if err != nil {
@@ -163,6 +172,16 @@ func (h *Orchestrator) advanceAfterStep(
 	stepsByID := stepByID(steps)
 
 	err = h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if len(extractedVariables) > 0 {
+			run.MergeContext(extractedVariables)
+			if err := h.runRepo.Update(txCtx, run); err != nil {
+				return err
+			}
+			if err := h.updateVariableLastValues(txCtx, extractedVariables); err != nil {
+				return err
+			}
+		}
+
 		changed := make([]*domainsteprun.StepRun, 0)
 
 		for _, targetID := range outgoingIDs(completedStepID, connections) {
@@ -176,15 +195,17 @@ func (h *Orchestrator) advanceAfterStep(
 
 			switch {
 			case canEnqueue(targetID, connections, runsByStep):
-				stepRun := newStepRunFromStep(run.ID, target)
-				stepRun.Queue()
+				stepRun, err := h.buildStepRun(txCtx, run, target)
+				if err != nil {
+					return err
+				}
 				if err := h.stepRunRepo.Save(txCtx, stepRun); err != nil {
 					return err
 				}
 				runsByStep[targetID] = stepRun
 				changed = append(changed, stepRun)
 			case shouldSkip(targetID, connections, runsByStep):
-				skipped, err := h.skipBranch(txCtx, run.ID, target, stepsByID, connections, runsByStep)
+				skipped, err := h.skipBranch(txCtx, run, target, stepsByID, connections, runsByStep)
 				if err != nil {
 					return err
 				}
@@ -202,12 +223,38 @@ func (h *Orchestrator) advanceAfterStep(
 	if err != nil {
 		return messaging.Retryable(err)
 	}
+	_ = completedStepRunID
+	return nil
+}
+
+func (h *Orchestrator) updateVariableLastValues(ctx context.Context, extracted map[string]any) error {
+	for rawID, value := range extracted {
+		id, err := uuid.Parse(rawID)
+		if err != nil {
+			continue
+		}
+		variable, err := h.variableRepo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if variable == nil || variable.IsSecret {
+			continue
+		}
+		raw, err := domainvariable.ToRawMessage(value)
+		if err != nil {
+			return err
+		}
+		variable.SetLastValue(raw)
+		if err := h.variableRepo.Update(ctx, variable); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (h *Orchestrator) skipBranch(
 	ctx context.Context,
-	workflowRunID uuid.UUID,
+	run *domainworkflowrun.WorkflowRun,
 	step domainstep.StepView,
 	stepsByID map[uuid.UUID]domainstep.StepView,
 	connections []domainconnection.ConnectionView,
@@ -226,7 +273,28 @@ func (h *Orchestrator) skipBranch(
 			continue
 		}
 
-		stepRun := newStepRunFromStep(workflowRunID, current)
+		stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
+			WorkflowRunID:  run.ID,
+			StepID:         current.ID,
+			WorkflowID:     current.WorkflowID,
+			EndpointID:     current.EndpointID,
+			OrganizationID: current.OrganizationID,
+			Name:           current.Name,
+			Description:    current.Description,
+			URL:            current.URL,
+			Method:         current.Method,
+			Headers:        current.Headers,
+			Query:          current.Query,
+			Body:           current.Body,
+			Timeout:        current.Timeout,
+			RetryOnFailure: current.RetryOnFailure,
+			RetryCount:     current.RetryCount,
+			RetryDelay:     current.RetryDelay,
+			Index:          current.Index,
+			ExecutionOrder: current.ExecutionOrder,
+			TreeIndex:      current.TreeIndex,
+			Position:       current.Position,
+		})
 		if err := stepRun.MarkSkipped(); err != nil {
 			return nil, err
 		}

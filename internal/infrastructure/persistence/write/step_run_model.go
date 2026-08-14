@@ -12,36 +12,38 @@ import (
 )
 
 type StepRunModel struct {
-	ID               uuid.UUID    `gorm:"column:id;primaryKey"`
-	WorkflowRunID    uuid.UUID    `gorm:"column:workflow_run_id"`
-	StepID           uuid.UUID    `gorm:"column:step_id"`
-	WorkflowID       uuid.UUID    `gorm:"column:workflow_id"`
-	EndpointID       uuid.UUID    `gorm:"column:endpoint_id"`
-	OrganizationID   uuid.UUID    `gorm:"column:organization_id"`
-	Name             string       `gorm:"column:name"`
-	Description      string       `gorm:"column:description"`
-	URL              string       `gorm:"column:url"`
-	Method           string       `gorm:"column:method"`
-	Headers          dbtype.JSONB `gorm:"column:headers"`
-	QueryParams      dbtype.JSONB `gorm:"column:query_params"`
-	Body             dbtype.JSONB `gorm:"column:body"`
-	Timeout          int          `gorm:"column:timeout_ms"`
-	RetryOnFailure   bool         `gorm:"column:retry_on_failure"`
-	RetryCount       int          `gorm:"column:retry_count"`
-	RetryDelay       int          `gorm:"column:retry_delay_ms"`
-	StepIndex        string       `gorm:"column:step_index"`
-	ExecutionOrder   int          `gorm:"column:execution_order"`
-	TreeIndex        int          `gorm:"column:tree_index"`
-	PositionX        float64      `gorm:"column:position_x"`
-	PositionY        float64      `gorm:"column:position_y"`
-	Status           string       `gorm:"column:status"`
-	Attempt          int          `gorm:"column:attempt"`
-	ResponseSnapshot dbtype.JSONB `gorm:"column:response_snapshot"`
-	StartedAt        *time.Time   `gorm:"column:started_at"`
-	FinishedAt       *time.Time   `gorm:"column:finished_at"`
-	Error            string       `gorm:"column:error"`
-	CreatedAt        time.Time    `gorm:"column:created_at"`
-	UpdatedAt        time.Time    `gorm:"column:updated_at"`
+	ID                 uuid.UUID    `gorm:"column:id;primaryKey"`
+	WorkflowRunID      uuid.UUID    `gorm:"column:workflow_run_id"`
+	StepID             uuid.UUID    `gorm:"column:step_id"`
+	WorkflowID         uuid.UUID    `gorm:"column:workflow_id"`
+	EndpointID         uuid.UUID    `gorm:"column:endpoint_id"`
+	OrganizationID     uuid.UUID    `gorm:"column:organization_id"`
+	Name               string       `gorm:"column:name"`
+	Description        string       `gorm:"column:description"`
+	URL                string       `gorm:"column:url"`
+	Method             string       `gorm:"column:method"`
+	Headers            dbtype.JSONB `gorm:"column:headers"`
+	QueryParams        dbtype.JSONB `gorm:"column:query_params"`
+	Body               dbtype.JSONB `gorm:"column:body"`
+	Timeout            int          `gorm:"column:timeout_ms"`
+	RetryOnFailure     bool         `gorm:"column:retry_on_failure"`
+	RetryCount         int          `gorm:"column:retry_count"`
+	RetryDelay         int          `gorm:"column:retry_delay_ms"`
+	StepIndex          string       `gorm:"column:step_index"`
+	ExecutionOrder     int          `gorm:"column:execution_order"`
+	TreeIndex          int          `gorm:"column:tree_index"`
+	PositionX          float64      `gorm:"column:position_x"`
+	PositionY          float64      `gorm:"column:position_y"`
+	Status             string       `gorm:"column:status"`
+	Attempt            int          `gorm:"column:attempt"`
+	VariableExtracts   dbtype.JSONB `gorm:"column:variable_extracts"`
+	ResponseSnapshot   dbtype.JSONB `gorm:"column:response_snapshot"`
+	ExtractedVariables dbtype.JSONB `gorm:"column:extracted_variables"`
+	StartedAt          *time.Time   `gorm:"column:started_at"`
+	FinishedAt         *time.Time   `gorm:"column:finished_at"`
+	Error              string       `gorm:"column:error"`
+	CreatedAt          time.Time    `gorm:"column:created_at"`
+	UpdatedAt          time.Time    `gorm:"column:updated_at"`
 }
 
 func (StepRunModel) TableName() string {
@@ -85,37 +87,57 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		responseRaw = dbtype.JSONB(encoded)
 	}
 
+	extracts := s.VariableExtracts
+	if extracts == nil {
+		extracts = []domainsteprun.VariableExtract{}
+	}
+	extractsRaw, err := json.Marshal(extracts)
+	if err != nil {
+		return nil, err
+	}
+
+	extracted := s.ExtractedVariables
+	if extracted == nil {
+		extracted = map[string]any{}
+	}
+	extractedRaw, err := json.Marshal(extracted)
+	if err != nil {
+		return nil, err
+	}
+
 	return &StepRunModel{
-		ID:               s.ID,
-		WorkflowRunID:    s.WorkflowRunID,
-		StepID:           s.StepID,
-		WorkflowID:       s.WorkflowID,
-		EndpointID:       s.EndpointID,
-		OrganizationID:   s.OrganizationID,
-		Name:             s.Name,
-		Description:      s.Description,
-		URL:              s.URL,
-		Method:           s.Method,
-		Headers:          dbtype.JSONB(headersRaw),
-		QueryParams:      dbtype.JSONB(queryRaw),
-		Body:             dbtype.JSONB(bodyRaw),
-		Timeout:          s.Timeout,
-		RetryOnFailure:   s.RetryOnFailure,
-		RetryCount:       s.RetryCount,
-		RetryDelay:       s.RetryDelay,
-		StepIndex:        s.Index,
-		ExecutionOrder:   s.ExecutionOrder,
-		TreeIndex:        s.TreeIndex,
-		PositionX:        s.Position.X,
-		PositionY:        s.Position.Y,
-		Status:           string(s.Status),
-		Attempt:          s.Attempt,
-		ResponseSnapshot: responseRaw,
-		StartedAt:        s.StartedAt,
-		FinishedAt:       s.FinishedAt,
-		Error:            s.Error,
-		CreatedAt:        s.CreatedAt,
-		UpdatedAt:        s.UpdatedAt,
+		ID:                 s.ID,
+		WorkflowRunID:      s.WorkflowRunID,
+		StepID:             s.StepID,
+		WorkflowID:         s.WorkflowID,
+		EndpointID:         s.EndpointID,
+		OrganizationID:     s.OrganizationID,
+		Name:               s.Name,
+		Description:        s.Description,
+		URL:                s.URL,
+		Method:             s.Method,
+		Headers:            dbtype.JSONB(headersRaw),
+		QueryParams:        dbtype.JSONB(queryRaw),
+		Body:               dbtype.JSONB(bodyRaw),
+		Timeout:            s.Timeout,
+		RetryOnFailure:     s.RetryOnFailure,
+		RetryCount:         s.RetryCount,
+		RetryDelay:         s.RetryDelay,
+		StepIndex:          s.Index,
+		ExecutionOrder:     s.ExecutionOrder,
+		TreeIndex:          s.TreeIndex,
+		PositionX:          s.Position.X,
+		PositionY:          s.Position.Y,
+		Status:             string(s.Status),
+		Attempt:            s.Attempt,
+		VariableExtracts:   dbtype.JSONB(extractsRaw),
+		ResponseSnapshot:   responseRaw,
+		ExtractedVariables: dbtype.JSONB(extractedRaw),
+		StartedAt:          s.StartedAt,
+		FinishedAt:         s.FinishedAt,
+		Error:              s.Error,
+		CreatedAt:          s.CreatedAt,
+		UpdatedAt:          s.UpdatedAt,
 	}, nil
 }
 
@@ -150,6 +172,20 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		response = &snapshot
 	}
 
+	extracts := []domainsteprun.VariableExtract{}
+	if len(m.VariableExtracts) > 0 {
+		if err := json.Unmarshal(m.VariableExtracts, &extracts); err != nil {
+			return nil, err
+		}
+	}
+
+	extracted := map[string]any{}
+	if len(m.ExtractedVariables) > 0 {
+		if err := json.Unmarshal(m.ExtractedVariables, &extracted); err != nil {
+			return nil, err
+		}
+	}
+
 	return &domainsteprun.StepRun{
 		ID:             m.ID,
 		WorkflowRunID:  m.WorkflowRunID,
@@ -175,13 +211,15 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 			X: m.PositionX,
 			Y: m.PositionY,
 		},
-		Status:           domainsteprun.Status(m.Status),
-		Attempt:          m.Attempt,
-		ResponseSnapshot: response,
-		StartedAt:        m.StartedAt,
-		FinishedAt:       m.FinishedAt,
-		Error:            m.Error,
-		CreatedAt:        m.CreatedAt,
-		UpdatedAt:        m.UpdatedAt,
+		Status:             domainsteprun.Status(m.Status),
+		Attempt:            m.Attempt,
+		VariableExtracts:   extracts,
+		ResponseSnapshot:   response,
+		ExtractedVariables: extracted,
+		StartedAt:          m.StartedAt,
+		FinishedAt:         m.FinishedAt,
+		Error:              m.Error,
+		CreatedAt:          m.CreatedAt,
+		UpdatedAt:          m.UpdatedAt,
 	}, nil
 }

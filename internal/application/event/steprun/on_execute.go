@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainsteprun "go-api/internal/domain/steprun"
+	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
 )
@@ -143,6 +145,13 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 				Body:    response.Body,
 			}
 			snapshot = &s
+
+			// Transport OK is not enough: non-2xx responses fail the step run.
+			if response.Status < 200 || response.Status >= 300 {
+				execErr = fmt.Errorf("HTTP %d", response.Status)
+				errMsg = execErr.Error()
+				errType = "http_status"
+			}
 		} else {
 			errMsg = execErr.Error()
 			errType = timing.ErrorType
@@ -166,9 +175,11 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 		}
 
 		if execErr == nil {
+			extracted := extractVariables(run.VariableExtracts, response.Body)
 			_, err = h.succeed.Handle(ctx, stepruncmd.SucceedStepRunCommand{
-				StepRunID: stepRunID,
-				Response:  *snapshot,
+				StepRunID:          stepRunID,
+				Response:           *snapshot,
+				ExtractedVariables: extracted,
 			})
 			if err != nil {
 				return messaging.Retryable(err)
@@ -260,6 +271,18 @@ func (h *ExecuteHandler) saveInsight(
 		ErrorType:         errType,
 	})
 	return err
+}
+
+func extractVariables(extracts []domainsteprun.VariableExtract, body any) map[string]any {
+	out := map[string]any{}
+	for _, extract := range extracts {
+		value, err := domainvariable.ExtractByPath(body, extract.Path)
+		if err != nil {
+			continue
+		}
+		out[extract.VariableID.String()] = value
+	}
+	return out
 }
 
 func timeoutDuration(timeoutMS int) time.Duration {

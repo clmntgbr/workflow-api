@@ -11,8 +11,9 @@ import (
 )
 
 type SucceedStepRunCommand struct {
-	StepRunID uuid.UUID
-	Response  domainsteprun.ResponseSnapshot
+	StepRunID          uuid.UUID
+	Response           domainsteprun.ResponseSnapshot
+	ExtractedVariables map[string]any
 }
 
 type SucceedStepRunHandler struct {
@@ -43,7 +44,7 @@ func (h *SucceedStepRunHandler) Handle(ctx context.Context, cmd SucceedStepRunCo
 		return run, nil
 	}
 
-	if err := run.MarkSucceeded(cmd.Response); err != nil {
+	if err := run.MarkSucceeded(cmd.Response, cmd.ExtractedVariables); err != nil {
 		return nil, err
 	}
 

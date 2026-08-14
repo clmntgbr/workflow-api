@@ -10,36 +10,37 @@ import (
 )
 
 type StepRunResponse struct {
-	ID               string                          `json:"id"`
-	WorkflowRunID    string                          `json:"workflowRunId"`
-	StepID           string                          `json:"stepId"`
-	WorkflowID       string                          `json:"workflowId"`
-	EndpointID       string                          `json:"endpointId"`
-	OrganizationID   string                          `json:"organizationId"`
-	Name             string                          `json:"name"`
-	Description      *string                         `json:"description"`
-	URL              string                          `json:"url"`
-	Method           string                          `json:"method"`
-	Headers          map[string]string               `json:"headers"`
-	Query            map[string]string               `json:"query"`
-	Body             map[string]any                  `json:"body"`
-	Timeout          int                             `json:"timeout"`
-	RetryOnFailure   bool                            `json:"retryOnFailure"`
-	RetryCount       int                             `json:"retryCount"`
-	RetryDelay       int                             `json:"retryDelay"`
-	Index            string                          `json:"index"`
-	ExecutionOrder   int                             `json:"executionOrder"`
-	TreeIndex        int                             `json:"treeIndex"`
-	Position         StepPositionResponse            `json:"position"`
-	Status           string                          `json:"status"`
-	Attempt          int                             `json:"attempt"`
-	ResponseSnapshot *domainsteprun.ResponseSnapshot `json:"responseSnapshot"`
-	Insights         []InsightResponse               `json:"insights,omitempty"`
-	StartedAt        *time.Time                      `json:"startedAt"`
-	FinishedAt       *time.Time                      `json:"finishedAt"`
-	Error            *string                         `json:"error"`
-	CreatedAt        time.Time                       `json:"createdAt"`
-	UpdatedAt        time.Time                       `json:"updatedAt"`
+	ID                 string                          `json:"id"`
+	WorkflowRunID      string                          `json:"workflowRunId"`
+	StepID             string                          `json:"stepId"`
+	WorkflowID         string                          `json:"workflowId"`
+	EndpointID         string                          `json:"endpointId"`
+	OrganizationID     string                          `json:"organizationId"`
+	Name               string                          `json:"name"`
+	Description        *string                         `json:"description"`
+	URL                string                          `json:"url"`
+	Method             string                          `json:"method"`
+	Headers            map[string]string               `json:"headers"`
+	Query              map[string]string               `json:"query"`
+	Body               map[string]any                  `json:"body"`
+	Timeout            int                             `json:"timeout"`
+	RetryOnFailure     bool                            `json:"retryOnFailure"`
+	RetryCount         int                             `json:"retryCount"`
+	RetryDelay         int                             `json:"retryDelay"`
+	Index              string                          `json:"index"`
+	ExecutionOrder     int                             `json:"executionOrder"`
+	TreeIndex          int                             `json:"treeIndex"`
+	Position           StepPositionResponse            `json:"position"`
+	Status             string                          `json:"status"`
+	Attempt            int                             `json:"attempt"`
+	ResponseSnapshot   *domainsteprun.ResponseSnapshot `json:"responseSnapshot"`
+	ExtractedVariables map[string]any                  `json:"extractedVariables"`
+	Insights           []InsightResponse               `json:"insights,omitempty"`
+	StartedAt          *time.Time                      `json:"startedAt"`
+	FinishedAt         *time.Time                      `json:"finishedAt"`
+	Error              *string                         `json:"error"`
+	CreatedAt          time.Time                       `json:"createdAt"`
+	UpdatedAt          time.Time                       `json:"updatedAt"`
 }
 
 func NewStepRunResponseFromView(
@@ -71,16 +72,64 @@ func NewStepRunResponseFromView(
 			X: view.Position.X,
 			Y: view.Position.Y,
 		},
-		Status:           string(view.Status),
-		Attempt:          view.Attempt,
-		ResponseSnapshot: view.ResponseSnapshot,
-		Insights:         NewInsightListResponseFromViews(insights),
-		StartedAt:        view.StartedAt,
-		FinishedAt:       view.FinishedAt,
-		Error:            optionalNonEmptyString(view.Error),
-		CreatedAt:        view.CreatedAt,
-		UpdatedAt:        view.UpdatedAt,
+		Status:             string(view.Status),
+		Attempt:            view.Attempt,
+		ResponseSnapshot:   view.ResponseSnapshot,
+		ExtractedVariables: maskExtractedVariables(view.ExtractedVariables, view.VariableExtracts),
+		Insights:           NewInsightListResponseFromViews(insights),
+		StartedAt:          view.StartedAt,
+		FinishedAt:         view.FinishedAt,
+		Error:              optionalNonEmptyString(view.Error),
+		CreatedAt:          view.CreatedAt,
+		UpdatedAt:          view.UpdatedAt,
 	}
+}
+
+func maskExtractedVariables(
+	values map[string]any,
+	extracts []domainsteprun.VariableExtract,
+) map[string]any {
+	if values == nil {
+		return map[string]any{}
+	}
+	secretIDs := map[string]struct{}{}
+	for _, extract := range extracts {
+		if extract.IsSecret {
+			secretIDs[extract.VariableID.String()] = struct{}{}
+		}
+	}
+	out := make(map[string]any, len(values))
+	for key, value := range values {
+		if _, ok := secretIDs[key]; ok {
+			out[key] = "***"
+			continue
+		}
+		out[key] = value
+	}
+	return out
+}
+
+func MaskSecretContext(context map[string]any, stepRuns []domainsteprun.StepRunView) map[string]any {
+	if context == nil {
+		return map[string]any{}
+	}
+	secretIDs := map[string]struct{}{}
+	for _, stepRun := range stepRuns {
+		for _, extract := range stepRun.VariableExtracts {
+			if extract.IsSecret {
+				secretIDs[extract.VariableID.String()] = struct{}{}
+			}
+		}
+	}
+	out := make(map[string]any, len(context))
+	for key, value := range context {
+		if _, ok := secretIDs[key]; ok {
+			out[key] = "***"
+			continue
+		}
+		out[key] = value
+	}
+	return out
 }
 
 func NewStepRunListResponseFromViews(

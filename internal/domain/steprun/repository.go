@@ -45,12 +45,14 @@ type StepRunView struct {
 	ExecutionOrder   int
 	TreeIndex        int
 	Position         domainstep.Position
-	Status           Status
-	Attempt          int
-	ResponseSnapshot *ResponseSnapshot
-	StartedAt        *time.Time
-	FinishedAt       *time.Time
-	Error            string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	Status             Status
+	Attempt            int
+	VariableExtracts   []VariableExtract
+	ResponseSnapshot   *ResponseSnapshot
+	ExtractedVariables map[string]any
+	StartedAt          *time.Time
+	FinishedAt         *time.Time
+	Error              string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }

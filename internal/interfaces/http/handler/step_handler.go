@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"strings"
 
 	stepcmd "go-api/internal/application/command/step"
 	querystep "go-api/internal/application/query/step"
 	queryworkflow "go-api/internal/application/query/workflow"
 	domainstep "go-api/internal/domain/step"
+	domainvariable "go-api/internal/domain/variable"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
@@ -213,6 +215,9 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 	if err != nil {
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+		}
+		if errors.Is(err, domainvariable.ErrInvalidRef) || errors.Is(err, domainvariable.ErrNotAncestor) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update step"})
 	}
