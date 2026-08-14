@@ -75,6 +75,7 @@ func (h *Orchestrator) buildStepRun(
 	for _, variable := range variables {
 		extracts = append(extracts, domainsteprun.VariableExtract{
 			VariableID: variable.ID,
+			Key:        variable.Key,
 			Path:       variable.Path,
 		})
 	}
@@ -114,7 +115,7 @@ func (h *Orchestrator) buildStepRun(
 	var missing domainvariable.MissingVariableError
 	if resolveErr != nil {
 		if errors.As(resolveErr, &missing) {
-			_ = stepRun.MarkFailed(fmt.Sprintf("variable %s not found", missing.VariableID), nil)
+			_ = stepRun.MarkFailed(fmt.Sprintf("variable %s not found", missing.Key), nil)
 			return stepRun, nil
 		}
 		return nil, resolveErr

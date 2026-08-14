@@ -101,6 +101,18 @@ func toVariableViews(rows []variableRow) []domainvariable.VariableView {
 	return out
 }
 
+func (r *variableReadRepository) FindByWorkflowAndKey(ctx context.Context, workflowID uuid.UUID, key string) (*domainvariable.VariableView, error) {
+	var row variableRow
+	if err := r.db.WithContext(ctx).Where("workflow_id = ? AND key = ?", workflowID, key).First(&row).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	view := toVariableView(row)
+	return &view, nil
+}
+
 func toVariableView(row variableRow) domainvariable.VariableView {
 	return domainvariable.VariableView{
 		ID:         row.ID,

@@ -22,15 +22,17 @@ type CreateVariableCommand struct {
 }
 
 type CreateVariableHandler struct {
-	variableRepo domainvariable.VariableWriteRepository
-	stepRepo     domainstep.StepWriteRepository
+	variableRepo      domainvariable.VariableWriteRepository
+	variableReadRepo  domainvariable.VariableReadRepository
+	stepRepo          domainstep.StepWriteRepository
 }
 
 func NewCreateVariableHandler(
 	variableRepo domainvariable.VariableWriteRepository,
+	variableReadRepo domainvariable.VariableReadRepository,
 	stepRepo domainstep.StepWriteRepository,
 ) *CreateVariableHandler {
-	return &CreateVariableHandler{variableRepo: variableRepo, stepRepo: stepRepo}
+	return &CreateVariableHandler{variableRepo: variableRepo, variableReadRepo: variableReadRepo, stepRepo: stepRepo}
 }
 
 func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCommand) (*domainvariable.Variable, error) {
@@ -49,6 +51,14 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		return nil, errors.New("step not found")
 	}
 
+	existing, err := h.variableReadRepo.FindByWorkflowAndKey(ctx, cmd.WorkflowID, strings.TrimSpace(cmd.Key))
+	if err != nil {
+		return nil, errors.New("failed to check existing variable")
+	}
+	if existing != nil {
+		return nil, errors.New("variable key already exists in this workflow")
+	}
+
 	variable := domainvariable.NewVariable(domainvariable.NewVariableParams{
 		Name:        strings.TrimSpace(cmd.Name),
 		Key:         strings.TrimSpace(cmd.Key),
@@ -59,9 +69,6 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 	})
 
 	if err := h.variableRepo.Save(ctx, variable); err != nil {
-		if errors.Is(err, domainvariable.ErrDuplicateKey) {
-			return nil, err
-		}
 		return nil, errors.New("failed to create variable")
 	}
 	return variable, nil

@@ -280,7 +280,7 @@ func extractVariables(extracts []domainsteprun.VariableExtract, body any) map[st
 		if err != nil {
 			continue
 		}
-		out[extract.VariableID.String()] = value
+		out[extract.Key] = value
 	}
 	return out
 }

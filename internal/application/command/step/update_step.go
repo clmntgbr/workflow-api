@@ -107,18 +107,18 @@ func (h *UpdateStepHandler) Handle(
 }
 
 func (h *UpdateStepHandler) validateVariableReferences(ctx context.Context, cmd UpdateStepCommand) error {
-	refs := domainvariable.CollectReferencedIDs(cmd.URL, cmd.Headers, cmd.Query, cmd.Body)
-	if len(refs) == 0 {
+	keys := domainvariable.CollectReferencedKeys(cmd.URL, cmd.Headers, cmd.Query, cmd.Body)
+	if len(keys) == 0 {
 		return nil
 	}
 
-	views, err := h.variableRead.FindByIDs(ctx, refs)
+	variables, err := h.variableRead.FindByWorkflowID(ctx, cmd.WorkflowID)
 	if err != nil {
 		return errors.New("failed to validate variables")
 	}
-	byID := make(map[uuid.UUID]domainvariable.VariableView, len(views))
-	for _, view := range views {
-		byID[view.ID] = view
+	byKey := make(map[string]domainvariable.VariableView, len(variables))
+	for _, variable := range variables {
+		byKey[variable.Key] = variable
 	}
 
 	connections, err := h.connReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
@@ -133,7 +133,7 @@ func (h *UpdateStepHandler) validateVariableReferences(ctx context.Context, cmd 
 		})
 	}
 
-	if err := domainvariable.ValidateReferences(cmd.ID, refs, byID, edges); err != nil {
+	if err := domainvariable.ValidateReferences(cmd.ID, keys, byKey, edges); err != nil {
 		return err
 	}
 	return nil

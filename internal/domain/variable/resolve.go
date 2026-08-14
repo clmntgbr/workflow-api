@@ -5,80 +5,70 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
-var placeholderPattern = regexp.MustCompile(`\{\{([0-9a-fA-F-]{36})\}\}`)
+var placeholderPattern = regexp.MustCompile(`\{\{([a-zA-Z0-9_-]+)\}\}`)
 
 type MissingVariableError struct {
-	VariableID uuid.UUID
+	Key string
 }
 
 func (e MissingVariableError) Error() string {
-	return fmt.Sprintf("variable %s not found", e.VariableID)
+	return fmt.Sprintf("variable %s not found", e.Key)
 }
 
-func CollectReferencedIDs(
+func CollectReferencedKeys(
 	url string,
 	headers map[string]string,
 	query map[string]string,
 	body map[string]any,
-) []uuid.UUID {
-	seen := map[uuid.UUID]struct{}{}
-	add := func(id uuid.UUID) {
-		if id == uuid.Nil {
+) []string {
+	seen := map[string]struct{}{}
+	add := func(key string) {
+		if key == "" {
 			return
 		}
-		seen[id] = struct{}{}
+		seen[key] = struct{}{}
 	}
 
 	for _, match := range placeholderPattern.FindAllStringSubmatch(url, -1) {
-		if id, err := uuid.Parse(match[1]); err == nil {
-			add(id)
-		}
+		add(match[1])
 	}
 	for _, value := range headers {
 		for _, match := range placeholderPattern.FindAllStringSubmatch(value, -1) {
-			if id, err := uuid.Parse(match[1]); err == nil {
-				add(id)
-			}
+			add(match[1])
 		}
 	}
 	for _, value := range query {
 		for _, match := range placeholderPattern.FindAllStringSubmatch(value, -1) {
-			if id, err := uuid.Parse(match[1]); err == nil {
-				add(id)
-			}
+			add(match[1])
 		}
 	}
-	collectBodyRefs(body, add)
+	collectBodyRefsKey(body, add)
 
-	out := make([]uuid.UUID, 0, len(seen))
-	for id := range seen {
-		out = append(out, id)
+	out := make([]string, 0, len(seen))
+	for key := range seen {
+		out = append(out, key)
 	}
 	return out
 }
 
-func collectBodyRefs(value any, add func(uuid.UUID)) {
+func collectBodyRefsKey(value any, add func(string)) {
 	switch typed := value.(type) {
 	case map[string]any:
 		if raw, ok := typed["$var"]; ok && len(typed) == 1 {
-			switch idRaw := raw.(type) {
+			switch keyRaw := raw.(type) {
 			case string:
-				if id, err := uuid.Parse(idRaw); err == nil {
-					add(id)
-				}
+				add(keyRaw)
 			}
 			return
 		}
 		for _, child := range typed {
-			collectBodyRefs(child, add)
+			collectBodyRefsKey(child, add)
 		}
 	case []any:
 		for _, child := range typed {
-			collectBodyRefs(child, add)
+			collectBodyRefsKey(child, add)
 		}
 	}
 }
@@ -124,14 +114,10 @@ func ResolveTemplates(
 func resolveString(input string, context map[string]any) (string, error) {
 	var missing *MissingVariableError
 	out := placeholderPattern.ReplaceAllStringFunc(input, func(match string) string {
-		idStr := strings.TrimSuffix(strings.TrimPrefix(match, "{{"), "}}")
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			return match
-		}
-		value, ok := context[id.String()]
+		key := strings.TrimSuffix(strings.TrimPrefix(match, "{{"), "}}")
+		value, ok := context[key]
 		if !ok {
-			missing = &MissingVariableError{VariableID: id}
+			missing = &MissingVariableError{Key: key}
 			return match
 		}
 		return stringifyValue(value)
@@ -146,17 +132,13 @@ func resolveBody(value any, context map[string]any) (any, error) {
 	switch typed := value.(type) {
 	case map[string]any:
 		if raw, ok := typed["$var"]; ok && len(typed) == 1 {
-			idStr, ok := raw.(string)
+			keyStr, ok := raw.(string)
 			if !ok {
 				return nil, ErrInvalidRef
 			}
-			id, err := uuid.Parse(idStr)
-			if err != nil {
-				return nil, ErrInvalidRef
-			}
-			value, ok := context[id.String()]
+			value, ok := context[keyStr]
 			if !ok {
-				return nil, &MissingVariableError{VariableID: id}
+				return nil, &MissingVariableError{Key: keyStr}
 			}
 			return value, nil
 		}

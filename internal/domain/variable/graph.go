@@ -31,18 +31,14 @@ func AncestorStepIDs(stepID uuid.UUID, edges []GraphEdge) map[uuid.UUID]struct{}
 
 func ValidateReferences(
 	stepID uuid.UUID,
-	referencedIDs []uuid.UUID,
-	variablesByID map[uuid.UUID]VariableView,
+	referencedKeys []string,
+	variablesByKey map[string]VariableView,
 	edges []GraphEdge,
 ) error {
-	ancestors := AncestorStepIDs(stepID, edges)
-	for _, id := range referencedIDs {
-		variable, ok := variablesByID[id]
+	for _, key := range referencedKeys {
+		_, ok := variablesByKey[key]
 		if !ok {
 			return ErrInvalidRef
-		}
-		if _, ok := ancestors[variable.StepID]; !ok {
-			return ErrNotAncestor
 		}
 	}
 	return nil

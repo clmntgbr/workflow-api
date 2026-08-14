@@ -21,6 +21,7 @@ type VariableReadRepository interface {
 	FindByWorkflowID(ctx context.Context, workflowID uuid.UUID) ([]VariableView, error)
 	FindByStepID(ctx context.Context, stepID uuid.UUID) ([]VariableView, error)
 	FindByIDs(ctx context.Context, ids []uuid.UUID) ([]VariableView, error)
+	FindByWorkflowAndKey(ctx context.Context, workflowID uuid.UUID, key string) (*VariableView, error)
 }
 
 type VariableView struct {

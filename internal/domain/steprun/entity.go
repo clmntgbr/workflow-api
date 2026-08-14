@@ -51,6 +51,7 @@ type StepRun struct {
 
 type VariableExtract struct {
 	VariableID uuid.UUID `json:"variableId"`
+	Key        string    `json:"key"`
 	Path       string    `json:"path"`
 }
 
