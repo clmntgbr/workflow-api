@@ -165,7 +165,7 @@ services:
   ngrok:
     container_name: ngrok
     image: ngrok/ngrok:latest
-    command: http --url=choice-pretty-leech.ngrok-free.app --host-header=choice-pretty-leech.ngrok-free.app http://api:3000
+    command: http --url=finer-customer-marathon.ngrok-free.dev --host-header=finer-customer-marathon.ngrok-free.dev http://api:3000
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     ports:
