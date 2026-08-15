@@ -159,8 +159,33 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list workflow runs"})
 	}
 
+	ids := make([]uuid.UUID, 0, len(views))
+	for _, view := range views {
+		ids = append(ids, view.ID)
+	}
+
+	stepRuns, err := h.listStepRunsByIDs.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunIDsQuery{
+		WorkflowRunIDs: ids,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
+	}
+
+	stepRunsByWorkflowRunID := make(map[uuid.UUID][]domainsteprun.StepRunView, len(views))
+	for _, stepRun := range stepRuns {
+		stepRunsByWorkflowRunID[stepRun.WorkflowRunID] = append(
+			stepRunsByWorkflowRunID[stepRun.WorkflowRunID],
+			stepRun,
+		)
+	}
+
+	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
-		presenter.NewWorkflowRunListResponseFromViews(views),
+		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID, insightsByStepRunID),
 		int(total),
 		query,
 	))
