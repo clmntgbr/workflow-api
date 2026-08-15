@@ -236,6 +236,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getVariableByIDHandler,
 			listVariablesByWorkflowHandler,
 			listAvailableVariablesHandler,
+			getStepByIDHandler,
 			getWorkflowByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	variablecmd "go-api/internal/application/command/variable"
+	querystep "go-api/internal/application/query/step"
 	queryvariable "go-api/internal/application/query/variable"
 	queryworkflow "go-api/internal/application/query/workflow"
 	domainvariable "go-api/internal/domain/variable"
@@ -23,6 +24,7 @@ type VariableHandler struct {
 	getByIDHandler     *queryvariable.GetVariableByIDHandler
 	listByWorkflow     *queryvariable.ListVariablesByWorkflowHandler
 	listAvailable      *queryvariable.ListAvailableVariablesHandler
+	getStepHandler     *querystep.GetStepByIDHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
 }
 
@@ -33,6 +35,7 @@ func NewVariableHandler(
 	getByIDHandler *queryvariable.GetVariableByIDHandler,
 	listByWorkflow *queryvariable.ListVariablesByWorkflowHandler,
 	listAvailable *queryvariable.ListAvailableVariablesHandler,
+	getStepHandler *querystep.GetStepByIDHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *VariableHandler {
 	return &VariableHandler{
@@ -42,6 +45,7 @@ func NewVariableHandler(
 		getByIDHandler:     getByIDHandler,
 		listByWorkflow:     listByWorkflow,
 		listAvailable:      listAvailable,
+		getStepHandler:     getStepHandler,
 		getWorkflowHandler: getWorkflowHandler,
 	}
 }
@@ -141,6 +145,11 @@ func (h *VariableHandler) ListAvailable(c fiber.Ctx) error {
 		return c.Status(code).JSON(fiber.Map{"message": msg})
 	}
 
+	step, err := h.getStepHandler.Handle(c.Context(), querystep.GetStepByIDQuery{ID: stepID})
+	if err != nil || step.WorkflowID != workflowID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+	}
+
 	views, err := h.listAvailable.Handle(c.Context(), queryvariable.ListAvailableVariablesQuery{
 		WorkflowID: workflowID,
 		StepID:     stepID,
@@ -207,10 +216,10 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 		ID:             id,
 		WorkflowID:     workflowID,
 		OrganizationID: orgID,
-		Name:        req.Name,
-		Key:         req.Key,
-		Description: req.Description,
-		Path:        req.Path,
+		Name:           req.Name,
+		Key:            req.Key,
+		Description:    req.Description,
+		Path:           req.Path,
 	})
 	if err != nil {
 		switch {
