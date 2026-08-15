@@ -146,8 +146,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
 	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
 
-	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, variableReadRepo, stepWriteRepo)
-	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo)
+	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, variableReadRepo, stepWriteRepo, outboxRepo)
+	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo, outboxRepo)
 	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo)
 	getVariableByIDHandler := queryvariable.NewGetVariableByIDHandler(variableReadRepo)
 	listVariablesByWorkflowHandler := queryvariable.NewListVariablesByWorkflowHandler(variableReadRepo)

@@ -18,6 +18,7 @@ const (
 	EntityEndpoint     = "endpoint"
 	EntityStep         = "step"
 	EntityConnection   = "connection"
+	EntityVariable     = "variable"
 	EntityWorkflowRun  = "workflowRun"
 	EntityStepRun      = "stepRun"
 )

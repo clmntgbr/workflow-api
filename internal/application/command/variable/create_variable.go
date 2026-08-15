@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
 
@@ -22,17 +23,24 @@ type CreateVariableCommand struct {
 }
 
 type CreateVariableHandler struct {
-	variableRepo      domainvariable.VariableWriteRepository
-	variableReadRepo  domainvariable.VariableReadRepository
-	stepRepo          domainstep.StepWriteRepository
+	variableRepo     domainvariable.VariableWriteRepository
+	variableReadRepo domainvariable.VariableReadRepository
+	stepRepo         domainstep.StepWriteRepository
+	outbox           port.OutboxRepository
 }
 
 func NewCreateVariableHandler(
 	variableRepo domainvariable.VariableWriteRepository,
 	variableReadRepo domainvariable.VariableReadRepository,
 	stepRepo domainstep.StepWriteRepository,
+	outbox port.OutboxRepository,
 ) *CreateVariableHandler {
-	return &CreateVariableHandler{variableRepo: variableRepo, variableReadRepo: variableReadRepo, stepRepo: stepRepo}
+	return &CreateVariableHandler{
+		variableRepo:     variableRepo,
+		variableReadRepo: variableReadRepo,
+		stepRepo:         stepRepo,
+		outbox:           outbox,
+	}
 }
 
 func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCommand) (*domainvariable.Variable, error) {
@@ -60,16 +68,26 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 	}
 
 	variable := domainvariable.NewVariable(domainvariable.NewVariableParams{
-		Name:        strings.TrimSpace(cmd.Name),
-		Key:         strings.TrimSpace(cmd.Key),
-		Description: strings.TrimSpace(cmd.Description),
-		Path:        strings.TrimSpace(cmd.Path),
-		StepID:      cmd.StepID,
-		WorkflowID:  cmd.WorkflowID,
+		Name:           strings.TrimSpace(cmd.Name),
+		Key:            strings.TrimSpace(cmd.Key),
+		Description:    strings.TrimSpace(cmd.Description),
+		Path:           strings.TrimSpace(cmd.Path),
+		StepID:         cmd.StepID,
+		WorkflowID:     cmd.WorkflowID,
+		OrganizationID: cmd.OrganizationID,
 	})
 
-	if err := h.variableRepo.Save(ctx, variable); err != nil {
-		return nil, errors.New("failed to create variable")
+	err = h.variableRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.variableRepo.Save(txCtx, variable); err != nil {
+			if errors.Is(err, domainvariable.ErrDuplicateKey) {
+				return err
+			}
+			return errors.New("failed to create variable")
+		}
+		return h.outbox.StoreEvents(txCtx, variable.PullEvents())
+	})
+	if err != nil {
+		return nil, err
 	}
 	return variable, nil
 }

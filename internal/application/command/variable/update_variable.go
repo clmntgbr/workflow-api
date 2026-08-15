@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/domain/port"
 	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
@@ -22,10 +23,14 @@ type UpdateVariableCommand struct {
 
 type UpdateVariableHandler struct {
 	variableRepo domainvariable.VariableWriteRepository
+	outbox       port.OutboxRepository
 }
 
-func NewUpdateVariableHandler(variableRepo domainvariable.VariableWriteRepository) *UpdateVariableHandler {
-	return &UpdateVariableHandler{variableRepo: variableRepo}
+func NewUpdateVariableHandler(
+	variableRepo domainvariable.VariableWriteRepository,
+	outbox port.OutboxRepository,
+) *UpdateVariableHandler {
+	return &UpdateVariableHandler{variableRepo: variableRepo, outbox: outbox}
 }
 
 func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCommand) (*domainvariable.Variable, error) {
@@ -42,17 +47,24 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 	}
 
 	variable.Update(domainvariable.UpdateVariableParams{
-		Name:        strings.TrimSpace(cmd.Name),
-		Key:         strings.TrimSpace(cmd.Key),
-		Description: strings.TrimSpace(cmd.Description),
-		Path:        strings.TrimSpace(cmd.Path),
+		Name:           strings.TrimSpace(cmd.Name),
+		Key:            strings.TrimSpace(cmd.Key),
+		Description:    strings.TrimSpace(cmd.Description),
+		Path:           strings.TrimSpace(cmd.Path),
+		OrganizationID: cmd.OrganizationID,
 	})
 
-	if err := h.variableRepo.Update(ctx, variable); err != nil {
-		if errors.Is(err, domainvariable.ErrDuplicateKey) {
-			return nil, err
+	err = h.variableRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.variableRepo.Update(txCtx, variable); err != nil {
+			if errors.Is(err, domainvariable.ErrDuplicateKey) {
+				return err
+			}
+			return errors.New("failed to update variable")
 		}
-		return nil, errors.New("failed to update variable")
+		return h.outbox.StoreEvents(txCtx, variable.PullEvents())
+	})
+	if err != nil {
+		return nil, err
 	}
 	return variable, nil
 }

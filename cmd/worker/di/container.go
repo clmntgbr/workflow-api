@@ -10,6 +10,7 @@ import (
 	eventstep "go-api/internal/application/event/step"
 	eventsteprun "go-api/internal/application/event/steprun"
 	eventuser "go-api/internal/application/event/user"
+	eventvariable "go-api/internal/application/event/variable"
 	eventworkflow "go-api/internal/application/event/workflow"
 	eventworkflowrun "go-api/internal/application/event/workflowrun"
 	"go-api/internal/application/registry"
@@ -19,6 +20,7 @@ import (
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainuser "go-api/internal/domain/user"
+	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 	"go-api/internal/infrastructure/centrifugo"
@@ -90,6 +92,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, orgReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
 	reg := registry.NewHandlerRegistry()
@@ -298,6 +301,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_connection_deleted_realtime",
 		publishConnectionRealtime.OnDeleted,
+	))
+
+	reg.Register(domainvariable.EventTypeVariableCreated, dedup.With(
+		dedupRepo,
+		"variable_created",
+		eventvariable.NewVariableCreatedHandler().Handle,
+	))
+	reg.Register(domainvariable.EventTypeVariableCreated, dedup.With(
+		dedupRepo,
+		"publish_variable_created_realtime",
+		publishVariableRealtime.OnCreated,
+	))
+	reg.Register(domainvariable.EventTypeVariableUpdated, dedup.With(
+		dedupRepo,
+		"variable_updated",
+		eventvariable.NewVariableUpdatedHandler().Handle,
+	))
+	reg.Register(domainvariable.EventTypeVariableUpdated, dedup.With(
+		dedupRepo,
+		"publish_variable_updated_realtime",
+		publishVariableRealtime.OnUpdated,
 	))
 
 	reg.Register(domainworkflowrun.EventTypeWorkflowRunStarted, dedup.With(
