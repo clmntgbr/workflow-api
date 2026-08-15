@@ -109,7 +109,7 @@ func (h *Orchestrator) buildStepRun(
 		VariableExtracts: extracts,
 	})
 
-	var missing domainvariable.MissingVariableError
+	var missing *domainvariable.MissingVariableError
 	if resolveErr != nil {
 		if errors.As(resolveErr, &missing) {
 			_ = stepRun.MarkFailed(fmt.Sprintf("variable %s not found", missing.Key), nil)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 var placeholderPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}`)
@@ -56,19 +55,16 @@ func CollectReferencedKeys(
 func collectBodyRefsKey(value any, add func(string)) {
 	switch typed := value.(type) {
 	case map[string]any:
-		if raw, ok := typed["$var"]; ok && len(typed) == 1 {
-			switch keyRaw := raw.(type) {
-			case string:
-				add(keyRaw)
-			}
-			return
-		}
 		for _, child := range typed {
 			collectBodyRefsKey(child, add)
 		}
 	case []any:
 		for _, child := range typed {
 			collectBodyRefsKey(child, add)
+		}
+	case string:
+		for _, match := range placeholderPattern.FindAllStringSubmatch(typed, -1) {
+			add(match[1])
 		}
 	}
 }
@@ -114,7 +110,11 @@ func ResolveTemplates(
 func resolveString(input string, context map[string]any) (string, error) {
 	var missing *MissingVariableError
 	out := placeholderPattern.ReplaceAllStringFunc(input, func(match string) string {
-		key := strings.TrimSuffix(strings.TrimPrefix(match, "{{"), "}}")
+		sub := placeholderPattern.FindStringSubmatch(match)
+		if len(sub) < 2 {
+			return match
+		}
+		key := sub[1]
 		value, ok := context[key]
 		if !ok {
 			missing = &MissingVariableError{Key: key}
@@ -131,17 +131,6 @@ func resolveString(input string, context map[string]any) (string, error) {
 func resolveBody(value any, context map[string]any) (any, error) {
 	switch typed := value.(type) {
 	case map[string]any:
-		if raw, ok := typed["$var"]; ok && len(typed) == 1 {
-			keyStr, ok := raw.(string)
-			if !ok {
-				return nil, ErrInvalidRef
-			}
-			value, ok := context[keyStr]
-			if !ok {
-				return nil, &MissingVariableError{Key: keyStr}
-			}
-			return value, nil
-		}
 		out := make(map[string]any, len(typed))
 		for key, child := range typed {
 			resolved, err := resolveBody(child, context)
@@ -161,6 +150,8 @@ func resolveBody(value any, context map[string]any) (any, error) {
 			out[i] = resolved
 		}
 		return out, nil
+	case string:
+		return resolveString(typed, context)
 	default:
 		return value, nil
 	}
