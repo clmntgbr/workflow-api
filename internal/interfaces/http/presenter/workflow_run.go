@@ -58,7 +58,7 @@ func NewWorkflowRunDetailResponseFromView(
 		Status:            string(view.Status),
 		TriggeredBy:       string(view.TriggeredBy),
 		TriggeredByUserID: optionalUUID(view.TriggeredByUserID),
-		Context:           MaskSecretContext(contextOrEmpty(view.Context), stepRuns),
+		Context:           contextOrEmpty(view.Context),
 		StartedAt:         view.StartedAt,
 		FinishedAt:        view.FinishedAt,
 		Error:             optionalNonEmptyString(view.Error),

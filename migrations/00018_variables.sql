@@ -8,9 +8,6 @@ CREATE TABLE IF NOT EXISTS variables (
     path VARCHAR(255) NOT NULL,
     step_id UUID NOT NULL REFERENCES steps (id) ON DELETE CASCADE,
     workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,
-    is_secret BOOLEAN NOT NULL DEFAULT FALSE,
-    default_value JSONB NULL,
-    last_value JSONB NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_variables_workflow_key UNIQUE (workflow_id, key)

@@ -75,7 +75,7 @@ func NewStepRunResponseFromView(
 		Status:             string(view.Status),
 		Attempt:            view.Attempt,
 		ResponseSnapshot:   view.ResponseSnapshot,
-		ExtractedVariables: maskExtractedVariables(view.ExtractedVariables, view.VariableExtracts),
+		ExtractedVariables: extractedOrEmpty(view.ExtractedVariables),
 		Insights:           NewInsightListResponseFromViews(insights),
 		StartedAt:          view.StartedAt,
 		FinishedAt:         view.FinishedAt,
@@ -85,21 +85,11 @@ func NewStepRunResponseFromView(
 	}
 }
 
-func maskExtractedVariables(
-	values map[string]any,
-	_ []domainsteprun.VariableExtract,
-) map[string]any {
+func extractedOrEmpty(values map[string]any) map[string]any {
 	if values == nil {
 		return map[string]any{}
 	}
 	return values
-}
-
-func MaskSecretContext(context map[string]any, stepRuns []domainsteprun.StepRunView) map[string]any {
-	if context == nil {
-		return map[string]any{}
-	}
-	return context
 }
 
 func NewStepRunListResponseFromViews(

@@ -15,20 +15,17 @@ import (
 )
 
 type PublishRealtimeHandler struct {
-	realtime    port.RealtimePublisher
-	orgRepo     domainorganization.OrganizationReadRepository
-	stepRunRepo domainsteprun.StepRunReadRepository
+	realtime port.RealtimePublisher
+	orgRepo  domainorganization.OrganizationReadRepository
 }
 
 func NewPublishRealtimeHandler(
 	realtimePublisher port.RealtimePublisher,
 	orgRepo domainorganization.OrganizationReadRepository,
-	stepRunRepo domainsteprun.StepRunReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
-		realtime:    realtimePublisher,
-		orgRepo:     orgRepo,
-		stepRunRepo: stepRunRepo,
+		realtime: realtimePublisher,
+		orgRepo:  orgRepo,
 	}
 }
 
@@ -45,11 +42,6 @@ func (h *PublishRealtimeHandler) OnSucceeded(ctx context.Context, payload []byte
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
-	if stepRunID, err := uuid.Parse(evt.StepRunID); err == nil {
-		if view, err := h.stepRunRepo.FindByID(ctx, stepRunID); err == nil && view != nil {
-			evt.ExtractedVariables = maskExtractedForRealtime(view.ExtractedVariables, view.VariableExtracts)
-		}
-	}
 	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionSucceeded, evt)
 }
 
@@ -59,20 +51,6 @@ func (h *PublishRealtimeHandler) OnFailed(ctx context.Context, payload []byte) e
 		return messaging.NonRetryable(err)
 	}
 	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionFailed, evt)
-}
-
-func maskExtractedForRealtime(
-	values map[string]any,
-	extracts []domainsteprun.VariableExtract,
-) map[string]any {
-	if values == nil {
-		return map[string]any{}
-	}
-	out := make(map[string]any, len(values))
-	for key, value := range values {
-		out[key] = value
-	}
-	return out
 }
 
 func (h *PublishRealtimeHandler) publishToOrganizationMembers(

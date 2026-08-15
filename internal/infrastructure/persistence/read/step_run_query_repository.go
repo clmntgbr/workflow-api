@@ -138,6 +138,25 @@ func (r *stepRunReadRepository) FindByWorkflowRunIDs(
 	return views, nil
 }
 
+func (r *stepRunReadRepository) FindLatestCompletedByStepID(
+	ctx context.Context,
+	stepID uuid.UUID,
+) (*domainsteprun.StepRunView, error) {
+	var row stepRunRow
+	err := r.db.WithContext(ctx).
+		Select(stepRunSelectColumns).
+		Where("step_id = ? AND status = ?", stepID, string(domainsteprun.StatusSuccess)).
+		Order("finished_at DESC NULLS LAST, created_at DESC").
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toStepRunView(row)
+}
+
 func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 	headers := map[string]string{}
 	if len(row.Headers) > 0 {

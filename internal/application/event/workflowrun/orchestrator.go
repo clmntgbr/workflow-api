@@ -22,7 +22,6 @@ type Orchestrator struct {
 	stepRunRepo  domainsteprun.StepRunWriteRepository
 	stepReadRepo domainstep.StepReadRepository
 	connReadRepo domainconnection.ConnectionReadRepository
-	variableRepo domainvariable.VariableWriteRepository
 	variableRead domainvariable.VariableReadRepository
 	outbox       port.OutboxRepository
 }
@@ -32,7 +31,6 @@ func NewOrchestrator(
 	stepRunRepo domainsteprun.StepRunWriteRepository,
 	stepReadRepo domainstep.StepReadRepository,
 	connReadRepo domainconnection.ConnectionReadRepository,
-	variableRepo domainvariable.VariableWriteRepository,
 	variableRead domainvariable.VariableReadRepository,
 	outbox port.OutboxRepository,
 ) *Orchestrator {
@@ -41,7 +39,6 @@ func NewOrchestrator(
 		stepRunRepo:  stepRunRepo,
 		stepReadRepo: stepReadRepo,
 		connReadRepo: connReadRepo,
-		variableRepo: variableRepo,
 		variableRead: variableRead,
 		outbox:       outbox,
 	}

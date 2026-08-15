@@ -7,6 +7,7 @@ import (
 	querystep "go-api/internal/application/query/step"
 	queryvariable "go-api/internal/application/query/variable"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/domain/paginate"
 	domainvariable "go-api/internal/domain/variable"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -24,6 +25,7 @@ type VariableHandler struct {
 	getByIDHandler     *queryvariable.GetVariableByIDHandler
 	listByWorkflow     *queryvariable.ListVariablesByWorkflowHandler
 	listAvailable      *queryvariable.ListAvailableVariablesHandler
+	searchPaths        *queryvariable.SearchVariablePathsHandler
 	getStepHandler     *querystep.GetStepByIDHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
 }
@@ -35,6 +37,7 @@ func NewVariableHandler(
 	getByIDHandler *queryvariable.GetVariableByIDHandler,
 	listByWorkflow *queryvariable.ListVariablesByWorkflowHandler,
 	listAvailable *queryvariable.ListAvailableVariablesHandler,
+	searchPaths *queryvariable.SearchVariablePathsHandler,
 	getStepHandler *querystep.GetStepByIDHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *VariableHandler {
@@ -45,6 +48,7 @@ func NewVariableHandler(
 		getByIDHandler:     getByIDHandler,
 		listByWorkflow:     listByWorkflow,
 		listAvailable:      listAvailable,
+		searchPaths:        searchPaths,
 		getStepHandler:     getStepHandler,
 		getWorkflowHandler: getWorkflowHandler,
 	}
@@ -158,6 +162,48 @@ func (h *VariableHandler) ListAvailable(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list available variables"})
 	}
 	return c.Status(fiber.StatusOK).JSON(presenter.NewVariableListResponseFromViews(views))
+}
+
+func (h *VariableHandler) SearchPaths(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+	stepID, err := uuid.Parse(c.Params("stepId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+	}
+	if code, msg := h.ensureWorkflow(c, workflowID, orgID); code != 0 {
+		return c.Status(code).JSON(fiber.Map{"message": msg})
+	}
+
+	step, err := h.getStepHandler.Handle(c.Context(), querystep.GetStepByIDQuery{ID: stepID})
+	if err != nil || step.WorkflowID != workflowID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+	}
+
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid query parameters",
+			"errors":  err.Error(),
+		})
+	}
+	query.Normalize()
+
+	paths, total, err := h.searchPaths.Handle(c.Context(), queryvariable.SearchVariablePathsQuery{
+		WorkflowID: workflowID,
+		StepID:     stepID,
+		Query:      query,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to search variable paths"})
+	}
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(paths, total, query))
 }
 
 func (h *VariableHandler) GetByID(c fiber.Ctx) error {

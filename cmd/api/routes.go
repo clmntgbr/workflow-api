@@ -96,6 +96,7 @@ func setupVariableRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows/:workflowId/variables", container.VariableHandler.Create)
 	api.Get("/workflows/:workflowId/variables", container.VariableHandler.List)
 	api.Get("/workflows/:workflowId/steps/:stepId/variables", container.VariableHandler.ListAvailable)
+	api.Get("/workflows/:workflowId/steps/:stepId/variable-paths", container.VariableHandler.SearchPaths)
 	api.Get("/workflows/:workflowId/variables/:id", container.VariableHandler.GetByID)
 	api.Put("/workflows/:workflowId/variables/:id", container.VariableHandler.Update)
 	api.Delete("/workflows/:workflowId/variables/:id", container.VariableHandler.Delete)
