@@ -218,36 +218,43 @@ func (h *EndpointHandler) ListByOrganization(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
-	var query paginate.PaginateQuery
-	if err := c.Bind().Query(&query); err != nil {
+	var listQuery struct {
+		paginate.PaginateQuery
+		Method []string `query:"method"`
+	}
+	if err := c.Bind().Query(&listQuery); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
 			"errors":  err.Error(),
 		})
 	}
 
-	orderBy := query.OrderBy
-	sortBy := query.SortBy
-	query.Normalize()
+	orderBy := listQuery.OrderBy
+	sortBy := listQuery.SortBy
+	listQuery.Normalize()
 	if sortBy == "" {
-		query.SortBy = "created_at"
+		listQuery.SortBy = "created_at"
 	}
 	if orderBy == "" {
-		query.OrderBy = paginate.OrderByDesc
+		listQuery.OrderBy = paginate.OrderByDesc
 	}
 
 	views, total, err := h.listByOrgHandler.Handle(c.Context(), queryendpoint.ListEndpointsByOrganizationQuery{
 		OrganizationID: orgID,
-		Query:          query,
+		Query:          listQuery.PaginateQuery,
+		Methods:        listQuery.Method,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "invalid endpoint method") {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list endpoints"})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 		presenter.NewEndpointListResponseFromViews(views),
 		int(total),
-		query,
+		listQuery.PaginateQuery,
 	))
 }
 

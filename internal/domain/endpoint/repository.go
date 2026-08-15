@@ -16,12 +16,17 @@ type EndpointWriteRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Endpoint, error)
 }
 
+type ListEndpointsFilter struct {
+	paginate.PaginateQuery
+	Methods []Method
+}
+
 type EndpointReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*EndpointView, error)
 	FindByOrganizationID(
 		ctx context.Context,
 		organizationID uuid.UUID,
-		query paginate.PaginateQuery,
+		filter ListEndpointsFilter,
 	) ([]EndpointView, int64, error)
 }
 

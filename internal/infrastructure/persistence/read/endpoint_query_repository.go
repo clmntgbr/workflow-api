@@ -66,8 +66,9 @@ func (r *endpointReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 func (r *endpointReadRepository) FindByOrganizationID(
 	ctx context.Context,
 	organizationID uuid.UUID,
-	query paginate.PaginateQuery,
+	filter domainendpoint.ListEndpointsFilter,
 ) ([]domainendpoint.EndpointView, int64, error) {
+	query := filter.PaginateQuery
 	query.Normalize()
 	if query.SortBy == "" {
 		query.SortBy = "created_at"
@@ -82,7 +83,14 @@ func (r *endpointReadRepository) FindByOrganizationID(
 
 	if query.Search != "" {
 		like := "%" + query.Search + "%"
-		db = db.Where("name ILIKE ? OR description ILIKE ? OR url ILIKE ?", like, like, like)
+		db = db.Where("name ILIKE ? OR url ILIKE ?", like, like)
+	}
+	if len(filter.Methods) > 0 {
+		methods := make([]string, 0, len(filter.Methods))
+		for _, method := range filter.Methods {
+			methods = append(methods, string(method))
+		}
+		db = db.Where("method IN ?", methods)
 	}
 
 	db, total, err := Paginate(db, query)
