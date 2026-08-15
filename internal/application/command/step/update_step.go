@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 
-	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
-	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
 )
@@ -30,23 +28,17 @@ type UpdateStepCommand struct {
 }
 
 type UpdateStepHandler struct {
-	stepRepo     domainstep.StepWriteRepository
-	connReadRepo domainconnection.ConnectionReadRepository
-	variableRead domainvariable.VariableReadRepository
-	outbox       port.OutboxRepository
+	stepRepo domainstep.StepWriteRepository
+	outbox   port.OutboxRepository
 }
 
 func NewUpdateStepHandler(
 	stepRepo domainstep.StepWriteRepository,
-	connReadRepo domainconnection.ConnectionReadRepository,
-	variableRead domainvariable.VariableReadRepository,
 	outbox port.OutboxRepository,
 ) *UpdateStepHandler {
 	return &UpdateStepHandler{
-		stepRepo:     stepRepo,
-		connReadRepo: connReadRepo,
-		variableRead: variableRead,
-		outbox:       outbox,
+		stepRepo: stepRepo,
+		outbox:   outbox,
 	}
 }
 
@@ -75,10 +67,6 @@ func (h *UpdateStepHandler) Handle(
 		return nil, errors.New("step not found")
 	}
 
-	if err := h.validateVariableReferences(ctx, cmd); err != nil {
-		return nil, err
-	}
-
 	s.ApplyConfigUpdate(domainstep.UpdateStepConfigParams{
 		Name:           cmd.Name,
 		Description:    cmd.Description,
@@ -104,37 +92,4 @@ func (h *UpdateStepHandler) Handle(
 	}
 
 	return s, nil
-}
-
-func (h *UpdateStepHandler) validateVariableReferences(ctx context.Context, cmd UpdateStepCommand) error {
-	keys := domainvariable.CollectReferencedKeys(cmd.URL, cmd.Headers, cmd.Query, cmd.Body)
-	if len(keys) == 0 {
-		return nil
-	}
-
-	variables, err := h.variableRead.FindByWorkflowID(ctx, cmd.WorkflowID)
-	if err != nil {
-		return errors.New("failed to validate variables")
-	}
-	byKey := make(map[string]domainvariable.VariableView, len(variables))
-	for _, variable := range variables {
-		byKey[variable.Key] = variable
-	}
-
-	connections, err := h.connReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
-	if err != nil {
-		return errors.New("failed to validate variables")
-	}
-	edges := make([]domainvariable.GraphEdge, 0, len(connections))
-	for _, conn := range connections {
-		edges = append(edges, domainvariable.GraphEdge{
-			SourceStepID: conn.SourceStepID,
-			TargetStepID: conn.TargetStepID,
-		})
-	}
-
-	if err := domainvariable.ValidateReferences(cmd.ID, keys, byKey, edges); err != nil {
-		return err
-	}
-	return nil
 }
