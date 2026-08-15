@@ -21,6 +21,8 @@ import (
 type WorkflowHandler struct {
 	createHandler     *workflowcmd.CreateWorkflowHandler
 	updateHandler     *workflowcmd.UpdateWorkflowHandler
+	activateHandler   *workflowcmd.ActivateWorkflowHandler
+	deactivateHandler *workflowcmd.DeactivateWorkflowHandler
 	deleteHandler     *workflowcmd.DeleteWorkflowHandler
 	getByIDHandler    *queryworkflow.GetWorkflowByIDHandler
 	listByOrgHandler  *queryworkflow.ListWorkflowsByOrganizationHandler
@@ -30,6 +32,8 @@ type WorkflowHandler struct {
 func NewWorkflowHandler(
 	createHandler *workflowcmd.CreateWorkflowHandler,
 	updateHandler *workflowcmd.UpdateWorkflowHandler,
+	activateHandler *workflowcmd.ActivateWorkflowHandler,
+	deactivateHandler *workflowcmd.DeactivateWorkflowHandler,
 	deleteHandler *workflowcmd.DeleteWorkflowHandler,
 	getByIDHandler *queryworkflow.GetWorkflowByIDHandler,
 	listByOrgHandler *queryworkflow.ListWorkflowsByOrganizationHandler,
@@ -38,6 +42,8 @@ func NewWorkflowHandler(
 	return &WorkflowHandler{
 		createHandler:     createHandler,
 		updateHandler:     updateHandler,
+		activateHandler:   activateHandler,
+		deactivateHandler: deactivateHandler,
 		deleteHandler:     deleteHandler,
 		getByIDHandler:    getByIDHandler,
 		listByOrgHandler:  listByOrgHandler,
@@ -249,6 +255,62 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromView(*view))
+}
+
+func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	w, err := h.activateHandler.Handle(c.Context(), workflowcmd.ActivateWorkflowCommand{
+		ID:             id,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		if errors.Is(err, domainworkflow.ErrInvalidStatusTransition) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to activate workflow"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromEntity(*w))
+}
+
+func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	w, err := h.deactivateHandler.Handle(c.Context(), workflowcmd.DeactivateWorkflowCommand{
+		ID:             id,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		if errors.Is(err, domainworkflow.ErrInvalidStatusTransition) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to deactivate workflow"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromEntity(*w))
 }
 
 func (h *WorkflowHandler) Delete(c fiber.Ctx) error {

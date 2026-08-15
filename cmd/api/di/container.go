@@ -94,6 +94,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createWorkflowHandler := workflowcmd.NewCreateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	updateWorkflowHandler := workflowcmd.NewUpdateWorkflowHandler(workflowWriteRepo, outboxRepo)
+	activateWorkflowHandler := workflowcmd.NewActivateWorkflowHandler(workflowWriteRepo, outboxRepo)
+	deactivateWorkflowHandler := workflowcmd.NewDeactivateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	deleteWorkflowHandler := workflowcmd.NewDeleteWorkflowHandler(workflowWriteRepo, outboxRepo)
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
 	listWorkflowsByOrgHandler := queryworkflow.NewListWorkflowsByOrganizationHandler(workflowReadRepo)
@@ -193,6 +195,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		WorkflowHandler: httphandler.NewWorkflowHandler(
 			createWorkflowHandler,
 			updateWorkflowHandler,
+			activateWorkflowHandler,
+			deactivateWorkflowHandler,
 			deleteWorkflowHandler,
 			getWorkflowByIDHandler,
 			listWorkflowsByOrgHandler,

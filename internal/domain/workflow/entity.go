@@ -157,6 +157,36 @@ func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) error {
 	return nil
 }
 
+func (w *Workflow) Activate() error {
+	if w.Status == StatusDeleted || w.Status == StatusCanceled {
+		return ErrInvalidStatusTransition
+	}
+	if w.Status == StatusActive {
+		return nil
+	}
+	now := time.Now().UTC()
+	w.Status = StatusActive
+	w.UpdatedAt = now
+	w.RecalculateNextRunAt(now)
+	w.recordEvent(w.updatedEvent(now))
+	return nil
+}
+
+func (w *Workflow) Deactivate() error {
+	if w.Status == StatusDeleted || w.Status == StatusCanceled {
+		return ErrInvalidStatusTransition
+	}
+	if w.Status == StatusInactive {
+		return nil
+	}
+	now := time.Now().UTC()
+	w.Status = StatusInactive
+	w.NextRunAt = nil
+	w.UpdatedAt = now
+	w.recordEvent(w.updatedEvent(now))
+	return nil
+}
+
 func (w *Workflow) MarkDeleted() {
 	w.Status = StatusDeleted
 	w.ScheduleType = ScheduleTypeNone
