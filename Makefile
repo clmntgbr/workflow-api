@@ -57,4 +57,4 @@ shell:
 	$(COMPOSE_DEV) exec api sh
 
 workflow-run: cli-build
-	@$(COMPOSE_DEV) exec api ./bin/cli workflow run e72d7860-9900-4242-a58f-c6c04d044259
+	@$(COMPOSE_DEV) exec api ./bin/cli workflow run 3aa5ce64-6859-4d17-bf67-607b6fff4144
