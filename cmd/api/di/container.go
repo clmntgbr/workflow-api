@@ -25,6 +25,7 @@ import (
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	infraClerk "go-api/internal/infrastructure/clerk"
 	"go-api/internal/infrastructure/config"
+	infraopenapi "go-api/internal/infrastructure/openapi"
 	"go-api/internal/infrastructure/persistence/outbox"
 	"go-api/internal/infrastructure/persistence/read"
 	"go-api/internal/infrastructure/persistence/write"
@@ -101,6 +102,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listWorkflowsByOrgHandler := queryworkflow.NewListWorkflowsByOrganizationHandler(workflowReadRepo)
 
 	createEndpointHandler := endpointcmd.NewCreateEndpointHandler(endpointWriteRepo, outboxRepo)
+	importEndpointsHandler := endpointcmd.NewImportEndpointsFromOpenAPIHandler(
+		endpointWriteRepo,
+		infraopenapi.NewParser(),
+		outboxRepo,
+	)
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	deleteEndpointHandler := endpointcmd.NewDeleteEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
@@ -204,6 +210,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		EndpointHandler: httphandler.NewEndpointHandler(
 			createEndpointHandler,
+			importEndpointsHandler,
 			updateEndpointHandler,
 			deleteEndpointHandler,
 			getEndpointByIDHandler,

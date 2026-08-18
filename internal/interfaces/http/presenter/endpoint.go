@@ -43,6 +43,21 @@ func NewEndpointListResponseFromViews(views []domainendpoint.EndpointView) []End
 	return items
 }
 
+func NewEndpointListResponseFromEntities(endpoints []domainendpoint.Endpoint) []EndpointListResponse {
+	items := make([]EndpointListResponse, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		items = append(items, EndpointListResponse{
+			ID:          endpoint.ID.String(),
+			Name:        endpoint.Name,
+			Description: optionalNonEmptyString(endpoint.Description),
+			URL:         endpoint.URL,
+			Method:      string(endpoint.Method),
+			Status:      string(endpoint.Status),
+		})
+	}
+	return items
+}
+
 func NewEndpointDetailResponseFromView(view domainendpoint.EndpointView) EndpointDetailResponse {
 	return endpointDetailResponse(
 		NewEndpointListResponseFromView(view),

@@ -70,6 +70,7 @@ func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
 func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/endpoints", container.EndpointHandler.Create)
+	api.Post("/endpoints/import", container.EndpointHandler.ImportFromOpenAPI)
 	api.Get("/endpoints", container.EndpointHandler.ListByOrganization)
 	api.Get("/endpoints/:id", container.EndpointHandler.GetByID)
 	api.Put("/endpoints/:id", container.EndpointHandler.Update)

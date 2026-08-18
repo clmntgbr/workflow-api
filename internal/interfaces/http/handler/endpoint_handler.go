@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"strings"
 
 	endpointcmd "go-api/internal/application/command/endpoint"
@@ -18,6 +21,7 @@ import (
 
 type EndpointHandler struct {
 	createHandler    *endpointcmd.CreateEndpointHandler
+	importHandler    *endpointcmd.ImportEndpointsFromOpenAPIHandler
 	updateHandler    *endpointcmd.UpdateEndpointHandler
 	deleteHandler    *endpointcmd.DeleteEndpointHandler
 	getByIDHandler   *queryendpoint.GetEndpointByIDHandler
@@ -26,6 +30,7 @@ type EndpointHandler struct {
 
 func NewEndpointHandler(
 	createHandler *endpointcmd.CreateEndpointHandler,
+	importHandler *endpointcmd.ImportEndpointsFromOpenAPIHandler,
 	updateHandler *endpointcmd.UpdateEndpointHandler,
 	deleteHandler *endpointcmd.DeleteEndpointHandler,
 	getByIDHandler *queryendpoint.GetEndpointByIDHandler,
@@ -33,6 +38,7 @@ func NewEndpointHandler(
 ) *EndpointHandler {
 	return &EndpointHandler{
 		createHandler:    createHandler,
+		importHandler:    importHandler,
 		updateHandler:    updateHandler,
 		deleteHandler:    deleteHandler,
 		getByIDHandler:   getByIDHandler,
@@ -95,6 +101,95 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(presenter.NewEndpointDetailResponseFromEntity(*e))
+}
+
+const maxOpenAPIImportFileSize = 8 << 20
+
+func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil || fileHeader == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is required"})
+	}
+	if fileHeader.Size > maxOpenAPIImportFileSize {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is too large"})
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Failed to read OpenAPI file"})
+	}
+	defer file.Close()
+
+	spec, err := io.ReadAll(io.LimitReader(file, maxOpenAPIImportFileSize+1))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Failed to read OpenAPI file"})
+	}
+	if int64(len(spec)) > maxOpenAPIImportFileSize {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is too large"})
+	}
+
+	payload := strings.TrimSpace(c.FormValue("payload"))
+	if payload == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "payload is required"})
+	}
+
+	var req dto.ImportEndpointsFromOpenAPIRequest
+	if err := json.Unmarshal([]byte(payload), &req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid payload"})
+	}
+	req.BaseURL = strings.TrimSpace(req.BaseURL)
+	req.Status = strings.TrimSpace(req.Status)
+	if err := validation.Struct(c, &req); err != nil {
+		return err
+	}
+
+	status, err := domainendpoint.ParseStatus(req.Status)
+	if err != nil || status == domainendpoint.StatusDeleted {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid status"})
+	}
+
+	headers := req.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	queryParams := req.Query
+	if queryParams == nil {
+		queryParams = map[string]string{}
+	}
+	body := req.Body
+	if body == nil {
+		body = map[string]any{}
+	}
+
+	created, err := h.importHandler.Handle(c.Context(), endpointcmd.ImportEndpointsFromOpenAPICommand{
+		Spec:           spec,
+		BaseURL:        req.BaseURL,
+		Status:         status,
+		Headers:        headers,
+		Query:          queryParams,
+		Body:           body,
+		Timeout:        *req.Timeout,
+		RetryOnFailure: *req.RetryOnFailure,
+		RetryCount:     *req.RetryCount,
+		RetryDelay:     *req.RetryDelay,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		if errors.Is(err, domainendpoint.ErrInvalidOpenAPI) ||
+			errors.Is(err, domainendpoint.ErrNoOperations) ||
+			errors.Is(err, domainendpoint.ErrTooManyOperations) ||
+			errors.Is(err, domainendpoint.ErrInvalidEndpointURL) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to import endpoints"})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(presenter.NewEndpointListResponseFromEntities(created))
 }
 
 func (h *EndpointHandler) Update(c fiber.Ctx) error {

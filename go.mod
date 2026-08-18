@@ -3,6 +3,8 @@ module go-api
 go 1.25.0
 
 require (
+	github.com/PaesslerAG/jsonpath v0.1.1
+	github.com/centrifugal/gocent/v3 v3.4.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/rabbitmq/amqp091-go v1.12.0
 	gorm.io/driver/postgres v1.6.0
@@ -10,8 +12,6 @@ require (
 
 require (
 	github.com/PaesslerAG/gval v1.0.0 // indirect
-	github.com/PaesslerAG/jsonpath v0.1.1 // indirect
-	github.com/centrifugal/gocent/v3 v3.4.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

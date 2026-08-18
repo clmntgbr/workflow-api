@@ -41,6 +41,7 @@ type NewEndpointParams struct {
 	RetryOnFailure bool
 	RetryCount     int
 	RetryDelay     int
+	Status         Status
 	OrganizationID uuid.UUID
 }
 
@@ -58,6 +59,10 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 	if body == nil {
 		body = map[string]any{}
 	}
+	status := p.Status
+	if status == "" {
+		status = StatusActive
+	}
 
 	e := &Endpoint{
 		ID:             uuid.New(),
@@ -72,7 +77,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		RetryOnFailure: p.RetryOnFailure,
 		RetryCount:     p.RetryCount,
 		RetryDelay:     p.RetryDelay,
-		Status:         StatusActive,
+		Status:         status,
 		OrganizationID: p.OrganizationID,
 		CreatedAt:      now,
 		UpdatedAt:      now,

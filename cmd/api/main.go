@@ -27,6 +27,7 @@ func main() {
 		CaseSensitive: true,
 		StrictRouting: true,
 		UnescapePath:  true,
+		BodyLimit:     10 * 1024 * 1024,
 	})
 
 	app.Use(helmet.New())
