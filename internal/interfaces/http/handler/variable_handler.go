@@ -304,6 +304,13 @@ func (h *VariableHandler) Delete(c fiber.Ctx) error {
 		if errors.Is(err, domainvariable.ErrNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Variable not found"})
 		}
+		var inUse *variablecmd.VariableInUseError
+		if errors.As(err, &inUse) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"message": "Variable is used by one or more steps",
+				"steps":   presenter.NewStepListResponseFromViews(inUse.Steps),
+			})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to delete variable"})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
