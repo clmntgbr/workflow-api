@@ -32,12 +32,7 @@ func New() *Client {
 }
 
 func (c *Client) Do(ctx context.Context, req port.HTTPRequest) (*port.HTTPResponse, error) {
-	timeout := req.Timeout
-	if timeout <= 0 {
-		timeout = 30 * time.Second
-	}
-
-	reqCtx, cancel := context.WithTimeout(ctx, timeout)
+	reqCtx, cancel := context.WithTimeout(ctx, req.Timeout)
 	defer cancel()
 
 	target, err := url.Parse(req.URL)

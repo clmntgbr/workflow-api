@@ -23,10 +23,10 @@ type endpointRow struct {
 	Headers        dbtype.JSONB
 	QueryParams    dbtype.JSONB
 	Body           dbtype.JSONB
-	Timeout        int
+	Timeout        int  `gorm:"column:timeout_ms"`
 	RetryOnFailure bool
 	RetryCount     int
-	RetryDelay     int
+	RetryDelay     int  `gorm:"column:retry_delay_ms"`
 	Status         string
 	OrganizationID uuid.UUID
 	CreatedAt      time.Time

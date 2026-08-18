@@ -286,16 +286,10 @@ func extractVariables(extracts []domainsteprun.VariableExtract, body any) map[st
 }
 
 func timeoutDuration(timeoutMS int) time.Duration {
-	if timeoutMS <= 0 {
-		return 30 * time.Second
-	}
 	return time.Duration(timeoutMS) * time.Millisecond
 }
 
 func retryDelayDuration(delayMS int) time.Duration {
-	if delayMS < 0 {
-		delayMS = 0
-	}
 	return time.Duration(delayMS) * time.Millisecond
 }
 

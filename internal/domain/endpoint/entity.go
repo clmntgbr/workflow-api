@@ -58,14 +58,6 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 	if body == nil {
 		body = map[string]any{}
 	}
-	timeout := p.Timeout
-	if timeout <= 0 {
-		timeout = 30000
-	}
-	retryDelay := p.RetryDelay
-	if retryDelay <= 0 {
-		retryDelay = 1000
-	}
 
 	e := &Endpoint{
 		ID:             uuid.New(),
@@ -76,10 +68,10 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		Headers:        headers,
 		Query:          query,
 		Body:           body,
-		Timeout:        timeout,
+		Timeout:        p.Timeout,
 		RetryOnFailure: p.RetryOnFailure,
 		RetryCount:     p.RetryCount,
-		RetryDelay:     retryDelay,
+		RetryDelay:     p.RetryDelay,
 		Status:         StatusActive,
 		OrganizationID: p.OrganizationID,
 		CreatedAt:      now,
@@ -140,14 +132,6 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	if body == nil {
 		body = map[string]any{}
 	}
-	timeout := p.Timeout
-	if timeout <= 0 {
-		timeout = 30000
-	}
-	retryDelay := p.RetryDelay
-	if retryDelay <= 0 {
-		retryDelay = 1000
-	}
 
 	e.Name = p.Name
 	e.Description = p.Description
@@ -156,10 +140,10 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	e.Headers = headers
 	e.Query = query
 	e.Body = body
-	e.Timeout = timeout
+	e.Timeout = p.Timeout
 	e.RetryOnFailure = p.RetryOnFailure
 	e.RetryCount = p.RetryCount
-	e.RetryDelay = retryDelay
+	e.RetryDelay = p.RetryDelay
 	e.Status = p.Status
 	e.UpdatedAt = time.Now().UTC()
 

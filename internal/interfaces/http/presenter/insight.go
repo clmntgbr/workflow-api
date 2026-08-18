@@ -8,7 +8,6 @@ import (
 
 type InsightResponse struct {
 	ID                string     `json:"id"`
-	StepRunID         string     `json:"stepRunId"`
 	StartTime         *time.Time `json:"startTime"`
 	EndTime           *time.Time `json:"endTime"`
 	QueueTime         *int64     `json:"queueTime"`
@@ -24,14 +23,11 @@ type InsightResponse struct {
 	TotalAttempts     int        `json:"totalAttempts"`
 	ErrorMessage      *string    `json:"errorMessage"`
 	ErrorType         *string    `json:"errorType"`
-	CreatedAt         time.Time  `json:"createdAt"`
-	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 func NewInsightResponseFromView(view domaininsight.InsightView) InsightResponse {
 	return InsightResponse{
 		ID:                view.ID.String(),
-		StepRunID:         view.StepRunID.String(),
 		StartTime:         view.StartTime,
 		EndTime:           view.EndTime,
 		QueueTime:         durationToMs(view.QueueTime),
@@ -47,8 +43,6 @@ func NewInsightResponseFromView(view domaininsight.InsightView) InsightResponse 
 		TotalAttempts:     view.TotalAttempts,
 		ErrorMessage:      optionalNonEmptyString(view.ErrorMessage),
 		ErrorType:         optionalNonEmptyString(view.ErrorType),
-		CreatedAt:         view.CreatedAt,
-		UpdatedAt:         view.UpdatedAt,
 	}
 }
 

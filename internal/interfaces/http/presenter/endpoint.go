@@ -1,17 +1,20 @@
 package presenter
 
 import (
-	"time"
-
 	domainendpoint "go-api/internal/domain/endpoint"
 )
 
+type EndpointListResponse struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	URL         string  `json:"url"`
+	Method      string  `json:"method"`
+	Status      string  `json:"status"`
+}
+
 type EndpointDetailResponse struct {
-	ID             string            `json:"id"`
-	Name           string            `json:"name"`
-	Description    *string           `json:"description"`
-	URL            string            `json:"url"`
-	Method         string            `json:"method"`
+	EndpointListResponse
 	Headers        map[string]string `json:"headers"`
 	Query          map[string]string `json:"query"`
 	Body           map[string]any    `json:"body"`
@@ -19,19 +22,30 @@ type EndpointDetailResponse struct {
 	RetryOnFailure bool              `json:"retryOnFailure"`
 	RetryCount     int               `json:"retryCount"`
 	RetryDelay     int               `json:"retryDelay"`
-	Status         string            `json:"status"`
-	OrganizationID string            `json:"organizationId"`
-	CreatedAt      time.Time         `json:"createdAt"`
-	UpdatedAt      time.Time         `json:"updatedAt"`
+}
+
+func NewEndpointListResponseFromView(view domainendpoint.EndpointView) EndpointListResponse {
+	return EndpointListResponse{
+		ID:          view.ID.String(),
+		Name:        view.Name,
+		Description: optionalNonEmptyString(view.Description),
+		URL:         view.URL,
+		Method:      string(view.Method),
+		Status:      string(view.Status),
+	}
+}
+
+func NewEndpointListResponseFromViews(views []domainendpoint.EndpointView) []EndpointListResponse {
+	items := make([]EndpointListResponse, 0, len(views))
+	for _, view := range views {
+		items = append(items, NewEndpointListResponseFromView(view))
+	}
+	return items
 }
 
 func NewEndpointDetailResponseFromView(view domainendpoint.EndpointView) EndpointDetailResponse {
 	return endpointDetailResponse(
-		view.ID.String(),
-		view.Name,
-		view.Description,
-		view.URL,
-		string(view.Method),
+		NewEndpointListResponseFromView(view),
 		view.Headers,
 		view.Query,
 		view.Body,
@@ -39,20 +53,19 @@ func NewEndpointDetailResponseFromView(view domainendpoint.EndpointView) Endpoin
 		view.RetryOnFailure,
 		view.RetryCount,
 		view.RetryDelay,
-		string(view.Status),
-		view.OrganizationID.String(),
-		view.CreatedAt,
-		view.UpdatedAt,
 	)
 }
 
 func NewEndpointDetailResponseFromEntity(e domainendpoint.Endpoint) EndpointDetailResponse {
 	return endpointDetailResponse(
-		e.ID.String(),
-		e.Name,
-		e.Description,
-		e.URL,
-		string(e.Method),
+		EndpointListResponse{
+			ID:          e.ID.String(),
+			Name:        e.Name,
+			Description: optionalNonEmptyString(e.Description),
+			URL:         e.URL,
+			Method:      string(e.Method),
+			Status:      string(e.Status),
+		},
 		e.Headers,
 		e.Query,
 		e.Body,
@@ -60,30 +73,16 @@ func NewEndpointDetailResponseFromEntity(e domainendpoint.Endpoint) EndpointDeta
 		e.RetryOnFailure,
 		e.RetryCount,
 		e.RetryDelay,
-		string(e.Status),
-		e.OrganizationID.String(),
-		e.CreatedAt,
-		e.UpdatedAt,
 	)
 }
 
-func NewEndpointListResponseFromViews(views []domainendpoint.EndpointView) []EndpointDetailResponse {
-	items := make([]EndpointDetailResponse, 0, len(views))
-	for _, view := range views {
-		items = append(items, NewEndpointDetailResponseFromView(view))
-	}
-	return items
-}
-
 func endpointDetailResponse(
-	id, name, description, url, method string,
+	list EndpointListResponse,
 	headers, query map[string]string,
 	body map[string]any,
 	timeout int,
 	retryOnFailure bool,
 	retryCount, retryDelay int,
-	status, organizationID string,
-	createdAt, updatedAt time.Time,
 ) EndpointDetailResponse {
 	if headers == nil {
 		headers = map[string]string{}
@@ -95,21 +94,13 @@ func endpointDetailResponse(
 		body = map[string]any{}
 	}
 	return EndpointDetailResponse{
-		ID:             id,
-		Name:           name,
-		Description:    optionalNonEmptyString(description),
-		URL:            url,
-		Method:         method,
-		Headers:        headers,
-		Query:          query,
-		Body:           body,
-		Timeout:        timeout,
-		RetryOnFailure: retryOnFailure,
-		RetryCount:     retryCount,
-		RetryDelay:     retryDelay,
-		Status:         status,
-		OrganizationID: organizationID,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
+		EndpointListResponse: list,
+		Headers:              headers,
+		Query:                query,
+		Body:                 body,
+		Timeout:              timeout,
+		RetryOnFailure:       retryOnFailure,
+		RetryCount:           retryCount,
+		RetryDelay:           retryDelay,
 	}
 }

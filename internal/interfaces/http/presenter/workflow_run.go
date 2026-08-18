@@ -10,39 +10,47 @@ import (
 	"github.com/google/uuid"
 )
 
+type WorkflowRunListResponse struct {
+	ID          string     `json:"id"`
+	Status      string     `json:"status"`
+	TriggeredBy string     `json:"triggeredBy"`
+	StartedAt   *time.Time `json:"startedAt"`
+	FinishedAt  *time.Time `json:"finishedAt"`
+	Error       *string    `json:"error"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
 type WorkflowRunDetailResponse struct {
-	ID                string            `json:"id"`
-	WorkflowID        string            `json:"workflowId"`
-	OrganizationID    string            `json:"organizationId"`
-	Status            string            `json:"status"`
-	TriggeredBy       string            `json:"triggeredBy"`
-	TriggeredByUserID *string           `json:"triggeredByUserId"`
-	Context           map[string]any    `json:"context"`
-	StartedAt         *time.Time        `json:"startedAt"`
-	FinishedAt        *time.Time        `json:"finishedAt"`
-	Error             *string           `json:"error"`
-	CreatedAt         time.Time         `json:"createdAt"`
-	UpdatedAt         time.Time         `json:"updatedAt"`
-	StepRuns          []StepRunResponse `json:"stepRuns,omitempty"`
+	WorkflowRunListResponse
+	StepRuns []StepRunResponse `json:"stepRuns,omitempty"`
+}
+
+func NewWorkflowRunListResponseFromView(view domainworkflowrun.WorkflowRunView) WorkflowRunListResponse {
+	return WorkflowRunListResponse{
+		ID:          view.ID.String(),
+		Status:      string(view.Status),
+		TriggeredBy: string(view.TriggeredBy),
+		StartedAt:   view.StartedAt,
+		FinishedAt:  view.FinishedAt,
+		Error:       optionalNonEmptyString(view.Error),
+		CreatedAt:   view.CreatedAt,
+	}
 }
 
 func NewWorkflowRunDetailResponseFromEntity(
 	run domainworkflowrun.WorkflowRun,
-	organizationID uuid.UUID,
+	_ uuid.UUID,
 ) WorkflowRunDetailResponse {
 	return WorkflowRunDetailResponse{
-		ID:                run.ID.String(),
-		WorkflowID:        run.WorkflowID.String(),
-		OrganizationID:    organizationID.String(),
-		Status:            string(run.Status),
-		TriggeredBy:       string(run.TriggeredBy),
-		TriggeredByUserID: optionalUUID(run.TriggeredByUserID),
-		Context:           contextOrEmpty(run.Context),
-		StartedAt:         run.StartedAt,
-		FinishedAt:        run.FinishedAt,
-		Error:             optionalNonEmptyString(run.Error),
-		CreatedAt:         run.CreatedAt,
-		UpdatedAt:         run.UpdatedAt,
+		WorkflowRunListResponse: WorkflowRunListResponse{
+			ID:          run.ID.String(),
+			Status:      string(run.Status),
+			TriggeredBy: string(run.TriggeredBy),
+			StartedAt:   run.StartedAt,
+			FinishedAt:  run.FinishedAt,
+			Error:       optionalNonEmptyString(run.Error),
+			CreatedAt:   run.CreatedAt,
+		},
 	}
 }
 
@@ -52,30 +60,9 @@ func NewWorkflowRunDetailResponseFromView(
 	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
 ) WorkflowRunDetailResponse {
 	return WorkflowRunDetailResponse{
-		ID:                view.ID.String(),
-		WorkflowID:        view.WorkflowID.String(),
-		OrganizationID:    view.OrganizationID.String(),
-		Status:            string(view.Status),
-		TriggeredBy:       string(view.TriggeredBy),
-		TriggeredByUserID: optionalUUID(view.TriggeredByUserID),
-		Context:           contextOrEmpty(view.Context),
-		StartedAt:         view.StartedAt,
-		FinishedAt:        view.FinishedAt,
-		Error:             optionalNonEmptyString(view.Error),
-		CreatedAt:         view.CreatedAt,
-		UpdatedAt:         view.UpdatedAt,
-		StepRuns:          NewStepRunListResponseFromViews(stepRuns, insightsByStepRunID),
+		WorkflowRunListResponse: NewWorkflowRunListResponseFromView(view),
+		StepRuns:                NewStepRunListResponseFromViews(stepRuns, insightsByStepRunID),
 	}
-}
-
-func NewWorkflowRunListResponseFromViews(views []domainworkflowrun.WorkflowRunView) []WorkflowRunDetailResponse {
-	items := make([]WorkflowRunDetailResponse, 0, len(views))
-	for _, view := range views {
-		item := NewWorkflowRunDetailResponseFromView(view, nil, nil)
-		item.StepRuns = nil
-		items = append(items, item)
-	}
-	return items
 }
 
 func NewWorkflowRunListWithStepRunsFromViews(
@@ -92,19 +79,4 @@ func NewWorkflowRunListWithStepRunsFromViews(
 		))
 	}
 	return items
-}
-
-func optionalUUID(id *uuid.UUID) *string {
-	if id == nil {
-		return nil
-	}
-	value := id.String()
-	return &value
-}
-
-func contextOrEmpty(ctx map[string]any) map[string]any {
-	if ctx == nil {
-		return map[string]any{}
-	}
-	return ctx
 }

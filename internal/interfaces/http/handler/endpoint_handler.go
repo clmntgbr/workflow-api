@@ -84,10 +84,10 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		Headers:        headers,
 		Query:          queryParams,
 		Body:           body,
-		Timeout:        intOrDefault(req.Timeout, 30000),
-		RetryOnFailure: boolOrDefault(req.RetryOnFailure, false),
-		RetryCount:     intOrDefault(req.RetryCount, 0),
-		RetryDelay:     intOrDefault(req.RetryDelay, 1000),
+		Timeout:        *req.Timeout,
+		RetryOnFailure: *req.RetryOnFailure,
+		RetryCount:     *req.RetryCount,
+		RetryDelay:     *req.RetryDelay,
 		OrganizationID: orgID,
 	})
 	if err != nil {

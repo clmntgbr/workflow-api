@@ -1,50 +1,63 @@
 package presenter
 
-import (
-	"time"
-
-	domainstep "go-api/internal/domain/step"
-)
+import domainstep "go-api/internal/domain/step"
 
 type StepPositionResponse struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
 }
 
+type StepListResponse struct {
+	ID         string               `json:"id"`
+	EndpointID string               `json:"endpointId"`
+	Name       string               `json:"name"`
+	URL        string               `json:"url"`
+	Method     string               `json:"method"`
+	Position   StepPositionResponse `json:"position"`
+}
+
 type StepDetailResponse struct {
-	ID             string               `json:"id"`
-	WorkflowID     string               `json:"workflowId"`
-	EndpointID     string               `json:"endpointId"`
-	Name           string               `json:"name"`
-	Description    *string              `json:"description"`
-	URL            string               `json:"url"`
-	Method         string               `json:"method"`
-	Headers        map[string]string    `json:"headers"`
-	Query          map[string]string    `json:"query"`
-	Body           map[string]any       `json:"body"`
-	Timeout        int                  `json:"timeout"`
-	RetryOnFailure bool                 `json:"retryOnFailure"`
-	RetryCount     int                  `json:"retryCount"`
-	RetryDelay     int                  `json:"retryDelay"`
-	Index          string               `json:"index"`
-	ExecutionOrder int                  `json:"executionOrder"`
-	TreeIndex      int                  `json:"treeIndex"`
-	Position       StepPositionResponse `json:"position"`
-	Status         string               `json:"status"`
-	OrganizationID string               `json:"organizationId"`
-	CreatedAt      time.Time            `json:"createdAt"`
-	UpdatedAt      time.Time            `json:"updatedAt"`
+	StepListResponse
+	Description    *string           `json:"description"`
+	Headers        map[string]string `json:"headers"`
+	Query          map[string]string `json:"query"`
+	Body           map[string]any    `json:"body"`
+	Timeout        int               `json:"timeout"`
+	RetryOnFailure bool              `json:"retryOnFailure"`
+	RetryCount     int               `json:"retryCount"`
+	RetryDelay     int               `json:"retryDelay"`
+	Index          string            `json:"index"`
+	ExecutionOrder int               `json:"executionOrder"`
+	TreeIndex      int               `json:"treeIndex"`
+	Status         string            `json:"status"`
+}
+
+func NewStepListResponseFromView(view domainstep.StepView) StepListResponse {
+	return StepListResponse{
+		ID:         view.ID.String(),
+		EndpointID: view.EndpointID.String(),
+		Name:       view.Name,
+		URL:        view.URL,
+		Method:     view.Method,
+		Position: StepPositionResponse{
+			X: view.Position.X,
+			Y: view.Position.Y,
+		},
+	}
+}
+
+func NewStepListResponseFromViews(views []domainstep.StepView) []StepListResponse {
+	items := make([]StepListResponse, 0, len(views))
+	for _, view := range views {
+		items = append(items, NewStepListResponseFromView(view))
+	}
+	return items
 }
 
 func NewStepDetailResponseFromView(view domainstep.StepView) StepDetailResponse {
 	return stepDetailResponse(
-		view.ID.String(),
-		view.WorkflowID.String(),
-		view.EndpointID.String(),
-		view.Name,
+		NewStepListResponseFromView(view),
 		view.Description,
-		view.URL,
-		view.Method,
 		view.Headers,
 		view.Query,
 		view.Body,
@@ -55,23 +68,24 @@ func NewStepDetailResponseFromView(view domainstep.StepView) StepDetailResponse 
 		view.Index,
 		view.ExecutionOrder,
 		view.TreeIndex,
-		view.Position,
 		string(view.Status),
-		view.OrganizationID.String(),
-		view.CreatedAt,
-		view.UpdatedAt,
 	)
 }
 
 func NewStepDetailResponseFromEntity(s domainstep.Step) StepDetailResponse {
 	return stepDetailResponse(
-		s.ID.String(),
-		s.WorkflowID.String(),
-		s.EndpointID.String(),
-		s.Name,
+		StepListResponse{
+			ID:         s.ID.String(),
+			EndpointID: s.EndpointID.String(),
+			Name:       s.Name,
+			URL:        s.URL,
+			Method:     s.Method,
+			Position: StepPositionResponse{
+				X: s.Position.X,
+				Y: s.Position.Y,
+			},
+		},
 		s.Description,
-		s.URL,
-		s.Method,
 		s.Headers,
 		s.Query,
 		s.Body,
@@ -82,24 +96,13 @@ func NewStepDetailResponseFromEntity(s domainstep.Step) StepDetailResponse {
 		s.Index,
 		s.ExecutionOrder,
 		s.TreeIndex,
-		s.Position,
 		string(s.Status),
-		s.OrganizationID.String(),
-		s.CreatedAt,
-		s.UpdatedAt,
 	)
 }
 
-func NewStepListResponseFromViews(views []domainstep.StepView) []StepDetailResponse {
-	items := make([]StepDetailResponse, 0, len(views))
-	for _, view := range views {
-		items = append(items, NewStepDetailResponseFromView(view))
-	}
-	return items
-}
-
 func stepDetailResponse(
-	id, workflowID, endpointID, name, description, url, method string,
+	list StepListResponse,
+	description string,
 	headers, query map[string]string,
 	body map[string]any,
 	timeout int,
@@ -107,9 +110,7 @@ func stepDetailResponse(
 	retryCount, retryDelay int,
 	index string,
 	executionOrder, treeIndex int,
-	position domainstep.Position,
-	status, organizationID string,
-	createdAt, updatedAt time.Time,
+	status string,
 ) StepDetailResponse {
 	if headers == nil {
 		headers = map[string]string{}
@@ -121,30 +122,18 @@ func stepDetailResponse(
 		body = map[string]any{}
 	}
 	return StepDetailResponse{
-		ID:             id,
-		WorkflowID:     workflowID,
-		EndpointID:     endpointID,
-		Name:           name,
-		Description:    optionalNonEmptyString(description),
-		URL:            url,
-		Method:         method,
-		Headers:        headers,
-		Query:          query,
-		Body:           body,
-		Timeout:        timeout,
-		RetryOnFailure: retryOnFailure,
-		RetryCount:     retryCount,
-		RetryDelay:     retryDelay,
-		Index:          index,
-		ExecutionOrder: executionOrder,
-		TreeIndex:      treeIndex,
-		Position: StepPositionResponse{
-			X: position.X,
-			Y: position.Y,
-		},
-		Status:         status,
-		OrganizationID: organizationID,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
+		StepListResponse: list,
+		Description:      optionalNonEmptyString(description),
+		Headers:          headers,
+		Query:            query,
+		Body:             body,
+		Timeout:          timeout,
+		RetryOnFailure:   retryOnFailure,
+		RetryCount:       retryCount,
+		RetryDelay:       retryDelay,
+		Index:            index,
+		ExecutionOrder:   executionOrder,
+		TreeIndex:        treeIndex,
+		Status:           status,
 	}
 }
