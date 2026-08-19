@@ -25,16 +25,6 @@ func needsBracketNotation(key string) bool {
 	return false
 }
 
-func appendPathSegment(currentPath, key string) string {
-	if needsBracketNotation(key) {
-		return currentPath + `["` + escapeJSONPathKey(key) + `"]`
-	}
-	if currentPath == "$" {
-		return "$." + key
-	}
-	return currentPath + "." + key
-}
-
 func escapeJSONPathKey(key string) string {
 	return strings.ReplaceAll(key, `"`, `\"`)
 }

@@ -17,7 +17,7 @@ func extractPaths(data any, currentPath string, queryLower string) []string {
 	switch typed := data.(type) {
 	case map[string]any:
 		for key, value := range typed {
-			newPath := appendPathSegment(currentPath, key)
+			newPath := currentPath + "." + key
 			if matchesPathQuery(newPath, key, queryLower) {
 				paths = append(paths, newPath)
 			}

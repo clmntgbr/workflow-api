@@ -3,8 +3,6 @@ package variable
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/PaesslerAG/jsonpath"
 )
 
 func TestNormalizeJSONPath_hydraMember(t *testing.T) {
@@ -16,8 +14,8 @@ func TestNormalizeJSONPath_hydraMember(t *testing.T) {
 }
 
 func TestNormalizeJSONPath_atContext(t *testing.T) {
-	got := NormalizeJSONPath(`$.@context`)
-	want := `$["@context"]`
+	got := NormalizeJSONPath(`$.hydra:member[0].@id`)
+	want := `$["hydra:member"][0]["@id"]`
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -54,43 +52,31 @@ func TestExtractByPath_hydraCollection(t *testing.T) {
 	}
 }
 
-func TestExtractResponsePaths_hydraCollection(t *testing.T) {
-	raw := `{"hydra:member":[{"id":"abc"}],"@context":"/contexts/Order"}`
+func TestExtractResponsePaths_keepsDotNotation(t *testing.T) {
+	raw := `{"hydra:member":[{"id":"abc"}]}`
 	var body any
 	if err := json.Unmarshal([]byte(raw), &body); err != nil {
 		t.Fatal(err)
 	}
 
-	paths := ExtractResponsePaths(body, "id")
+	paths := ExtractResponsePaths(body, "")
+	want := `$.hydra:member[0].id`
 	found := false
 	for _, path := range paths {
-		normalized := NormalizeJSONPath(path)
-		value, err := jsonpath.Get(normalized, body)
-		if err == nil && value == "abc" {
+		if path == want {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatalf("expected extractable id path, got %v", paths)
+		t.Fatalf("expected %q in paths, got %v", want, paths)
 	}
-}
 
-func TestAppendPathSegment(t *testing.T) {
-	tests := []struct {
-		current string
-		key     string
-		want    string
-	}{
-		{"$", "id", "$.id"},
-		{"$", "hydra:member", `$["hydra:member"]`},
-		{`$["hydra:member"]`, "id", `$["hydra:member"].id`},
-		{"$.foo", "@type", `$.foo["@type"]`},
+	value, err := ExtractByPath(body, want)
+	if err != nil {
+		t.Fatalf("extract failed: %v", err)
 	}
-	for _, tt := range tests {
-		got := appendPathSegment(tt.current, tt.key)
-		if got != tt.want {
-			t.Fatalf("appendPathSegment(%q, %q) = %q, want %q", tt.current, tt.key, got, tt.want)
-		}
+	if value != "abc" {
+		t.Fatalf("got %v", value)
 	}
 }
