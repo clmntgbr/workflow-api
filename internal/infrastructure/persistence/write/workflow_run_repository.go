@@ -66,3 +66,24 @@ func (r *workflowRunWriteRepository) HasInProgress(ctx context.Context, workflow
 	}
 	return count > 0, nil
 }
+
+func (r *workflowRunWriteRepository) FindInProgressByWorkflowID(
+	ctx context.Context,
+	workflowID uuid.UUID,
+) (*domainworkflowrun.WorkflowRun, error) {
+	var model WorkflowRunModel
+	err := DBWithContext(ctx, r.db).
+		Where("workflow_id = ? AND status IN ?", workflowID, []string{
+			string(domainworkflowrun.StatusPending),
+			string(domainworkflowrun.StatusRunning),
+		}).
+		Order("created_at ASC").
+		First(&model).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return workflowRunDomainFromModel(&model)
+}

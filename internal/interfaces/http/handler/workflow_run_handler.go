@@ -25,6 +25,7 @@ import (
 
 type WorkflowRunHandler struct {
 	startHandler       *workflowruncmd.StartWorkflowRunHandler
+	cancelHandler      *workflowruncmd.CancelWorkflowRunHandler
 	getByIDHandler     *queryworkflowrun.GetWorkflowRunByIDHandler
 	analyticsHandler   *queryworkflowrun.GetWorkflowRunAnalyticsHandler
 	listByWorkflow     *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
@@ -37,6 +38,7 @@ type WorkflowRunHandler struct {
 
 func NewWorkflowRunHandler(
 	startHandler *workflowruncmd.StartWorkflowRunHandler,
+	cancelHandler *workflowruncmd.CancelWorkflowRunHandler,
 	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
 	analyticsHandler *queryworkflowrun.GetWorkflowRunAnalyticsHandler,
 	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
@@ -48,6 +50,7 @@ func NewWorkflowRunHandler(
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
 		startHandler:       startHandler,
+		cancelHandler:      cancelHandler,
 		getByIDHandler:     getByIDHandler,
 		analyticsHandler:   analyticsHandler,
 		listByWorkflow:     listByWorkflow,
@@ -132,7 +135,60 @@ func parseRFC3339Nullable(value string) (*time.Time, error) {
 	return &parsed, nil
 }
 
-func (h *WorkflowRunHandler) Start(c fiber.Ctx) error {
+func (h *WorkflowRunHandler) StartWorkflow(c fiber.Ctx) error {
+	return h.startWorkflowRun(c, c.Params("id"))
+}
+
+func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
+	if _, err := httpctx.GetUser(c); err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	workflowID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: workflowID})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+	}
+	if workflow.OrganizationID != orgID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+	}
+
+	run, err := h.cancelHandler.Handle(c.Context(), workflowruncmd.CancelWorkflowRunCommand{
+		WorkflowID:     workflowID,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		if errors.Is(err, domainworkflowrun.ErrWorkflowNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		if errors.Is(err, domainworkflowrun.ErrNoRunInProgress) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"code":    "NO_RUN_IN_PROGRESS",
+				"message": "No workflow run is in progress",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to stop workflow run"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromEntity(*run, orgID))
+}
+
+func (h *WorkflowRunHandler) startWorkflowRun(
+	c fiber.Ctx,
+	workflowIDParam string,
+) error {
 	user, err := httpctx.GetUser(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
@@ -143,7 +199,7 @@ func (h *WorkflowRunHandler) Start(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
 	}
 
-	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	workflowID, err := uuid.Parse(workflowIDParam)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -169,7 +225,7 @@ func (h *WorkflowRunHandler) Start(c fiber.Ctx) error {
 	userID := user.ID
 	run, err := h.startHandler.Handle(c.Context(), workflowruncmd.StartWorkflowRunCommand{
 		WorkflowID:        workflowID,
-		TriggeredBy:       domainworkflowrun.TriggeredByUser,
+		TriggeredBy:       domainworkflowrun.TriggeredByAPI,
 		TriggeredByUserID: &userID,
 		Context:           req.Context,
 	})
