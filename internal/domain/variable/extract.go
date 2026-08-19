@@ -11,6 +11,7 @@ func ExtractByPath(body any, path string) (any, error) {
 	if path == "" {
 		return nil, ErrInvalidPath
 	}
+	path = NormalizeJSONPath(path)
 	result, err := jsonpath.Get(path, body)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidPath, err)

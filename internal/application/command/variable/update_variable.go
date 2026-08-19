@@ -50,7 +50,7 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 		Name:           strings.TrimSpace(cmd.Name),
 		Key:            strings.TrimSpace(cmd.Key),
 		Description:    strings.TrimSpace(cmd.Description),
-		Path:           strings.TrimSpace(cmd.Path),
+		Path:           domainvariable.NormalizeJSONPath(strings.TrimSpace(cmd.Path)),
 		OrganizationID: cmd.OrganizationID,
 	})
 

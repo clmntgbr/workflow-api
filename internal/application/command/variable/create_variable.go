@@ -71,7 +71,7 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		Name:           strings.TrimSpace(cmd.Name),
 		Key:            strings.TrimSpace(cmd.Key),
 		Description:    strings.TrimSpace(cmd.Description),
-		Path:           strings.TrimSpace(cmd.Path),
+		Path:           domainvariable.NormalizeJSONPath(strings.TrimSpace(cmd.Path)),
 		StepID:         cmd.StepID,
 		WorkflowID:     cmd.WorkflowID,
 		OrganizationID: cmd.OrganizationID,
