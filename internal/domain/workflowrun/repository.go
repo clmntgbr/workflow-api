@@ -29,6 +29,32 @@ type WorkflowRunReadRepository interface {
 		organizationID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowRunView, int64, error)
+	FindAnalyticsByOrganization(
+		ctx context.Context,
+		organizationID uuid.UUID,
+		filter WorkflowRunAnalyticsFilter,
+	) (*WorkflowRunAnalytics, error)
+}
+
+type WorkflowRunAnalyticsFilter struct {
+	WorkflowID *uuid.UUID
+	From       *time.Time
+	To         *time.Time
+}
+
+type WorkflowRunAnalytics struct {
+	TotalRuns         int64
+	SuccessRate       float64
+	SuccessCount      int64
+	FailureRate       float64
+	FailureCount      int64
+	CancelledCount    int64
+	RunningCount      int64
+	PendingCount      int64
+	AverageDurationMS float64
+	MinDurationMS     float64
+	MaxDurationMS     float64
+	LastRunAt         *time.Time
 }
 
 type WorkflowRunView struct {

@@ -2,6 +2,7 @@ package read
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -156,6 +157,83 @@ func (r *workflowRunReadRepository) FindByOrganizationID(
 		views = append(views, *view)
 	}
 	return views, total, nil
+}
+
+func (r *workflowRunReadRepository) FindAnalyticsByOrganization(
+	ctx context.Context,
+	organizationID uuid.UUID,
+	filter domainworkflowrun.WorkflowRunAnalyticsFilter,
+) (*domainworkflowrun.WorkflowRunAnalytics, error) {
+	db := r.db.WithContext(ctx).
+		Table("workflow_runs").
+		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
+		Where("workflows.organization_id = ?", organizationID)
+
+	if filter.WorkflowID != nil {
+		db = db.Where("workflow_runs.workflow_id = ?", *filter.WorkflowID)
+	}
+	if filter.From != nil {
+		db = db.Where("workflow_runs.created_at >= ?", *filter.From)
+	}
+	if filter.To != nil {
+		db = db.Where("workflow_runs.created_at <= ?", *filter.To)
+	}
+
+	type analyticsRow struct {
+		TotalRuns         int64
+		SuccessCount      int64
+		FailureCount      int64
+		CancelledCount    int64
+		RunningCount      int64
+		PendingCount      int64
+		AverageDurationMS sql.NullFloat64
+		MinDurationMS     sql.NullFloat64
+		MaxDurationMS     sql.NullFloat64
+		LastRunAt         *time.Time
+	}
+
+	var row analyticsRow
+	err := db.Select(`
+		COUNT(*) AS total_runs,
+		COUNT(*) FILTER (WHERE workflow_runs.status = 'success') AS success_count,
+		COUNT(*) FILTER (WHERE workflow_runs.status = 'failed') AS failure_count,
+		COUNT(*) FILTER (WHERE workflow_runs.status = 'cancelled') AS cancelled_count,
+		COUNT(*) FILTER (WHERE workflow_runs.status = 'running') AS running_count,
+		COUNT(*) FILTER (WHERE workflow_runs.status = 'pending') AS pending_count,
+		AVG(EXTRACT(EPOCH FROM (workflow_runs.finished_at - workflow_runs.started_at)) * 1000)
+			FILTER (WHERE workflow_runs.started_at IS NOT NULL AND workflow_runs.finished_at IS NOT NULL) AS average_duration_ms,
+		MIN(EXTRACT(EPOCH FROM (workflow_runs.finished_at - workflow_runs.started_at)) * 1000)
+			FILTER (WHERE workflow_runs.started_at IS NOT NULL AND workflow_runs.finished_at IS NOT NULL) AS min_duration_ms,
+		MAX(EXTRACT(EPOCH FROM (workflow_runs.finished_at - workflow_runs.started_at)) * 1000)
+			FILTER (WHERE workflow_runs.started_at IS NOT NULL AND workflow_runs.finished_at IS NOT NULL) AS max_duration_ms,
+		MAX(workflow_runs.created_at) AS last_run_at
+	`).Scan(&row).Error
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &domainworkflowrun.WorkflowRunAnalytics{
+		TotalRuns:         row.TotalRuns,
+		SuccessCount:      row.SuccessCount,
+		FailureCount:      row.FailureCount,
+		CancelledCount:    row.CancelledCount,
+		RunningCount:      row.RunningCount,
+		PendingCount:      row.PendingCount,
+		AverageDurationMS: 0,
+		MinDurationMS:     0,
+		MaxDurationMS:     0,
+		LastRunAt:         row.LastRunAt,
+	}
+	if row.AverageDurationMS.Valid {
+		stats.AverageDurationMS = row.AverageDurationMS.Float64
+	}
+	if row.MinDurationMS.Valid {
+		stats.MinDurationMS = row.MinDurationMS.Float64
+	}
+	if row.MaxDurationMS.Valid {
+		stats.MaxDurationMS = row.MaxDurationMS.Float64
+	}
+	return stats, nil
 }
 
 func toWorkflowRunView(row workflowRunRow) (*domainworkflowrun.WorkflowRunView, error) {

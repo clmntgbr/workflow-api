@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"strings"
+	"time"
 
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryinsight "go-api/internal/application/query/insight"
@@ -24,6 +26,7 @@ import (
 type WorkflowRunHandler struct {
 	startHandler       *workflowruncmd.StartWorkflowRunHandler
 	getByIDHandler     *queryworkflowrun.GetWorkflowRunByIDHandler
+	analyticsHandler   *queryworkflowrun.GetWorkflowRunAnalyticsHandler
 	listByWorkflow     *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
 	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler
 	listStepRuns       *querysteprun.ListStepRunsByWorkflowRunHandler
@@ -35,6 +38,7 @@ type WorkflowRunHandler struct {
 func NewWorkflowRunHandler(
 	startHandler *workflowruncmd.StartWorkflowRunHandler,
 	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
+	analyticsHandler *queryworkflowrun.GetWorkflowRunAnalyticsHandler,
 	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
 	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler,
 	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
@@ -45,6 +49,7 @@ func NewWorkflowRunHandler(
 	return &WorkflowRunHandler{
 		startHandler:       startHandler,
 		getByIDHandler:     getByIDHandler,
+		analyticsHandler:   analyticsHandler,
 		listByWorkflow:     listByWorkflow,
 		listByOrganization: listByOrganization,
 		listStepRuns:       listStepRuns,
@@ -52,6 +57,79 @@ func NewWorkflowRunHandler(
 		listInsightsByIDs:  listInsightsByIDs,
 		getWorkflowHandler: getWorkflowHandler,
 	}
+}
+
+func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveOrganizationID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+	}
+
+	var query dto.WorkflowRunAnalyticsQuery
+	if err := c.Bind().Query(&query); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid query parameters",
+			"errors":  err.Error(),
+		})
+	}
+	if err := validation.Struct(c, &query); err != nil {
+		return err
+	}
+
+	var workflowID *uuid.UUID
+	if query.WorkflowID != "" {
+		parsed, err := uuid.Parse(query.WorkflowID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+		}
+		workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: parsed})
+		if err != nil {
+			if err.Error() == "workflow not found" {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+		}
+		if workflow.OrganizationID != orgID {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		workflowID = &parsed
+	}
+
+	from, err := parseRFC3339Nullable(query.From)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid from date (expected RFC3339)"})
+	}
+	to, err := parseRFC3339Nullable(query.To)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid to date (expected RFC3339)"})
+	}
+
+	stats, err := h.analyticsHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunAnalyticsQuery{
+		OrganizationID: orgID,
+		WorkflowID:     workflowID,
+		From:           from,
+		To:             to,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "from must be before to") {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "from must be before to"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to compute workflow run analytics"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunAnalyticsResponse(*stats))
+}
+
+func parseRFC3339Nullable(value string) (*time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }
 
 func (h *WorkflowRunHandler) Start(c fiber.Ctx) error {

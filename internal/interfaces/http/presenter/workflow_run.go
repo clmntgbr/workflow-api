@@ -25,6 +25,21 @@ type WorkflowRunDetailResponse struct {
 	StepRuns []StepRunResponse `json:"stepRuns,omitempty"`
 }
 
+type WorkflowRunAnalyticsResponse struct {
+	TotalRuns         int        `json:"totalRuns"`
+	SuccessRate       float64    `json:"successRate"`
+	SuccessCount      int        `json:"successCount"`
+	FailureRate       float64    `json:"failureRate"`
+	FailureCount      int        `json:"failureCount"`
+	AverageDurationMS float64    `json:"averageDurationMs"`
+	RunningCount      int        `json:"runningCount"`
+	PendingCount      int        `json:"pendingCount"`
+	CancelledCount    int        `json:"cancelledCount"`
+	MinDurationMS     float64    `json:"minDurationMs"`
+	MaxDurationMS     float64    `json:"maxDurationMs"`
+	LastRunAt         *time.Time `json:"lastRunAt"`
+}
+
 func NewWorkflowRunListResponseFromView(view domainworkflowrun.WorkflowRunView) WorkflowRunListResponse {
 	return WorkflowRunListResponse{
 		ID:          view.ID.String(),
@@ -79,4 +94,23 @@ func NewWorkflowRunListWithStepRunsFromViews(
 		))
 	}
 	return items
+}
+
+func NewWorkflowRunAnalyticsResponse(
+	stats domainworkflowrun.WorkflowRunAnalytics,
+) WorkflowRunAnalyticsResponse {
+	return WorkflowRunAnalyticsResponse{
+		TotalRuns:         int(stats.TotalRuns),
+		SuccessRate:       stats.SuccessRate,
+		SuccessCount:      int(stats.SuccessCount),
+		FailureRate:       stats.FailureRate,
+		FailureCount:      int(stats.FailureCount),
+		AverageDurationMS: stats.AverageDurationMS,
+		RunningCount:      int(stats.RunningCount),
+		PendingCount:      int(stats.PendingCount),
+		CancelledCount:    int(stats.CancelledCount),
+		MinDurationMS:     stats.MinDurationMS,
+		MaxDurationMS:     stats.MaxDurationMS,
+		LastRunAt:         stats.LastRunAt,
+	}
 }
