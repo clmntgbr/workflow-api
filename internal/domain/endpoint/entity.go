@@ -30,19 +30,20 @@ type Endpoint struct {
 }
 
 type NewEndpointParams struct {
-	Name           string
-	Description    string
-	URL            string
-	Method         Method
-	Headers        map[string]string
-	Query          map[string]string
-	Body           map[string]any
-	Timeout        int
-	RetryOnFailure bool
-	RetryCount     int
-	RetryDelay     int
-	Status         Status
-	OrganizationID uuid.UUID
+	Name             string
+	Description      string
+	URL              string
+	Method           Method
+	Headers          map[string]string
+	Query            map[string]string
+	Body             map[string]any
+	Timeout          int
+	RetryOnFailure   bool
+	RetryCount       int
+	RetryDelay       int
+	Status           Status
+	SkipCreatedEvent bool
+	OrganizationID   uuid.UUID
 }
 
 func NewEndpoint(p NewEndpointParams) *Endpoint {
@@ -82,24 +83,26 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	e.recordEvent(EndpointCreated{
-		ID:             uuid.New().String(),
-		EndpointID:     e.ID.String(),
-		OrganizationID: e.OrganizationID.String(),
-		Name:           e.Name,
-		Description:    e.Description,
-		URL:            e.URL,
-		Method:         string(e.Method),
-		Headers:        e.Headers,
-		Query:          e.Query,
-		Body:           e.Body,
-		Timeout:        e.Timeout,
-		RetryOnFailure: e.RetryOnFailure,
-		RetryCount:     e.RetryCount,
-		RetryDelay:     e.RetryDelay,
-		Status:         string(e.Status),
-		Timestamp:      now,
-	})
+	if !p.SkipCreatedEvent {
+		e.recordEvent(EndpointCreated{
+			ID:             uuid.New().String(),
+			EndpointID:     e.ID.String(),
+			OrganizationID: e.OrganizationID.String(),
+			Name:           e.Name,
+			Description:    e.Description,
+			URL:            e.URL,
+			Method:         string(e.Method),
+			Headers:        e.Headers,
+			Query:          e.Query,
+			Body:           e.Body,
+			Timeout:        e.Timeout,
+			RetryOnFailure: e.RetryOnFailure,
+			RetryCount:     e.RetryCount,
+			RetryDelay:     e.RetryDelay,
+			Status:         string(e.Status),
+			Timestamp:      now,
+		})
+	}
 	return e
 }
 

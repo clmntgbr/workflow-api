@@ -11,6 +11,7 @@ const (
 	ActionSucceeded                 = "succeeded"
 	ActionFailed                    = "failed"
 	ActionCancelled                 = "cancelled"
+	ActionImported                  = "imported"
 
 	EntityUser         = "user"
 	EntityOrganization = "organization"

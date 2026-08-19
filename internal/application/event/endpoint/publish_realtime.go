@@ -53,6 +53,14 @@ func (h *PublishRealtimeHandler) OnDeleted(ctx context.Context, payload []byte) 
 	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionDeleted, evt)
 }
 
+func (h *PublishRealtimeHandler) OnImported(ctx context.Context, payload []byte) error {
+	var evt domainendpoint.EndpointImported
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return messaging.NonRetryable(err)
+	}
+	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionImported, evt)
+}
+
 func (h *PublishRealtimeHandler) publishToOrganizationMembers(
 	ctx context.Context,
 	organizationIDRaw string,

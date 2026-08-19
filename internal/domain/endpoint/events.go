@@ -3,8 +3,9 @@ package endpoint
 import "time"
 
 const (
-	EventTypeEndpointCreated = "endpoint.created.v1"
-	EventTypeEndpointUpdated = "endpoint.updated.v1"
+	EventTypeEndpointCreated  = "endpoint.created.v1"
+	EventTypeEndpointUpdated  = "endpoint.updated.v1"
+	EventTypeEndpointImported = "endpoint.imported.v1"
 )
 
 type EndpointCreated struct {
@@ -54,6 +55,18 @@ func (e EndpointUpdated) EventID() string       { return e.ID }
 func (e EndpointUpdated) EventType() string     { return EventTypeEndpointUpdated }
 func (e EndpointUpdated) AggregateID() string   { return e.EndpointID }
 func (e EndpointUpdated) OccurredAt() time.Time { return e.Timestamp }
+
+type EndpointImported struct {
+	ID             string    `json:"eventId"`
+	OrganizationID string    `json:"organizationId"`
+	Count          int       `json:"count"`
+	Timestamp      time.Time `json:"timestamp"`
+}
+
+func (e EndpointImported) EventID() string       { return e.ID }
+func (e EndpointImported) EventType() string     { return EventTypeEndpointImported }
+func (e EndpointImported) AggregateID() string   { return e.OrganizationID }
+func (e EndpointImported) OccurredAt() time.Time { return e.Timestamp }
 
 const EventTypeEndpointDeleted = "endpoint.deleted.v1"
 

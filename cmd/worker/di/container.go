@@ -250,6 +250,16 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_endpoint_deleted_realtime",
 		publishEndpointRealtime.OnDeleted,
 	))
+	reg.Register(domainendpoint.EventTypeEndpointImported, dedup.With(
+		dedupRepo,
+		"endpoint_imported",
+		eventendpoint.NewEndpointImportedHandler().Handle,
+	))
+	reg.Register(domainendpoint.EventTypeEndpointImported, dedup.With(
+		dedupRepo,
+		"publish_endpoint_imported_realtime",
+		publishEndpointRealtime.OnImported,
+	))
 
 	reg.Register(domainstep.EventTypeStepCreated, dedup.With(
 		dedupRepo,

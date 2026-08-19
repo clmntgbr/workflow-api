@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	domainendpoint "go-api/internal/domain/endpoint"
@@ -90,19 +91,20 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 		}
 
 		prepared = append(prepared, domainendpoint.NewEndpointParams{
-			Name:           uniqueEndpointName(usedNames, operation),
-			Description:    truncateRunes(firstNonEmpty(operation.Description, operation.Summary), maxEndpointDescription),
-			URL:            endpointURL,
-			Method:         method,
-			Headers:        cloneStringMap(cmd.Headers),
-			Query:          cloneStringMap(cmd.Query),
-			Body:           cloneAnyMap(cmd.Body),
-			Timeout:        cmd.Timeout,
-			RetryOnFailure: cmd.RetryOnFailure,
-			RetryCount:     cmd.RetryCount,
-			RetryDelay:     cmd.RetryDelay,
-			Status:         cmd.Status,
-			OrganizationID: cmd.OrganizationID,
+			Name:             uniqueEndpointName(usedNames, operation),
+			Description:      truncateRunes(firstNonEmpty(operation.Description, operation.Summary), maxEndpointDescription),
+			URL:              endpointURL,
+			Method:           method,
+			Headers:          cloneStringMap(cmd.Headers),
+			Query:            cloneStringMap(cmd.Query),
+			Body:             cloneAnyMap(cmd.Body),
+			Timeout:          cmd.Timeout,
+			RetryOnFailure:   cmd.RetryOnFailure,
+			RetryCount:       cmd.RetryCount,
+			RetryDelay:       cmd.RetryDelay,
+			Status:           cmd.Status,
+			SkipCreatedEvent: true,
+			OrganizationID:   cmd.OrganizationID,
 		})
 	}
 	if len(prepared) == 0 {
@@ -117,9 +119,15 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 			if err := h.repo.Save(txCtx, e); err != nil {
 				return err
 			}
-			events = append(events, e.PullEvents()...)
+			_ = e.PullEvents()
 			created = append(created, *e)
 		}
+		events = append(events, domainendpoint.EndpointImported{
+			ID:             uuid.NewString(),
+			OrganizationID: cmd.OrganizationID.String(),
+			Count:          len(created),
+			Timestamp:      time.Now().UTC(),
+		})
 		return h.outbox.StoreEvents(txCtx, events)
 	})
 	if err != nil {
