@@ -70,6 +70,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	connReadRepo := read.NewConnectionReadRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
+	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	stepRunReadRepo := read.NewStepRunReadRepository(db)
 	insightReadRepo := read.NewInsightReadRepository(db)
 	variableWriteRepo := write.NewVariableWriteRepository(db)
@@ -170,6 +171,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	cancelWorkflowRunHandler := workflowruncmd.NewCancelWorkflowRunHandler(
 		workflowWriteRepo,
 		workflowRunWriteRepo,
+		stepRunWriteRepo,
 		outboxRepo,
 	)
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)

@@ -10,11 +10,12 @@ const (
 	StatusSuccess   Status = "success"
 	StatusFailed    Status = "failed"
 	StatusCancelled Status = "cancelled"
+	StatusSkipped   Status = "skipped"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusPending, StatusRunning, StatusSuccess, StatusFailed, StatusCancelled:
+	case StatusPending, StatusRunning, StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
 		return true
 	default:
 		return false
@@ -23,7 +24,7 @@ func (s Status) Valid() bool {
 
 func (s Status) IsTerminal() bool {
 	switch s {
-	case StatusSuccess, StatusFailed, StatusCancelled:
+	case StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
 		return true
 	default:
 		return false

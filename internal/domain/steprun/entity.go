@@ -217,6 +217,21 @@ func (s *StepRun) MarkSkipped() error {
 	return nil
 }
 
+func (s *StepRun) MarkCancelled() error {
+	if s.Status.IsTerminal() {
+		return ErrAlreadyTerminal
+	}
+	if s.Status != StatusPending && s.Status != StatusRunning {
+		return ErrInvalidStatusTransition
+	}
+
+	now := time.Now().UTC()
+	s.Status = StatusCancelled
+	s.FinishedAt = &now
+	s.UpdatedAt = now
+	return nil
+}
+
 func (s *StepRun) PullEvents() []event.DomainEvent {
 	events := s.events
 	s.events = nil

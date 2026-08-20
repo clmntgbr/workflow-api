@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"go-api/internal/domain/port"
+	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
@@ -19,17 +20,20 @@ type CancelWorkflowRunCommand struct {
 type CancelWorkflowRunHandler struct {
 	workflowRepo domainworkflow.WorkflowWriteRepository
 	runRepo      domainworkflowrun.WorkflowRunWriteRepository
+	stepRunRepo  domainsteprun.StepRunWriteRepository
 	outbox       port.OutboxRepository
 }
 
 func NewCancelWorkflowRunHandler(
 	workflowRepo domainworkflow.WorkflowWriteRepository,
 	runRepo domainworkflowrun.WorkflowRunWriteRepository,
+	stepRunRepo domainsteprun.StepRunWriteRepository,
 	outbox port.OutboxRepository,
 ) *CancelWorkflowRunHandler {
 	return &CancelWorkflowRunHandler{
 		workflowRepo: workflowRepo,
 		runRepo:      runRepo,
+		stepRunRepo:  stepRunRepo,
 		outbox:       outbox,
 	}
 }
@@ -67,11 +71,34 @@ func (h *CancelWorkflowRunHandler) Handle(
 		return nil, err
 	}
 
+	stepRuns, err := h.stepRunRepo.FindByWorkflowRunID(ctx, run.ID)
+	if err != nil {
+		return nil, errors.New("failed to cancel workflow run")
+	}
+
 	err = h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.runRepo.Update(txCtx, run); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, run.PullEvents())
+
+		events := run.PullEvents()
+		for _, stepRun := range stepRuns {
+			if stepRun.Status.IsTerminal() {
+				continue
+			}
+			if err := stepRun.MarkCancelled(); err != nil {
+				if errors.Is(err, domainsteprun.ErrAlreadyTerminal) {
+					continue
+				}
+				return err
+			}
+			if err := h.stepRunRepo.Update(txCtx, stepRun); err != nil {
+				return err
+			}
+			events = append(events, stepRun.PullEvents()...)
+		}
+
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 	if err != nil {
 		return nil, errors.New("failed to cancel workflow run")

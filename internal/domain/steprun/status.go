@@ -5,16 +5,17 @@ import "fmt"
 type Status string
 
 const (
-	StatusPending Status = "pending"
-	StatusRunning Status = "running"
-	StatusSuccess Status = "success"
-	StatusFailed  Status = "failed"
-	StatusSkipped Status = "skipped"
+	StatusPending   Status = "pending"
+	StatusRunning   Status = "running"
+	StatusSuccess   Status = "success"
+	StatusFailed    Status = "failed"
+	StatusCancelled Status = "cancelled"
+	StatusSkipped   Status = "skipped"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusPending, StatusRunning, StatusSuccess, StatusFailed, StatusSkipped:
+	case StatusPending, StatusRunning, StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
 		return true
 	default:
 		return false
@@ -23,7 +24,7 @@ func (s Status) Valid() bool {
 
 func (s Status) IsTerminal() bool {
 	switch s {
-	case StatusSuccess, StatusFailed, StatusSkipped:
+	case StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
 		return true
 	default:
 		return false
