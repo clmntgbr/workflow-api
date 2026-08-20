@@ -176,6 +176,8 @@ func coerceString(value any) (string, error) {
 
 // SplitURLAndQuery extracts query params from a URL, preserving duplicates.
 // Returns the URL without query/fragment.
+// The base URL keeps the original path characters (e.g. {{order-id}}) instead of
+// re-encoding them via url.URL.String().
 func SplitURLAndQuery(rawURL string) (string, Params, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -205,9 +207,22 @@ func SplitURLAndQuery(rawURL string) (string, Params, error) {
 		}
 	}
 
-	parsed.RawQuery = ""
-	parsed.Fragment = ""
-	return parsed.String(), params, nil
+	baseURL := stripQueryAndFragment(rawURL)
+	if baseURL == "" {
+		return "", nil, ErrInvalidURL
+	}
+	return baseURL, params, nil
+}
+
+func stripQueryAndFragment(rawURL string) string {
+	base := rawURL
+	if idx := strings.IndexByte(base, '?'); idx >= 0 {
+		base = base[:idx]
+	}
+	if idx := strings.IndexByte(base, '#'); idx >= 0 {
+		base = base[:idx]
+	}
+	return strings.TrimSpace(base)
 }
 
 // Merge combines URL-extracted params with body params.
