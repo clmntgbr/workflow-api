@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+
+	"go-api/internal/domain/httpquery"
 )
 
 var placeholderPattern = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}`)
@@ -19,7 +21,7 @@ func (e MissingVariableError) Error() string {
 func CollectReferencedKeys(
 	url string,
 	headers map[string]string,
-	query map[string]string,
+	query httpquery.Params,
 	body map[string]any,
 ) []string {
 	seen := map[string]struct{}{}
@@ -39,8 +41,10 @@ func CollectReferencedKeys(
 		}
 	}
 	for _, value := range query {
-		for _, match := range placeholderPattern.FindAllStringSubmatch(value, -1) {
-			add(match[1])
+		for _, item := range value.Strings() {
+			for _, match := range placeholderPattern.FindAllStringSubmatch(item, -1) {
+				add(match[1])
+			}
 		}
 	}
 	collectBodyRefsKey(body, add)
@@ -72,10 +76,10 @@ func collectBodyRefsKey(value any, add func(string)) {
 func ResolveTemplates(
 	url string,
 	headers map[string]string,
-	query map[string]string,
+	query httpquery.Params,
 	body map[string]any,
 	context map[string]any,
-) (string, map[string]string, map[string]string, map[string]any, error) {
+) (string, map[string]string, httpquery.Params, map[string]any, error) {
 	resolvedURL, err := resolveString(url, context)
 	if err != nil {
 		return "", nil, nil, nil, err
@@ -88,13 +92,18 @@ func ResolveTemplates(
 		}
 		resolvedHeaders[key] = resolved
 	}
-	resolvedQuery := make(map[string]string, len(query))
+	resolvedQuery := make(httpquery.Params, len(query))
 	for key, value := range query {
-		resolved, err := resolveString(value, context)
-		if err != nil {
-			return "", nil, nil, nil, err
+		items := value.Strings()
+		resolvedItems := make([]string, len(items))
+		for i, item := range items {
+			resolved, err := resolveString(item, context)
+			if err != nil {
+				return "", nil, nil, nil, err
+			}
+			resolvedItems[i] = resolved
 		}
-		resolvedQuery[key] = resolved
+		resolvedQuery[key] = httpquery.Multi(resolvedItems)
 	}
 	resolvedBody, err := resolveBody(body, context)
 	if err != nil {

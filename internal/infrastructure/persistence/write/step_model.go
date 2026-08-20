@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 	"go-api/internal/infrastructure/persistence/dbtype"
 
@@ -52,7 +53,7 @@ func stepModelFromDomain(s *domainstep.Step) (*StepModel, error) {
 
 	query := s.Query
 	if query == nil {
-		query = map[string]string{}
+		query = httpquery.Empty()
 	}
 	queryRaw, err := json.Marshal(query)
 	if err != nil {
@@ -103,7 +104,7 @@ func stepDomainFromModel(m *StepModel) (*domainstep.Step, error) {
 		}
 	}
 
-	query := map[string]string{}
+	query := httpquery.Empty()
 	if len(m.QueryParams) > 0 {
 		if err := json.Unmarshal(m.QueryParams, &query); err != nil {
 			return nil, err

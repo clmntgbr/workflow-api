@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go-api/internal/domain/event"
+	"go-api/internal/domain/httpquery"
 
 	"github.com/google/uuid"
 )
@@ -19,7 +20,7 @@ type Step struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -45,7 +46,7 @@ type EndpointSnapshot struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -75,10 +76,7 @@ func NewStep(p NewStepParams) *Step {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	query := p.Endpoint.Query
-	if query == nil {
-		query = map[string]string{}
-	}
+	query := httpquery.Clone(p.Endpoint.Query)
 	body := p.Endpoint.Body
 	if body == nil {
 		body = map[string]any{}
@@ -149,7 +147,7 @@ type UpdateStepConfigParams struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -162,10 +160,7 @@ func (s *Step) ApplyConfigUpdate(p UpdateStepConfigParams) {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	query := p.Query
-	if query == nil {
-		query = map[string]string{}
-	}
+	query := httpquery.Clone(p.Query)
 	body := p.Body
 	if body == nil {
 		body = map[string]any{}

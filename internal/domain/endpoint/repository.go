@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/paginate"
 
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ type EndpointView struct {
 	URL            string
 	Method         Method
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool

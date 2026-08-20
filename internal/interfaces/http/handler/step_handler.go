@@ -6,6 +6,7 @@ import (
 	stepcmd "go-api/internal/application/command/step"
 	querystep "go-api/internal/application/query/step"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -185,10 +186,11 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	queryParams := req.Query
-	if queryParams == nil {
-		queryParams = map[string]string{}
+	urlWithoutQuery, queryParams, err := httpquery.ResolveURLAndQuery(req.URL, req.Query)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid URL"})
 	}
+	req.URL = urlWithoutQuery
 	body := req.Body
 	if body == nil {
 		body = map[string]any{}

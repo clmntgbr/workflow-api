@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 
@@ -19,7 +20,7 @@ type UpdateStepCommand struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool

@@ -9,6 +9,7 @@ import (
 	endpointcmd "go-api/internal/application/command/endpoint"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/paginate"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -73,10 +74,11 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	queryParams := req.Query
-	if queryParams == nil {
-		queryParams = map[string]string{}
+	urlWithoutQuery, queryParams, err := httpquery.ResolveURLAndQuery(req.URL, req.Query)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid URL"})
 	}
+	req.URL = urlWithoutQuery
 	body := req.Body
 	if body == nil {
 		body = map[string]any{}
@@ -159,7 +161,7 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 	}
 	queryParams := req.Query
 	if queryParams == nil {
-		queryParams = map[string]string{}
+		queryParams = httpquery.Empty()
 	}
 	body := req.Body
 	if body == nil {
@@ -240,10 +242,11 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	queryParams := req.Query
-	if queryParams == nil {
-		queryParams = map[string]string{}
+	urlWithoutQuery, queryParams, err := httpquery.ResolveURLAndQuery(req.URL, req.Query)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid URL"})
 	}
+	req.URL = urlWithoutQuery
 	body := req.Body
 	if body == nil {
 		body = map[string]any{}

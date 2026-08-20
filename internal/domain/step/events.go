@@ -1,6 +1,10 @@
 package step
 
-import "time"
+import (
+	"time"
+
+	"go-api/internal/domain/httpquery"
+)
 
 const EventTypeStepCreated = "step.created.v1"
 
@@ -15,7 +19,7 @@ type StepCreated struct {
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
 	Headers        map[string]string `json:"headers"`
-	Query          map[string]string `json:"query"`
+	Query          httpquery.Params  `json:"query"`
 	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
@@ -46,7 +50,7 @@ type StepUpdated struct {
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
 	Headers        map[string]string `json:"headers"`
-	Query          map[string]string `json:"query"`
+	Query          httpquery.Params  `json:"query"`
 	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`

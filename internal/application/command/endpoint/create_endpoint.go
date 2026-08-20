@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ type CreateEndpointCommand struct {
 	URL            string
 	Method         domainendpoint.Method
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool

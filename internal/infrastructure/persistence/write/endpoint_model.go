@@ -5,6 +5,7 @@ import (
 	"time"
 
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/infrastructure/persistence/dbtype"
 
 	"github.com/google/uuid"
@@ -45,7 +46,7 @@ func endpointModelFromDomain(e *domainendpoint.Endpoint) (*EndpointModel, error)
 
 	query := e.Query
 	if query == nil {
-		query = map[string]string{}
+		query = httpquery.Empty()
 	}
 	queryRaw, err := json.Marshal(query)
 	if err != nil {
@@ -88,7 +89,7 @@ func endpointDomainFromModel(m *EndpointModel) (*domainendpoint.Endpoint, error)
 		}
 	}
 
-	query := map[string]string{}
+	query := httpquery.Empty()
 	if len(m.QueryParams) > 0 {
 		if err := json.Unmarshal(m.QueryParams, &query); err != nil {
 			return nil, err

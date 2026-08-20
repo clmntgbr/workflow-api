@@ -3,13 +3,15 @@ package port
 import (
 	"context"
 	"time"
+
+	"go-api/internal/domain/httpquery"
 )
 
 type HTTPRequest struct {
 	Method  string
 	URL     string
 	Headers map[string]string
-	Query   map[string]string
+	Query   httpquery.Params
 	Body    map[string]any
 	Timeout time.Duration
 }

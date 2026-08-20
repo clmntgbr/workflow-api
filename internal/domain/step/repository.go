@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"go-api/internal/domain/httpquery"
+
 	"github.com/google/uuid"
 )
 
@@ -31,7 +33,7 @@ type StepView struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool

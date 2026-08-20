@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go-api/internal/domain/event"
+	"go-api/internal/domain/httpquery"
 
 	"github.com/google/uuid"
 )
@@ -15,7 +16,7 @@ type Endpoint struct {
 	URL            string
 	Method         Method
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -35,7 +36,7 @@ type NewEndpointParams struct {
 	URL              string
 	Method           Method
 	Headers          map[string]string
-	Query            map[string]string
+	Query            httpquery.Params
 	Body             map[string]any
 	Timeout          int
 	RetryOnFailure   bool
@@ -52,10 +53,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	query := p.Query
-	if query == nil {
-		query = map[string]string{}
-	}
+	query := httpquery.Clone(p.Query)
 	body := p.Body
 	if body == nil {
 		body = map[string]any{}
@@ -118,7 +116,7 @@ type UpdateEndpointParams struct {
 	URL            string
 	Method         Method
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -132,10 +130,7 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	query := p.Query
-	if query == nil {
-		query = map[string]string{}
-	}
+	query := httpquery.Clone(p.Query)
 	body := p.Body
 	if body == nil {
 		body = map[string]any{}

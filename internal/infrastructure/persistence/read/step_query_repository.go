@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 	"go-api/internal/infrastructure/persistence/dbtype"
 
@@ -105,7 +106,7 @@ func toStepView(row stepRow) (*domainstep.StepView, error) {
 		}
 	}
 
-	query := map[string]string{}
+	query := httpquery.Empty()
 	if len(row.QueryParams) > 0 {
 		if err := json.Unmarshal(row.QueryParams, &query); err != nil {
 			return nil, err

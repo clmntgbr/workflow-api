@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go-api/internal/domain/event"
+	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ type StepRun struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -65,17 +66,17 @@ type NewStepRunParams struct {
 	Description    string
 	URL            string
 	Method         string
-	Headers        map[string]string
-	Query          map[string]string
-	Body           map[string]any
-	Timeout        int
-	RetryOnFailure bool
-	RetryCount     int
-	RetryDelay     int
-	Index          string
-	ExecutionOrder int
-	TreeIndex      int
-	Position       domainstep.Position
+	Headers          map[string]string
+	Query            httpquery.Params
+	Body             map[string]any
+	Timeout          int
+	RetryOnFailure   bool
+	RetryCount       int
+	RetryDelay       int
+	Index            string
+	ExecutionOrder   int
+	TreeIndex        int
+	Position         domainstep.Position
 	VariableExtracts []VariableExtract
 }
 
@@ -93,7 +94,7 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 		URL:            p.URL,
 		Method:         p.Method,
 		Headers:        normalizeStringMap(p.Headers),
-		Query:          normalizeStringMap(p.Query),
+		Query:          httpquery.Clone(p.Query),
 		Body:           normalizeAnyMap(p.Body),
 		Timeout:        p.Timeout,
 		RetryOnFailure: p.RetryOnFailure,

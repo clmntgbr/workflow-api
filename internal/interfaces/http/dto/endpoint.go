@@ -1,12 +1,14 @@
 package dto
 
+import "go-api/internal/domain/httpquery"
+
 type CreateEndpointRequest struct {
 	Name           string            `json:"name" validate:"required,min=1,max=255"`
 	Description    string            `json:"description" validate:"omitempty,max=2000"`
 	URL            string            `json:"url" validate:"required,url,max=2048"`
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
-	Query          map[string]string `json:"query" validate:"omitempty"`
+	Query          httpquery.Params  `json:"query" validate:"omitempty"`
 	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"required,min=30000,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"required"`
@@ -18,7 +20,7 @@ type ImportEndpointsFromOpenAPIRequest struct {
 	BaseURL        string            `json:"baseUrl" validate:"required,url,max=2048"`
 	Status         string            `json:"status" validate:"required,endpoint_status"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
-	Query          map[string]string `json:"query" validate:"omitempty"`
+	Query          httpquery.Params  `json:"query" validate:"omitempty"`
 	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"required,min=30000,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"required"`
@@ -32,7 +34,7 @@ type UpdateEndpointRequest struct {
 	URL            string            `json:"url" validate:"required,url,max=2048"`
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
-	Query          map[string]string `json:"query" validate:"omitempty"`
+	Query          httpquery.Params  `json:"query" validate:"omitempty"`
 	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"required,min=30000,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"required"`

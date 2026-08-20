@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 )
 
@@ -39,11 +41,7 @@ func (c *Client) Do(ctx context.Context, req port.HTTPRequest) (*port.HTTPRespon
 	if err != nil {
 		return nil, fmt.Errorf("invalid url: %w", err)
 	}
-	query := target.Query()
-	for key, value := range req.Query {
-		query.Set(key, value)
-	}
-	target.RawQuery = query.Encode()
+	target.RawQuery = httpquery.BuildQueryString(req.Query)
 
 	var bodyBytes []byte
 	var bodyReader io.Reader
@@ -71,6 +69,14 @@ func (c *Client) Do(ctx context.Context, req port.HTTPRequest) (*port.HTTPRespon
 	if bodyReader != nil && httpReq.Header.Get("Content-Type") == "" {
 		httpReq.Header.Set("Content-Type", "application/json")
 	}
+	log.Printf(
+		"httpexecutor request method=%s url=%s query=%v headers=%v body=%v",
+		method,
+		target.String(),
+		req.Query,
+		req.Headers,
+		req.Body,
+	)
 
 	timing := &requestTiming{start: time.Now().UTC()}
 	trace := &httptrace.ClientTrace{

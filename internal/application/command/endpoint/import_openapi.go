@@ -10,6 +10,7 @@ import (
 
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/event"
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ type ImportEndpointsFromOpenAPICommand struct {
 	BaseURL        string
 	Status         domainendpoint.Status
 	Headers        map[string]string
-	Query          map[string]string
+	Query          httpquery.Params
 	Body           map[string]any
 	Timeout        int
 	RetryOnFailure bool
@@ -96,7 +97,7 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 			URL:              endpointURL,
 			Method:           method,
 			Headers:          cloneStringMap(cmd.Headers),
-			Query:            cloneStringMap(cmd.Query),
+			Query:            httpquery.Clone(cmd.Query),
 			Body:             cloneAnyMap(cmd.Body),
 			Timeout:          cmd.Timeout,
 			RetryOnFailure:   cmd.RetryOnFailure,

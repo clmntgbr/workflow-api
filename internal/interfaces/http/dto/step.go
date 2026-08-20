@@ -1,5 +1,7 @@
 package dto
 
+import "go-api/internal/domain/httpquery"
+
 type PositionRequest struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
@@ -20,7 +22,7 @@ type UpdateStepRequest struct {
 	URL            string            `json:"url" validate:"required,max=2048"`
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
-	Query          map[string]string `json:"query" validate:"omitempty"`
+	Query          httpquery.Params  `json:"query" validate:"omitempty"`
 	Body           map[string]any    `json:"body" validate:"omitempty"`
 	Timeout        *int              `json:"timeout" validate:"required,min=30000,max=300000"`
 	RetryOnFailure *bool             `json:"retryOnFailure" validate:"required"`

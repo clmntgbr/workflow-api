@@ -7,6 +7,7 @@ import (
 	"time"
 
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/paginate"
 	"go-api/internal/infrastructure/persistence/dbtype"
 
@@ -123,7 +124,7 @@ func toEndpointView(row endpointRow) (*domainendpoint.EndpointView, error) {
 		}
 	}
 
-	query := map[string]string{}
+	query := httpquery.Empty()
 	if len(row.QueryParams) > 0 {
 		if err := json.Unmarshal(row.QueryParams, &query); err != nil {
 			return nil, err

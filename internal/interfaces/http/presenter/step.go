@@ -1,6 +1,9 @@
 package presenter
 
-import domainstep "go-api/internal/domain/step"
+import (
+	"go-api/internal/domain/httpquery"
+	domainstep "go-api/internal/domain/step"
+)
 
 type StepPositionResponse struct {
 	X float64 `json:"x"`
@@ -20,7 +23,7 @@ type StepDetailResponse struct {
 	StepListResponse
 	Description    *string           `json:"description"`
 	Headers        map[string]string `json:"headers"`
-	Query          map[string]string `json:"query"`
+	Query          httpquery.Params  `json:"query"`
 	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
@@ -103,7 +106,8 @@ func NewStepDetailResponseFromEntity(s domainstep.Step) StepDetailResponse {
 func stepDetailResponse(
 	list StepListResponse,
 	description string,
-	headers, query map[string]string,
+	headers map[string]string,
+	query httpquery.Params,
 	body map[string]any,
 	timeout int,
 	retryOnFailure bool,
@@ -116,7 +120,7 @@ func stepDetailResponse(
 		headers = map[string]string{}
 	}
 	if query == nil {
-		query = map[string]string{}
+		query = httpquery.Empty()
 	}
 	if body == nil {
 		body = map[string]any{}

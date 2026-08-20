@@ -2,6 +2,7 @@ package presenter
 
 import (
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/domain/httpquery"
 )
 
 type EndpointListResponse struct {
@@ -16,7 +17,7 @@ type EndpointListResponse struct {
 type EndpointDetailResponse struct {
 	EndpointListResponse
 	Headers        map[string]string `json:"headers"`
-	Query          map[string]string `json:"query"`
+	Query          httpquery.Params  `json:"query"`
 	Body           map[string]any    `json:"body"`
 	Timeout        int               `json:"timeout"`
 	RetryOnFailure bool              `json:"retryOnFailure"`
@@ -93,7 +94,8 @@ func NewEndpointDetailResponseFromEntity(e domainendpoint.Endpoint) EndpointDeta
 
 func endpointDetailResponse(
 	list EndpointListResponse,
-	headers, query map[string]string,
+	headers map[string]string,
+	query httpquery.Params,
 	body map[string]any,
 	timeout int,
 	retryOnFailure bool,
@@ -103,7 +105,7 @@ func endpointDetailResponse(
 		headers = map[string]string{}
 	}
 	if query == nil {
-		query = map[string]string{}
+		query = httpquery.Empty()
 	}
 	if body == nil {
 		body = map[string]any{}
