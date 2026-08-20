@@ -5,6 +5,7 @@ import (
 
 	stepcmd "go-api/internal/application/command/step"
 	querystep "go-api/internal/application/query/step"
+	querysteprun "go-api/internal/application/query/steprun"
 	queryworkflow "go-api/internal/application/query/workflow"
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
@@ -18,13 +19,14 @@ import (
 )
 
 type StepHandler struct {
-	createHandler         *stepcmd.CreateStepHandler
-	updateHandler         *stepcmd.UpdateStepHandler
-	updatePositionHandler *stepcmd.UpdateStepPositionHandler
-	deleteHandler         *stepcmd.DeleteStepHandler
-	getByIDHandler        *querystep.GetStepByIDHandler
-	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler
-	getWorkflowHandler    *queryworkflow.GetWorkflowByIDHandler
+	createHandler              *stepcmd.CreateStepHandler
+	updateHandler              *stepcmd.UpdateStepHandler
+	updatePositionHandler      *stepcmd.UpdateStepPositionHandler
+	deleteHandler              *stepcmd.DeleteStepHandler
+	getByIDHandler             *querystep.GetStepByIDHandler
+	listByWorkflowHandler      *querystep.ListStepsByWorkflowHandler
+	latestStepRunStatusHandler *querysteprun.GetLatestStepRunStatusesByStepIDsHandler
+	getWorkflowHandler         *queryworkflow.GetWorkflowByIDHandler
 }
 
 func NewStepHandler(
@@ -34,16 +36,18 @@ func NewStepHandler(
 	deleteHandler *stepcmd.DeleteStepHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
 	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler,
+	latestStepRunStatusHandler *querysteprun.GetLatestStepRunStatusesByStepIDsHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
 ) *StepHandler {
 	return &StepHandler{
-		createHandler:         createHandler,
-		updateHandler:         updateHandler,
-		updatePositionHandler: updatePositionHandler,
-		deleteHandler:         deleteHandler,
-		getByIDHandler:        getByIDHandler,
-		listByWorkflowHandler: listByWorkflowHandler,
-		getWorkflowHandler:    getWorkflowHandler,
+		createHandler:              createHandler,
+		updateHandler:              updateHandler,
+		updatePositionHandler:      updatePositionHandler,
+		deleteHandler:              deleteHandler,
+		getByIDHandler:             getByIDHandler,
+		listByWorkflowHandler:      listByWorkflowHandler,
+		latestStepRunStatusHandler: latestStepRunStatusHandler,
+		getWorkflowHandler:         getWorkflowHandler,
 	}
 }
 
@@ -151,7 +155,26 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list steps"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewStepListResponseFromViews(views))
+	stepIDs := make([]uuid.UUID, 0, len(views))
+	for _, view := range views {
+		stepIDs = append(stepIDs, view.ID)
+	}
+
+	statuses, err := h.latestStepRunStatusHandler.Handle(c.Context(), querysteprun.GetLatestStepRunStatusesByStepIDsQuery{
+		StepIDs: stepIDs,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to load step run statuses"})
+	}
+
+	lastRunStatusByStepID := make(map[uuid.UUID]string, len(statuses))
+	for stepID, status := range statuses {
+		lastRunStatusByStepID[stepID] = string(status)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(
+		presenter.NewStepListResponseFromViewsWithLastRunStatus(views, lastRunStatusByStepID),
+	)
 }
 
 func (h *StepHandler) Update(c fiber.Ctx) error {

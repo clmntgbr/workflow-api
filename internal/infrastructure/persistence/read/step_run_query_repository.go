@@ -158,6 +158,39 @@ func (r *stepRunReadRepository) FindLatestCompletedByStepID(
 	return toStepRunView(row)
 }
 
+func (r *stepRunReadRepository) FindLatestStatusByStepIDs(
+	ctx context.Context,
+	stepIDs []uuid.UUID,
+) (map[uuid.UUID]domainsteprun.Status, error) {
+	out := make(map[uuid.UUID]domainsteprun.Status, len(stepIDs))
+	if len(stepIDs) == 0 {
+		return out, nil
+	}
+
+	type latestStatusRow struct {
+		StepID uuid.UUID
+		Status string
+	}
+
+	var rows []latestStatusRow
+	err := r.db.WithContext(ctx).
+		Raw(`
+			SELECT DISTINCT ON (step_id) step_id, status
+			FROM step_runs
+			WHERE step_id IN ?
+			ORDER BY step_id, created_at DESC
+		`, stepIDs).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		out[row.StepID] = domainsteprun.Status(row.Status)
+	}
+	return out, nil
+}
+
 func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 	headers := map[string]string{}
 	if len(row.Headers) > 0 {

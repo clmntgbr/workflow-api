@@ -3,6 +3,8 @@ package presenter
 import (
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
+
+	"github.com/google/uuid"
 )
 
 type StepPositionResponse struct {
@@ -11,12 +13,13 @@ type StepPositionResponse struct {
 }
 
 type StepListResponse struct {
-	ID         string               `json:"id"`
-	EndpointID string               `json:"endpointId"`
-	Name       string               `json:"name"`
-	URL        string               `json:"url"`
-	Method     string               `json:"method"`
-	Position   StepPositionResponse `json:"position"`
+	ID            string               `json:"id"`
+	EndpointID    string               `json:"endpointId"`
+	Name          string               `json:"name"`
+	URL           string               `json:"url"`
+	Method        string               `json:"method"`
+	Position      StepPositionResponse `json:"position"`
+	LastRunStatus *string              `json:"lastRunStatus"`
 }
 
 type StepDetailResponse struct {
@@ -50,9 +53,23 @@ func NewStepListResponseFromView(view domainstep.StepView) StepListResponse {
 }
 
 func NewStepListResponseFromViews(views []domainstep.StepView) []StepListResponse {
+	return NewStepListResponseFromViewsWithLastRunStatus(views, nil)
+}
+
+func NewStepListResponseFromViewsWithLastRunStatus(
+	views []domainstep.StepView,
+	lastRunStatusByStepID map[uuid.UUID]string,
+) []StepListResponse {
 	items := make([]StepListResponse, 0, len(views))
 	for _, view := range views {
-		items = append(items, NewStepListResponseFromView(view))
+		item := NewStepListResponseFromView(view)
+		if lastRunStatusByStepID != nil {
+			if status, ok := lastRunStatusByStepID[view.ID]; ok && status != "" {
+				value := status
+				item.LastRunStatus = &value
+			}
+		}
+		items = append(items, item)
 	}
 	return items
 }
