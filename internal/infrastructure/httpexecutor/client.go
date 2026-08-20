@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -69,14 +68,7 @@ func (c *Client) Do(ctx context.Context, req port.HTTPRequest) (*port.HTTPRespon
 	if bodyReader != nil && httpReq.Header.Get("Content-Type") == "" {
 		httpReq.Header.Set("Content-Type", "application/json")
 	}
-	log.Printf(
-		"httpexecutor request method=%s url=%s query=%v headers=%v body=%v",
-		method,
-		target.String(),
-		req.Query,
-		req.Headers,
-		req.Body,
-	)
+	logHTTPRequest(method, target.String(), req.Query, req.Headers, req.Body)
 
 	timing := &requestTiming{start: time.Now().UTC()}
 	trace := &httptrace.ClientTrace{
