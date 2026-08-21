@@ -85,19 +85,35 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 	if err := validation.BindBody(c, &req); err != nil {
 		return err
 	}
-	stepID, err := uuid.Parse(req.StepID)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+
+	var stepID *uuid.UUID
+	if req.StepID != nil && *req.StepID != "" {
+		parsed, err := uuid.Parse(*req.StepID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+		}
+		stepID = &parsed
+	}
+
+	var kind domainvariable.Kind
+	if req.Kind != "" {
+		parsed, err := domainvariable.ParseKind(req.Kind)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid variable kind"})
+		}
+		kind = parsed
 	}
 
 	variable, err := h.createHandler.Handle(c.Context(), variablecmd.CreateVariableCommand{
 		WorkflowID:     workflowID,
 		OrganizationID: orgID,
 		StepID:         stepID,
+		Kind:           kind,
 		Name:           req.Name,
 		Key:            req.Key,
 		Description:    req.Description,
 		Path:           req.Path,
+		Value:          req.Value,
 	})
 	if err != nil {
 		switch {
@@ -266,6 +282,7 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 		Key:            req.Key,
 		Description:    req.Description,
 		Path:           req.Path,
+		Value:          req.Value,
 	})
 	if err != nil {
 		switch {

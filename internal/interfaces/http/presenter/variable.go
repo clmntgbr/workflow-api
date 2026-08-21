@@ -7,8 +7,10 @@ type VariableResponse struct {
 	Name        string  `json:"name"`
 	Key         string  `json:"key"`
 	Description *string `json:"description"`
-	Path        string  `json:"path"`
-	StepID      string  `json:"stepId"`
+	Kind        string  `json:"kind"`
+	Path        *string `json:"path"`
+	Value       any     `json:"value,omitempty"`
+	StepID      *string `json:"stepId"`
 }
 
 func NewVariableResponseFromEntity(v domainvariable.Variable) VariableResponse {
@@ -17,19 +19,40 @@ func NewVariableResponseFromEntity(v domainvariable.Variable) VariableResponse {
 		Name:        v.Name,
 		Key:         v.Key,
 		Description: v.Description,
+		Kind:        v.Kind,
 		Path:        v.Path,
+		Value:       v.Value,
 		StepID:      v.StepID,
+		WorkflowID:  v.WorkflowID,
 	})
 }
 
 func NewVariableResponseFromView(view domainvariable.VariableView) VariableResponse {
+	kind := string(view.Kind)
+	if kind == "" {
+		kind = string(domainvariable.KindExtracted)
+	}
+
+	var path *string
+	if view.Kind != domainvariable.KindStatic && view.Path != "" {
+		path = &view.Path
+	}
+
+	var stepID *string
+	if view.StepID != nil {
+		value := view.StepID.String()
+		stepID = &value
+	}
+
 	return VariableResponse{
 		ID:          view.ID.String(),
 		Name:        view.Name,
 		Key:         view.Key,
 		Description: optionalNonEmptyString(view.Description),
-		Path:        view.Path,
-		StepID:      view.StepID.String(),
+		Kind:        kind,
+		Path:        path,
+		Value:       view.Value,
+		StepID:      stepID,
 	}
 }
 

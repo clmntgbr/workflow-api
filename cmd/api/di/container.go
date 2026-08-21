@@ -166,6 +166,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(
 		workflowWriteRepo,
 		workflowRunWriteRepo,
+		variableReadRepo,
 		outboxRepo,
 	)
 	cancelWorkflowRunHandler := workflowruncmd.NewCancelWorkflowRunHandler(

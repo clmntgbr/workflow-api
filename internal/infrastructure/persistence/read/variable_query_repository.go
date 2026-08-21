@@ -2,9 +2,11 @@ package read
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
+	"go-api/internal/infrastructure/persistence/dbtype"
 	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
@@ -16,8 +18,10 @@ type variableRow struct {
 	Name        string
 	Key         string
 	Description string
-	Path        string
-	StepID      uuid.UUID
+	Kind        string
+	Path        *string
+	Value       dbtype.JSONB
+	StepID      *uuid.UUID
 	WorkflowID  uuid.UUID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -67,7 +71,7 @@ func (r *variableReadRepository) FindByStepID(
 ) ([]domainvariable.VariableView, error) {
 	var rows []variableRow
 	err := r.db.WithContext(ctx).
-		Where("step_id = ?", stepID).
+		Where("step_id = ? AND kind = ?", stepID, domainvariable.KindExtracted).
 		Order("created_at ASC").
 		Find(&rows).Error
 	if err != nil {
@@ -114,15 +118,29 @@ func (r *variableReadRepository) FindByWorkflowAndKey(ctx context.Context, workf
 }
 
 func toVariableView(row variableRow) domainvariable.VariableView {
+	kind := domainvariable.Kind(row.Kind)
+	if kind == "" {
+		kind = domainvariable.KindExtracted
+	}
+	path := ""
+	if row.Path != nil {
+		path = *row.Path
+	}
+	var value any
+	if len(row.Value) > 0 {
+		_ = json.Unmarshal(row.Value, &value)
+	}
 	return domainvariable.VariableView{
-		ID:         row.ID,
-		Name:       row.Name,
-		Key:        row.Key,
+		ID:          row.ID,
+		Name:        row.Name,
+		Key:         row.Key,
 		Description: row.Description,
-		Path:       row.Path,
-		StepID:     row.StepID,
-		WorkflowID: row.WorkflowID,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
+		Kind:        kind,
+		Path:        path,
+		Value:       value,
+		StepID:      row.StepID,
+		WorkflowID:  row.WorkflowID,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
 	}
 }

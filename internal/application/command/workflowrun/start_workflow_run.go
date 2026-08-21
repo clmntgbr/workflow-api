@@ -7,6 +7,7 @@ import (
 
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
+	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
@@ -26,17 +27,20 @@ type StartWorkflowRunCommand struct {
 type StartWorkflowRunHandler struct {
 	workflowRepo domainworkflow.WorkflowWriteRepository
 	runRepo      domainworkflowrun.WorkflowRunWriteRepository
+	variableRead domainvariable.VariableReadRepository
 	outbox       port.OutboxRepository
 }
 
 func NewStartWorkflowRunHandler(
 	workflowRepo domainworkflow.WorkflowWriteRepository,
 	runRepo domainworkflowrun.WorkflowRunWriteRepository,
+	variableRead domainvariable.VariableReadRepository,
 	outbox port.OutboxRepository,
 ) *StartWorkflowRunHandler {
 	return &StartWorkflowRunHandler{
 		workflowRepo: workflowRepo,
 		runRepo:      runRepo,
+		variableRead: variableRead,
 		outbox:       outbox,
 	}
 }
@@ -73,11 +77,17 @@ func (h *StartWorkflowRunHandler) Handle(
 		return nil, domainworkflowrun.ErrAlreadyInProgress
 	}
 
+	variables, err := h.variableRead.FindByWorkflowID(ctx, cmd.WorkflowID)
+	if err != nil {
+		return nil, errors.New("failed to start workflow run")
+	}
+	runContext := domainvariable.SeedContextWithStaticVariables(cmd.Context, variables)
+
 	run := domainworkflowrun.NewWorkflowRun(domainworkflowrun.NewWorkflowRunParams{
 		WorkflowID:        cmd.WorkflowID,
 		TriggeredBy:       cmd.TriggeredBy,
 		TriggeredByUserID: cmd.TriggeredByUserID,
-		Context:           cmd.Context,
+		Context:           runContext,
 	})
 
 	err = h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {

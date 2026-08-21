@@ -19,6 +19,7 @@ type UpdateVariableCommand struct {
 	Key            string
 	Description    string
 	Path           string
+	Value          any
 }
 
 type UpdateVariableHandler struct {
@@ -34,7 +35,7 @@ func NewUpdateVariableHandler(
 }
 
 func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCommand) (*domainvariable.Variable, error) {
-	if err := validateVariableInput(cmd.Name, cmd.Key, cmd.Path); err != nil {
+	if err := domainvariable.ValidateIdentity(cmd.Name, cmd.Key); err != nil {
 		return nil, err
 	}
 
@@ -46,13 +47,24 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 		return nil, domainvariable.ErrNotFound
 	}
 
-	variable.Update(domainvariable.UpdateVariableParams{
+	path := strings.TrimSpace(cmd.Path)
+	value := cmd.Value
+	if variable.Kind == domainvariable.KindStatic {
+		path = ""
+	} else {
+		value = nil
+	}
+
+	if err := variable.Update(domainvariable.UpdateVariableParams{
 		Name:           strings.TrimSpace(cmd.Name),
 		Key:            strings.TrimSpace(cmd.Key),
 		Description:    strings.TrimSpace(cmd.Description),
-		Path:           strings.TrimSpace(cmd.Path),
+		Path:           path,
+		Value:          value,
 		OrganizationID: cmd.OrganizationID,
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	err = h.variableRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.variableRepo.Update(txCtx, variable); err != nil {

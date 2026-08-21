@@ -29,8 +29,10 @@ type VariableView struct {
 	Name        string
 	Key         string
 	Description string
+	Kind        Kind
 	Path        string
-	StepID      uuid.UUID
+	Value       any
+	StepID      *uuid.UUID
 	WorkflowID  uuid.UUID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

@@ -8,12 +8,14 @@ type VariableCreated struct {
 	ID             string    `json:"eventId"`
 	VariableID     string    `json:"variableId"`
 	WorkflowID     string    `json:"workflowId"`
-	StepID         string    `json:"stepId"`
+	StepID         string    `json:"stepId,omitempty"`
 	OrganizationID string    `json:"organizationId"`
 	Name           string    `json:"name"`
 	Key            string    `json:"key"`
 	Description    string    `json:"description"`
-	Path           string    `json:"path"`
+	Kind           string    `json:"kind"`
+	Path           string    `json:"path,omitempty"`
+	Value          any       `json:"value,omitempty"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
@@ -28,12 +30,14 @@ type VariableUpdated struct {
 	ID             string    `json:"eventId"`
 	VariableID     string    `json:"variableId"`
 	WorkflowID     string    `json:"workflowId"`
-	StepID         string    `json:"stepId"`
+	StepID         string    `json:"stepId,omitempty"`
 	OrganizationID string    `json:"organizationId"`
 	Name           string    `json:"name"`
 	Key            string    `json:"key"`
 	Description    string    `json:"description"`
-	Path           string    `json:"path"`
+	Kind           string    `json:"kind"`
+	Path           string    `json:"path,omitempty"`
+	Value          any       `json:"value,omitempty"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

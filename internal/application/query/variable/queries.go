@@ -96,7 +96,14 @@ func (h *ListAvailableVariablesHandler) Handle(
 	}
 	out := make([]domainvariable.VariableView, 0)
 	for _, view := range all {
-		if _, ok := ancestors[view.StepID]; ok {
+		if view.Kind == domainvariable.KindStatic {
+			out = append(out, view)
+			continue
+		}
+		if view.StepID == nil {
+			continue
+		}
+		if _, ok := ancestors[*view.StepID]; ok {
 			out = append(out, view)
 		}
 	}

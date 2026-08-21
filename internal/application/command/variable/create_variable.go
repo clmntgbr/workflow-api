@@ -15,11 +15,13 @@ import (
 type CreateVariableCommand struct {
 	WorkflowID     uuid.UUID
 	OrganizationID uuid.UUID
-	StepID         uuid.UUID
+	StepID         *uuid.UUID
+	Kind           domainvariable.Kind
 	Name           string
 	Key            string
 	Description    string
 	Path           string
+	Value          any
 }
 
 type CreateVariableHandler struct {
@@ -44,19 +46,47 @@ func NewCreateVariableHandler(
 }
 
 func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCommand) (*domainvariable.Variable, error) {
-	if err := validateVariableInput(cmd.Name, cmd.Key, cmd.Path); err != nil {
+	if err := domainvariable.ValidateIdentity(cmd.Name, cmd.Key); err != nil {
 		return nil, err
 	}
 
-	step, err := h.stepRepo.GetByID(ctx, cmd.StepID)
-	if err != nil {
-		return nil, errors.New("failed to get step")
+	kind := cmd.Kind
+	if kind == "" {
+		if cmd.StepID != nil && *cmd.StepID != uuid.Nil {
+			kind = domainvariable.KindExtracted
+		} else {
+			kind = domainvariable.KindStatic
+		}
 	}
-	if step == nil || step.Status == domainstep.StatusDeleted {
-		return nil, errors.New("step not found")
+	if !kind.Valid() {
+		return nil, domainvariable.ErrInvalidKind
 	}
-	if step.WorkflowID != cmd.WorkflowID || step.OrganizationID != cmd.OrganizationID {
-		return nil, errors.New("step not found")
+
+	var stepID *uuid.UUID
+	path := strings.TrimSpace(cmd.Path)
+	var value any
+
+	switch kind {
+	case domainvariable.KindExtracted:
+		if cmd.StepID == nil || *cmd.StepID == uuid.Nil {
+			return nil, domainvariable.ErrStepRequired
+		}
+		step, err := h.stepRepo.GetByID(ctx, *cmd.StepID)
+		if err != nil {
+			return nil, errors.New("failed to get step")
+		}
+		if step == nil || step.Status == domainstep.StatusDeleted {
+			return nil, errors.New("step not found")
+		}
+		if step.WorkflowID != cmd.WorkflowID || step.OrganizationID != cmd.OrganizationID {
+			return nil, errors.New("step not found")
+		}
+		stepID = cmd.StepID
+		value = nil
+	case domainvariable.KindStatic:
+		stepID = nil
+		path = ""
+		value = cmd.Value
 	}
 
 	existing, err := h.variableReadRepo.FindByWorkflowAndKey(ctx, cmd.WorkflowID, strings.TrimSpace(cmd.Key))
@@ -67,15 +97,20 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		return nil, errors.New("variable key already exists in this workflow")
 	}
 
-	variable := domainvariable.NewVariable(domainvariable.NewVariableParams{
+	variable, err := domainvariable.NewVariable(domainvariable.NewVariableParams{
 		Name:           strings.TrimSpace(cmd.Name),
 		Key:            strings.TrimSpace(cmd.Key),
 		Description:    strings.TrimSpace(cmd.Description),
-		Path:           strings.TrimSpace(cmd.Path),
-		StepID:         cmd.StepID,
+		Kind:           kind,
+		Path:           path,
+		Value:          value,
+		StepID:         stepID,
 		WorkflowID:     cmd.WorkflowID,
 		OrganizationID: cmd.OrganizationID,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	err = h.variableRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.variableRepo.Save(txCtx, variable); err != nil {
@@ -90,17 +125,4 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		return nil, err
 	}
 	return variable, nil
-}
-
-func validateVariableInput(name, key, path string) error {
-	if strings.TrimSpace(name) == "" {
-		return errors.New("name is required")
-	}
-	if strings.TrimSpace(key) == "" {
-		return errors.New("key is required")
-	}
-	if strings.TrimSpace(path) == "" {
-		return errors.New("path is required")
-	}
-	return nil
 }
