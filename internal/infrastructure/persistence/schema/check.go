@@ -23,6 +23,8 @@ func Models() []any {
 		&write.StepRunModel{},
 		&write.InsightModel{},
 		&write.VariableModel{},
+		&write.QuotaModel{},
+		&write.PlanModel{},
 		&outbox.OutboxEvent{},
 		&processed.ProcessedEvent{},
 	}

@@ -17,6 +17,7 @@ import (
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryinsight "go-api/internal/application/query/insight"
 	queryorganization "go-api/internal/application/query/organization"
+	queryplan "go-api/internal/application/query/plan"
 	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
 	queryuser "go-api/internal/application/query/user"
@@ -47,6 +48,7 @@ type Container struct {
 	ConnectionHandler      *httphandler.ConnectionHandler
 	WorkflowRunHandler     *httphandler.WorkflowRunHandler
 	VariableHandler        *httphandler.VariableHandler
+	PlanHandler            *httphandler.PlanHandler
 	RealtimeHandler        *httphandler.RealtimeHandler
 }
 
@@ -75,6 +77,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	insightReadRepo := read.NewInsightReadRepository(db)
 	variableWriteRepo := write.NewVariableWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
+	quotaReadRepo := read.NewQuotaReadRepository(db)
+	planReadRepo := read.NewPlanReadRepository(db, quotaReadRepo)
 	outboxRepo := outbox.NewRepository(db)
 
 	createUserHandler := usercmd.NewCreateUserHandler(userWriteRepo, orgWriteRepo, outboxRepo)
@@ -184,6 +188,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	latestStepRunStatusesHandler := querysteprun.NewGetLatestStepRunStatusesByStepIDsHandler(stepRunReadRepo)
 	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
 
+	listActivePlansHandler := queryplan.NewListActivePlansHandler(planReadRepo)
+	getPlanByIDHandler := queryplan.NewGetPlanByIDHandler(planReadRepo)
+
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
 			validateTokenHandler,
@@ -265,6 +272,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			searchVariablePathsHandler,
 			getStepByIDHandler,
 			getWorkflowByIDHandler,
+		),
+		PlanHandler: httphandler.NewPlanHandler(
+			listActivePlansHandler,
+			getPlanByIDHandler,
 		),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}
