@@ -7,11 +7,13 @@ import (
 
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryinsight "go-api/internal/application/query/insight"
+	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	domaininsight "go-api/internal/domain/insight"
 	"go-api/internal/domain/paginate"
+	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 	httpctx "go-api/internal/interfaces/http/context"
@@ -34,6 +36,7 @@ type WorkflowRunHandler struct {
 	listStepRunsByIDs  *querysteprun.ListStepRunsByWorkflowRunIDsHandler
 	listInsightsByIDs  *queryinsight.ListInsightsByStepRunIDsHandler
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	listStepsByWorkflow *querystep.ListStepsByWorkflowHandler
 }
 
 func NewWorkflowRunHandler(
@@ -47,18 +50,20 @@ func NewWorkflowRunHandler(
 	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
 	listInsightsByIDs *queryinsight.ListInsightsByStepRunIDsHandler,
 	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	listStepsByWorkflow *querystep.ListStepsByWorkflowHandler,
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
-		startHandler:       startHandler,
-		cancelHandler:      cancelHandler,
-		getByIDHandler:     getByIDHandler,
-		analyticsHandler:   analyticsHandler,
-		listByWorkflow:     listByWorkflow,
-		listByOrganization: listByOrganization,
-		listStepRuns:       listStepRuns,
-		listStepRunsByIDs:  listStepRunsByIDs,
-		listInsightsByIDs:  listInsightsByIDs,
-		getWorkflowHandler: getWorkflowHandler,
+		startHandler:        startHandler,
+		cancelHandler:       cancelHandler,
+		getByIDHandler:      getByIDHandler,
+		analyticsHandler:    analyticsHandler,
+		listByWorkflow:      listByWorkflow,
+		listByOrganization:  listByOrganization,
+		listStepRuns:        listStepRuns,
+		listStepRunsByIDs:   listStepRunsByIDs,
+		listInsightsByIDs:   listInsightsByIDs,
+		getWorkflowHandler:  getWorkflowHandler,
+		listStepsByWorkflow: listStepsByWorkflow,
 	}
 }
 
@@ -375,7 +380,18 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns, insightsByStepRunID))
+	stepsByID, err := h.loadStepsByWorkflow(c, view.WorkflowID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list steps"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromViewWithRelations(
+		*view,
+		workflow,
+		stepRuns,
+		stepsByID,
+		insightsByStepRunID,
+	))
 }
 
 func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
@@ -464,6 +480,14 @@ func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
 	}
 
+	workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: view.WorkflowID})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+	}
+
 	stepRuns, err := h.listStepRuns.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunQuery{
 		WorkflowRunID: view.ID,
 	})
@@ -476,7 +500,18 @@ func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromView(*view, stepRuns, insightsByStepRunID))
+	stepsByID, err := h.loadStepsByWorkflow(c, view.WorkflowID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list steps"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromViewWithRelations(
+		*view,
+		workflow,
+		stepRuns,
+		stepsByID,
+		insightsByStepRunID,
+	))
 }
 
 func (h *WorkflowRunHandler) loadInsightsByStepRuns(
@@ -498,6 +533,24 @@ func (h *WorkflowRunHandler) loadInsightsByStepRuns(
 	out := make(map[uuid.UUID][]domaininsight.InsightView, len(ids))
 	for _, insight := range insights {
 		out[insight.StepRunID] = append(out[insight.StepRunID], insight)
+	}
+	return out, nil
+}
+
+func (h *WorkflowRunHandler) loadStepsByWorkflow(
+	c fiber.Ctx,
+	workflowID uuid.UUID,
+) (map[uuid.UUID]domainstep.StepView, error) {
+	steps, err := h.listStepsByWorkflow.Handle(c.Context(), querystep.ListStepsByWorkflowQuery{
+		WorkflowID: workflowID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uuid.UUID]domainstep.StepView, len(steps))
+	for _, step := range steps {
+		out[step.ID] = step
 	}
 	return out, nil
 }

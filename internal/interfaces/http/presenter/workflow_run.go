@@ -4,7 +4,9 @@ import (
 	"time"
 
 	domaininsight "go-api/internal/domain/insight"
+	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
+	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
@@ -22,7 +24,8 @@ type WorkflowRunListResponse struct {
 
 type WorkflowRunDetailResponse struct {
 	WorkflowRunListResponse
-	StepRuns []StepRunResponse `json:"stepRuns,omitempty"`
+	Workflow *WorkflowDetailResponse `json:"workflow,omitempty"`
+	StepRuns []StepRunResponse       `json:"stepRuns,omitempty"`
 }
 
 type WorkflowRunAnalyticsResponse struct {
@@ -74,10 +77,29 @@ func NewWorkflowRunDetailResponseFromView(
 	stepRuns []domainsteprun.StepRunView,
 	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
 ) WorkflowRunDetailResponse {
-	return WorkflowRunDetailResponse{
+	return NewWorkflowRunDetailResponseFromViewWithRelations(view, nil, stepRuns, nil, insightsByStepRunID)
+}
+
+func NewWorkflowRunDetailResponseFromViewWithRelations(
+	view domainworkflowrun.WorkflowRunView,
+	workflow *domainworkflow.WorkflowView,
+	stepRuns []domainsteprun.StepRunView,
+	stepsByID map[uuid.UUID]domainstep.StepView,
+	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
+) WorkflowRunDetailResponse {
+	resp := WorkflowRunDetailResponse{
 		WorkflowRunListResponse: NewWorkflowRunListResponseFromView(view),
-		StepRuns:                NewStepRunListResponseFromViews(stepRuns, insightsByStepRunID),
+		StepRuns: NewStepRunListResponseFromViewsWithSteps(
+			stepRuns,
+			stepsByID,
+			insightsByStepRunID,
+		),
 	}
+	if workflow != nil {
+		detail := NewWorkflowDetailResponseFromView(*workflow)
+		resp.Workflow = &detail
+	}
+	return resp
 }
 
 func NewWorkflowRunListWithStepRunsFromViews(

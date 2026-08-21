@@ -252,6 +252,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			listStepRunsByIDsHandler,
 			listInsightsByIDsHandler,
 			getWorkflowByIDHandler,
+			listStepsByWorkflowHandler,
 		),
 		VariableHandler: httphandler.NewVariableHandler(
 			createVariableHandler,
