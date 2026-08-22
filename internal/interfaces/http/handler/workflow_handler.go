@@ -239,11 +239,11 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 		ScheduleIntervalUnit:  domainworkflow.ScheduleUnit(req.ScheduleIntervalUnit),
 		ScheduleAt:            req.ScheduleAt,
 		ScheduleTimezone:      strings.TrimSpace(req.ScheduleTimezone),
-		Concurrency:           *req.Concurrency,
-		NotificationsEnabled:  *req.NotificationsEnabled,
-		NotifyOnSuccess:       *req.NotifyOnSuccess,
-		NotifyOnFailure:       *req.NotifyOnFailure,
-		NotifyOnCancel:        *req.NotifyOnCancel,
+		Concurrency:           intOrDefault(req.Concurrency, existing.Concurrency),
+		NotificationsEnabled:  boolOrDefault(req.NotificationsEnabled, existing.NotificationsEnabled),
+		NotifyOnSuccess:       boolOrDefault(req.NotifyOnSuccess, existing.NotifyOnSuccess),
+		NotifyOnFailure:       boolOrDefault(req.NotifyOnFailure, existing.NotifyOnFailure),
+		NotifyOnCancel:        boolOrDefault(req.NotifyOnCancel, existing.NotifyOnCancel),
 	})
 	if err != nil {
 		if err.Error() == "workflow not found" {

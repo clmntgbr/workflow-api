@@ -26,9 +26,9 @@ type UpdateWorkflowRequest struct {
 	ScheduleIntervalUnit  string     `json:"scheduleIntervalUnit" validate:"omitempty,schedule_unit"`
 	ScheduleAt            *time.Time `json:"scheduleAt" validate:"omitempty"`
 	ScheduleTimezone      string     `json:"scheduleTimezone" validate:"omitempty,max=64"`
-	Concurrency           *int       `json:"concurrency" validate:"required,min=1,max=100"`
-	NotificationsEnabled  *bool      `json:"notificationsEnabled" validate:"required"`
-	NotifyOnSuccess       *bool      `json:"notifyOnSuccess" validate:"required"`
-	NotifyOnFailure       *bool      `json:"notifyOnFailure" validate:"required"`
-	NotifyOnCancel        *bool      `json:"notifyOnCancel" validate:"required"`
+	Concurrency           *int       `json:"concurrency" validate:"omitempty,min=1,max=100"`
+	NotificationsEnabled  *bool      `json:"notificationsEnabled" validate:"omitempty"`
+	NotifyOnSuccess       *bool      `json:"notifyOnSuccess" validate:"omitempty"`
+	NotifyOnFailure       *bool      `json:"notifyOnFailure" validate:"omitempty"`
+	NotifyOnCancel        *bool      `json:"notifyOnCancel" validate:"omitempty"`
 }
