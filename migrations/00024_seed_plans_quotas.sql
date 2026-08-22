@@ -112,7 +112,7 @@ INSERT INTO plans (
 ),
 (
     '01941f29-7c06-74b7-b04e-d1c615cb6325',
-    'Starter (annuel)',
+    'Starter',
     'Starter avec 2 mois offerts en facturation annuelle.',
     'starter-yearly',
     'price_1U79xp5vcjninxNhmIEzdOdI',
@@ -140,7 +140,7 @@ INSERT INTO plans (
 ),
 (
     '01941f29-7c08-7c39-8b73-8254661b6770',
-    'Pro (annuel)',
+    'Pro',
     'Pro avec 2 mois offerts en facturation annuelle.',
     'pro-yearly',
     'price_1U79yP5vcjninxNhxaMMcHYY',
@@ -168,7 +168,7 @@ INSERT INTO plans (
 ),
 (
     '01941f29-7c0a-7cc5-823a-dcaef25c0d8e',
-    'Business (annuel)',
+    'Business',
     'Business avec 2 mois offerts en facturation annuelle.',
     'business-yearly',
     'price_1U79yv5vcjninxNhBFTNakpP',
