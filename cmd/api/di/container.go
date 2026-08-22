@@ -189,7 +189,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
 
 	listActivePlansHandler := queryplan.NewListActivePlansHandler(planReadRepo)
-	getPlanByIDHandler := queryplan.NewGetPlanByIDHandler(planReadRepo)
 
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
@@ -273,10 +272,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getStepByIDHandler,
 			getWorkflowByIDHandler,
 		),
-		PlanHandler: httphandler.NewPlanHandler(
-			listActivePlansHandler,
-			getPlanByIDHandler,
-		),
+		PlanHandler: httphandler.NewPlanHandler(listActivePlansHandler),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}
 }

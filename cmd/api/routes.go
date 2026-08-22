@@ -118,9 +118,7 @@ func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupPlanRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/plans", container.PlanHandler.List)
-	api.Get("/plans/:id", container.PlanHandler.GetByID)
 }
 
 func setupRealtimeRoutes(api fiber.Router, container *di.Container) {

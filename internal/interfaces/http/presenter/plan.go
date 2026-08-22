@@ -1,6 +1,8 @@
 package presenter
 
 import (
+	"time"
+
 	domainplan "go-api/internal/domain/plan"
 	domainquota "go-api/internal/domain/quota"
 )
@@ -30,20 +32,25 @@ type QuotaResponse struct {
 	AllowsInsights      bool `json:"allowsInsights"`
 	AllowsDataExport    bool `json:"allowsDataExport"`
 	ExecutorPriority    int  `json:"executorPriority"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type PlanResponse struct {
-	ID              string          `json:"id"`
-	Name            string          `json:"name"`
-	Description     *string         `json:"description"`
-	Slug            string          `json:"slug"`
-	StripePriceID   string          `json:"stripePriceId"`
-	IsActive        bool            `json:"isActive"`
-	BillingInterval string          `json:"billingInterval"`
-	Price           float64         `json:"price"`
-	Currency        string          `json:"currency"`
-	QuotaID         string          `json:"quotaId"`
-	Quota           *QuotaResponse  `json:"quota,omitempty"`
+	ID              string        `json:"id"`
+	Name            string        `json:"name"`
+	Description     *string       `json:"description"`
+	Slug            string        `json:"slug"`
+	StripePriceID   string        `json:"stripePriceId"`
+	IsActive        bool          `json:"isActive"`
+	BillingInterval string        `json:"billingInterval"`
+	Price           float64       `json:"price"`
+	Currency        string        `json:"currency"`
+	QuotaID         string        `json:"quotaId"`
+	Quota           QuotaResponse `json:"quota"`
+	CreatedAt       time.Time     `json:"createdAt"`
+	UpdatedAt       time.Time     `json:"updatedAt"`
 }
 
 func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
@@ -67,6 +74,8 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 		AllowsInsights:             view.AllowsInsights,
 		AllowsDataExport:           view.AllowsDataExport,
 		ExecutorPriority:           view.ExecutorPriority,
+		CreatedAt:                  view.CreatedAt,
+		UpdatedAt:                  view.UpdatedAt,
 	}
 }
 
@@ -82,10 +91,11 @@ func NewPlanResponseFromView(view domainplan.PlanView) PlanResponse {
 		Price:           view.Price,
 		Currency:        string(view.Currency),
 		QuotaID:         view.QuotaID.String(),
+		CreatedAt:       view.CreatedAt,
+		UpdatedAt:       view.UpdatedAt,
 	}
 	if view.Quota != nil {
-		quota := NewQuotaResponseFromView(*view.Quota)
-		resp.Quota = &quota
+		resp.Quota = NewQuotaResponseFromView(*view.Quota)
 	}
 	return resp
 }

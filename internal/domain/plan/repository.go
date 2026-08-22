@@ -17,7 +17,6 @@ type PlanWriteRepository interface {
 }
 
 type PlanReadRepository interface {
-	FindByID(ctx context.Context, id uuid.UUID) (*PlanView, error)
 	FindActive(ctx context.Context) ([]PlanView, error)
 	FindAll(ctx context.Context) ([]PlanView, error)
 }

@@ -27,7 +27,7 @@ INSERT INTO quotas (
     updated_at
 ) VALUES
 (
-    'b2e1a1b0-0001-4a10-8c1a-000000000001',
+    '01941f29-7c00-7558-b853-0fef65937505',
     'Free',
     2, 3, 5, 10, 5,
     100, 1, 60, 7,
@@ -37,7 +37,7 @@ INSERT INTO quotas (
     '2026-01-01T00:00:00Z'
 ),
 (
-    'b2e1a1b0-0002-4a10-8c1a-000000000002',
+    '01941f29-7c01-7ff3-b3eb-d5c787d32ba4',
     'Starter',
     5, 10, 10, 30, 10,
     1000, 2, 30, 30,
@@ -47,7 +47,7 @@ INSERT INTO quotas (
     '2026-01-01T00:00:00Z'
 ),
 (
-    'b2e1a1b0-0003-4a10-8c1a-000000000003',
+    '01941f29-7c02-798d-b4c6-9d777505cdbc',
     'Pro',
     10, 25, 25, 100, 25,
     5000, 5, 10, 90,
@@ -57,7 +57,7 @@ INSERT INTO quotas (
     '2026-01-01T00:00:00Z'
 ),
 (
-    'b2e1a1b0-0004-4a10-8c1a-000000000004',
+    '01941f29-7c03-7a99-937e-5307a3f91734',
     'Business',
     50, 200, 100, 1000, 100,
     50000, 25, 1, 365,
@@ -82,21 +82,21 @@ INSERT INTO plans (
     updated_at
 ) VALUES
 (
-    'c3f2b2c1-0001-4b20-9d2b-000000000011',
+    '01941f29-7c04-7701-abeb-ce79cc69df64',
     'Free',
-    'Pour découvrir FlowForge et automatiser quelques appels HTTP simples.',
+    'Pour découvrir et automatiser quelques appels HTTP simples.',
     'free',
     '',
     TRUE,
     'month',
     0.00,
     'EUR',
-    'b2e1a1b0-0001-4a10-8c1a-000000000001',
+    '01941f29-7c00-7558-b853-0fef65937505',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0002-4b20-9d2b-000000000012',
+    '01941f29-7c05-76cb-a3a0-2f7dea4e16d3',
     'Starter',
     'Pour les petites équipes qui automatisent leurs premiers workflows.',
     'starter-monthly',
@@ -105,12 +105,12 @@ INSERT INTO plans (
     'month',
     12.00,
     'EUR',
-    'b2e1a1b0-0002-4a10-8c1a-000000000002',
+    '01941f29-7c01-7ff3-b3eb-d5c787d32ba4',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0003-4b20-9d2b-000000000013',
+    '01941f29-7c06-74b7-b04e-d1c615cb6325',
     'Starter (annuel)',
     'Starter avec 2 mois offerts en facturation annuelle.',
     'starter-yearly',
@@ -119,12 +119,12 @@ INSERT INTO plans (
     'year',
     120.00,
     'EUR',
-    'b2e1a1b0-0002-4a10-8c1a-000000000002',
+    '01941f29-7c01-7ff3-b3eb-d5c787d32ba4',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0004-4b20-9d2b-000000000014',
+    '01941f29-7c07-7306-9af3-6d704d78628b',
     'Pro',
     'Pour les équipes qui automatisent des workflows en production.',
     'pro-monthly',
@@ -133,12 +133,12 @@ INSERT INTO plans (
     'month',
     29.00,
     'EUR',
-    'b2e1a1b0-0003-4a10-8c1a-000000000003',
+    '01941f29-7c02-798d-b4c6-9d777505cdbc',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0005-4b20-9d2b-000000000015',
+    '01941f29-7c08-7c39-8b73-8254661b6770',
     'Pro (annuel)',
     'Pro avec 2 mois offerts en facturation annuelle.',
     'pro-yearly',
@@ -147,12 +147,12 @@ INSERT INTO plans (
     'year',
     290.00,
     'EUR',
-    'b2e1a1b0-0003-4a10-8c1a-000000000003',
+    '01941f29-7c02-798d-b4c6-9d777505cdbc',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0006-4b20-9d2b-000000000016',
+    '01941f29-7c09-7b95-9920-cf4116d057c2',
     'Business',
     'Pour les organisations avec des besoins de volume et de rétention étendus.',
     'business-monthly',
@@ -161,12 +161,12 @@ INSERT INTO plans (
     'month',
     99.00,
     'EUR',
-    'b2e1a1b0-0004-4a10-8c1a-000000000004',
+    '01941f29-7c03-7a99-937e-5307a3f91734',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 ),
 (
-    'c3f2b2c1-0007-4b20-9d2b-000000000017',
+    '01941f29-7c0a-7cc5-823a-dcaef25c0d8e',
     'Business (annuel)',
     'Business avec 2 mois offerts en facturation annuelle.',
     'business-yearly',
@@ -175,7 +175,7 @@ INSERT INTO plans (
     'year',
     990.00,
     'EUR',
-    'b2e1a1b0-0004-4a10-8c1a-000000000004',
+    '01941f29-7c03-7a99-937e-5307a3f91734',
     '2026-01-01T00:00:00Z',
     '2026-01-01T00:00:00Z'
 );
@@ -184,19 +184,19 @@ INSERT INTO plans (
 -- +goose Down
 -- +goose StatementBegin
 DELETE FROM plans WHERE id IN (
-    'c3f2b2c1-0001-4b20-9d2b-000000000011',
-    'c3f2b2c1-0002-4b20-9d2b-000000000012',
-    'c3f2b2c1-0003-4b20-9d2b-000000000013',
-    'c3f2b2c1-0004-4b20-9d2b-000000000014',
-    'c3f2b2c1-0005-4b20-9d2b-000000000015',
-    'c3f2b2c1-0006-4b20-9d2b-000000000016',
-    'c3f2b2c1-0007-4b20-9d2b-000000000017'
+    '01941f29-7c04-7701-abeb-ce79cc69df64',
+    '01941f29-7c05-76cb-a3a0-2f7dea4e16d3',
+    '01941f29-7c06-74b7-b04e-d1c615cb6325',
+    '01941f29-7c07-7306-9af3-6d704d78628b',
+    '01941f29-7c08-7c39-8b73-8254661b6770',
+    '01941f29-7c09-7b95-9920-cf4116d057c2',
+    '01941f29-7c0a-7cc5-823a-dcaef25c0d8e'
 );
 
 DELETE FROM quotas WHERE id IN (
-    'b2e1a1b0-0001-4a10-8c1a-000000000001',
-    'b2e1a1b0-0002-4a10-8c1a-000000000002',
-    'b2e1a1b0-0003-4a10-8c1a-000000000003',
-    'b2e1a1b0-0004-4a10-8c1a-000000000004'
+    '01941f29-7c00-7558-b853-0fef65937505',
+    '01941f29-7c01-7ff3-b3eb-d5c787d32ba4',
+    '01941f29-7c02-798d-b4c6-9d777505cdbc',
+    '01941f29-7c03-7a99-937e-5307a3f91734'
 );
 -- +goose StatementEnd

@@ -2,7 +2,6 @@ package read
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	domainplan "go-api/internal/domain/plan"
@@ -36,18 +35,6 @@ type planReadRepository struct {
 
 func NewPlanReadRepository(db *gorm.DB, quotaRead domainquota.QuotaReadRepository) domainplan.PlanReadRepository {
 	return &planReadRepository{db: db, quotaRead: quotaRead}
-}
-
-func (r *planReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainplan.PlanView, error) {
-	var row planRow
-	err := r.db.WithContext(ctx).First(&row, "id = ?", id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return r.toPlanViewWithQuota(ctx, row)
 }
 
 func (r *planReadRepository) FindActive(ctx context.Context) ([]domainplan.PlanView, error) {
@@ -105,16 +92,6 @@ func (r *planReadRepository) toPlanViewsWithQuota(ctx context.Context, rows []pl
 		out = append(out, view)
 	}
 	return out, nil
-}
-
-func (r *planReadRepository) toPlanViewWithQuota(ctx context.Context, row planRow) (*domainplan.PlanView, error) {
-	view := toPlanView(row)
-	quota, err := r.quotaRead.FindByID(ctx, row.QuotaID)
-	if err != nil {
-		return nil, err
-	}
-	view.Quota = quota
-	return &view, nil
 }
 
 func toPlanView(row planRow) domainplan.PlanView {
