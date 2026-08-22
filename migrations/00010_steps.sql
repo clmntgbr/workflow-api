@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS steps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,
     endpoint_id UUID NOT NULL REFERENCES endpoints (id),
-    organization_id UUID NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT NULL,
     url TEXT NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS steps (
 
 CREATE INDEX IF NOT EXISTS idx_step_workflow ON steps (workflow_id);
 CREATE INDEX IF NOT EXISTS idx_step_endpoint ON steps (endpoint_id);
-CREATE INDEX IF NOT EXISTS idx_step_org ON steps (organization_id);
+CREATE INDEX IF NOT EXISTS idx_step_org ON steps (project_id);
 CREATE INDEX IF NOT EXISTS idx_step_execution_order ON steps (execution_order);
 CREATE INDEX IF NOT EXISTS idx_step_created ON steps (created_at);
 -- +goose StatementEnd

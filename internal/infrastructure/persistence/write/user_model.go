@@ -15,7 +15,7 @@ type UserModel struct {
 	LastName             string     `gorm:"column:last_name"`
 	Banned               bool       `gorm:"column:banned"`
 	Email                string     `gorm:"column:email"`
-	ActiveOrganizationID *uuid.UUID `gorm:"column:active_organization_id"`
+	ActiveProjectID *uuid.UUID `gorm:"column:active_project_id"`
 	SubscriptionID       *uuid.UUID `gorm:"column:subscription_id"`
 	CreatedAt            time.Time  `gorm:"column:created_at"`
 	UpdatedAt            time.Time  `gorm:"column:updated_at"`
@@ -33,7 +33,7 @@ func userModelFromDomain(u *domainuser.User) *UserModel {
 		LastName:             u.LastName,
 		Banned:               u.Banned,
 		Email:                u.Email,
-		ActiveOrganizationID: u.ActiveOrganizationID,
+		ActiveProjectID: u.ActiveProjectID,
 		SubscriptionID:       u.SubscriptionID,
 		CreatedAt:            u.CreatedAt,
 		UpdatedAt:            u.UpdatedAt,
@@ -48,7 +48,7 @@ func userDomainFromModel(m *UserModel) *domainuser.User {
 		LastName:             m.LastName,
 		Banned:               m.Banned,
 		Email:                m.Email,
-		ActiveOrganizationID: m.ActiveOrganizationID,
+		ActiveProjectID: m.ActiveProjectID,
 		SubscriptionID:       m.SubscriptionID,
 		CreatedAt:            m.CreatedAt,
 		UpdatedAt:            m.UpdatedAt,

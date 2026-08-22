@@ -15,7 +15,7 @@ type StepModel struct {
 	ID             uuid.UUID    `gorm:"column:id;primaryKey"`
 	WorkflowID     uuid.UUID    `gorm:"column:workflow_id"`
 	EndpointID     uuid.UUID    `gorm:"column:endpoint_id"`
-	OrganizationID uuid.UUID    `gorm:"column:organization_id"`
+	ProjectID uuid.UUID    `gorm:"column:project_id"`
 	Name           string       `gorm:"column:name"`
 	Description    string       `gorm:"column:description"`
 	URL            string       `gorm:"column:url"`
@@ -73,7 +73,7 @@ func stepModelFromDomain(s *domainstep.Step) (*StepModel, error) {
 		ID:             s.ID,
 		WorkflowID:     s.WorkflowID,
 		EndpointID:     s.EndpointID,
-		OrganizationID: s.OrganizationID,
+		ProjectID: s.ProjectID,
 		Name:           s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -122,7 +122,7 @@ func stepDomainFromModel(m *StepModel) (*domainstep.Step, error) {
 		ID:             m.ID,
 		WorkflowID:     m.WorkflowID,
 		EndpointID:     m.EndpointID,
-		OrganizationID: m.OrganizationID,
+		ProjectID: m.ProjectID,
 		Name:           m.Name,
 		Description:    m.Description,
 		URL:            m.URL,

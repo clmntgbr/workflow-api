@@ -21,11 +21,11 @@ func (h *WorkflowDeletedHandler) Handle(ctx context.Context, payload []byte) err
 		return messaging.NonRetryable(err)
 	}
 	log.Printf(
-		"event handled %s eventId=%s workflowId=%s organizationId=%s",
+		"event handled %s eventId=%s workflowId=%s projectId=%s",
 		domainworkflow.EventTypeWorkflowDeleted,
 		evt.ID,
 		evt.WorkflowID,
-		evt.OrganizationID,
+		evt.ProjectID,
 	)
 	return nil
 }

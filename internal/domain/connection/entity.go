@@ -11,7 +11,7 @@ import (
 type Connection struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	SourceStepID   uuid.UUID
 	TargetStepID   uuid.UUID
 
@@ -20,7 +20,7 @@ type Connection struct {
 
 type NewConnectionParams struct {
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	SourceStepID   uuid.UUID
 	TargetStepID   uuid.UUID
 }
@@ -30,7 +30,7 @@ func NewConnection(p NewConnectionParams) *Connection {
 	c := &Connection{
 		ID:             uuid.New(),
 		WorkflowID:     p.WorkflowID,
-		OrganizationID: p.OrganizationID,
+		ProjectID: p.ProjectID,
 		SourceStepID:   p.SourceStepID,
 		TargetStepID:   p.TargetStepID,
 	}
@@ -38,7 +38,7 @@ func NewConnection(p NewConnectionParams) *Connection {
 		ID:             uuid.New().String(),
 		ConnectionID:   c.ID.String(),
 		WorkflowID:     c.WorkflowID.String(),
-		OrganizationID: c.OrganizationID.String(),
+		ProjectID: c.ProjectID.String(),
 		SourceStepID:   c.SourceStepID.String(),
 		TargetStepID:   c.TargetStepID.String(),
 		Timestamp:      now,
@@ -51,7 +51,7 @@ func (c *Connection) RecordDeletedEvent() {
 		ID:             uuid.New().String(),
 		ConnectionID:   c.ID.String(),
 		WorkflowID:     c.WorkflowID.String(),
-		OrganizationID: c.OrganizationID.String(),
+		ProjectID: c.ProjectID.String(),
 		Timestamp:      time.Now().UTC(),
 	})
 }

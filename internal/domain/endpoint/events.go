@@ -15,7 +15,7 @@ const (
 type EndpointCreated struct {
 	ID             string            `json:"eventId"`
 	EndpointID     string            `json:"endpointId"`
-	OrganizationID string            `json:"organizationId"`
+	ProjectID string            `json:"projectId"`
 	Name           string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
@@ -39,7 +39,7 @@ func (e EndpointCreated) OccurredAt() time.Time { return e.Timestamp }
 type EndpointUpdated struct {
 	ID             string            `json:"eventId"`
 	EndpointID     string            `json:"endpointId"`
-	OrganizationID string            `json:"organizationId"`
+	ProjectID string            `json:"projectId"`
 	Name           string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
@@ -62,14 +62,14 @@ func (e EndpointUpdated) OccurredAt() time.Time { return e.Timestamp }
 
 type EndpointImported struct {
 	ID             string    `json:"eventId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Count          int       `json:"count"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
 func (e EndpointImported) EventID() string       { return e.ID }
 func (e EndpointImported) EventType() string     { return EventTypeEndpointImported }
-func (e EndpointImported) AggregateID() string   { return e.OrganizationID }
+func (e EndpointImported) AggregateID() string   { return e.ProjectID }
 func (e EndpointImported) OccurredAt() time.Time { return e.Timestamp }
 
 const EventTypeEndpointDeleted = "endpoint.deleted.v1"
@@ -77,7 +77,7 @@ const EventTypeEndpointDeleted = "endpoint.deleted.v1"
 type EndpointDeleted struct {
 	ID             string    `json:"eventId"`
 	EndpointID     string    `json:"endpointId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

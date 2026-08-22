@@ -250,7 +250,7 @@ func (h *Orchestrator) skipBranch(
 			StepID:         current.ID,
 			WorkflowID:     current.WorkflowID,
 			EndpointID:     current.EndpointID,
-			OrganizationID: current.OrganizationID,
+			ProjectID: current.ProjectID,
 			Name:           current.Name,
 			Description:    current.Description,
 			URL:            current.URL,

@@ -13,7 +13,7 @@ type StepCreated struct {
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
 	EndpointID     string            `json:"endpointId"`
-	OrganizationID string            `json:"organizationId"`
+	ProjectID string            `json:"projectId"`
 	Name           string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
@@ -44,7 +44,7 @@ type StepUpdated struct {
 	ID             string            `json:"eventId"`
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
-	OrganizationID string            `json:"organizationId"`
+	ProjectID string            `json:"projectId"`
 	Name           string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
@@ -74,7 +74,7 @@ type StepDeleted struct {
 	ID             string    `json:"eventId"`
 	StepID         string    `json:"stepId"`
 	WorkflowID     string    `json:"workflowId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

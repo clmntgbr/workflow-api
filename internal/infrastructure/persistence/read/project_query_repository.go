@@ -5,38 +5,38 @@ import (
 	"errors"
 	"time"
 
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-type organizationRow struct {
+type projectRow struct {
 	ID        uuid.UUID
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func (organizationRow) TableName() string { return "organizations" }
+func (projectRow) TableName() string { return "projects" }
 
-type userOrganizationRow struct {
+type userProjectRow struct {
 	UserID         uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
-func (userOrganizationRow) TableName() string { return "user_organizations" }
+func (userProjectRow) TableName() string { return "user_projects" }
 
-type organizationReadRepository struct {
+type projectReadRepository struct {
 	db *gorm.DB
 }
 
-func NewOrganizationReadRepository(db *gorm.DB) domainorganization.OrganizationReadRepository {
-	return &organizationReadRepository{db: db}
+func NewProjectReadRepository(db *gorm.DB) domainproject.ProjectReadRepository {
+	return &projectReadRepository{db: db}
 }
 
-func (r *organizationReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainorganization.OrganizationView, error) {
-	var row organizationRow
+func (r *projectReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainproject.ProjectView, error) {
+	var row projectRow
 	err := r.db.WithContext(ctx).
 		Select("id", "name", "created_at", "updated_at").
 		First(&row, "id = ?", id).Error
@@ -52,30 +52,30 @@ func (r *organizationReadRepository) FindByID(ctx context.Context, id uuid.UUID)
 		return nil, err
 	}
 
-	return toOrganizationView(row, memberIDs), nil
+	return toProjectView(row, memberIDs), nil
 }
 
-func (r *organizationReadRepository) FindByUserID(
+func (r *projectReadRepository) FindByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]domainorganization.OrganizationView, error) {
-	var memberships []userOrganizationRow
+) ([]domainproject.ProjectView, error) {
+	var memberships []userProjectRow
 	if err := r.db.WithContext(ctx).
-		Select("user_id", "organization_id").
+		Select("user_id", "project_id").
 		Where("user_id = ?", userID).
 		Find(&memberships).Error; err != nil {
 		return nil, err
 	}
 	if len(memberships) == 0 {
-		return []domainorganization.OrganizationView{}, nil
+		return []domainproject.ProjectView{}, nil
 	}
 
 	orgIDs := make([]uuid.UUID, 0, len(memberships))
 	for _, m := range memberships {
-		orgIDs = append(orgIDs, m.OrganizationID)
+		orgIDs = append(orgIDs, m.ProjectID)
 	}
 
-	var rows []organizationRow
+	var rows []projectRow
 	if err := r.db.WithContext(ctx).
 		Select("id", "name", "created_at", "updated_at").
 		Where("id IN ?", orgIDs).
@@ -84,22 +84,22 @@ func (r *organizationReadRepository) FindByUserID(
 		return nil, err
 	}
 
-	views := make([]domainorganization.OrganizationView, 0, len(rows))
+	views := make([]domainproject.ProjectView, 0, len(rows))
 	for _, row := range rows {
 		memberIDs, err := r.loadMemberIDs(ctx, row.ID)
 		if err != nil {
 			return nil, err
 		}
-		views = append(views, *toOrganizationView(row, memberIDs))
+		views = append(views, *toProjectView(row, memberIDs))
 	}
 	return views, nil
 }
 
-func (r *organizationReadRepository) loadMemberIDs(ctx context.Context, organizationID uuid.UUID) ([]uuid.UUID, error) {
-	var memberships []userOrganizationRow
+func (r *projectReadRepository) loadMemberIDs(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {
+	var memberships []userProjectRow
 	if err := r.db.WithContext(ctx).
-		Select("user_id", "organization_id").
-		Where("organization_id = ?", organizationID).
+		Select("user_id", "project_id").
+		Where("project_id = ?", projectID).
 		Find(&memberships).Error; err != nil {
 		return nil, err
 	}
@@ -110,8 +110,8 @@ func (r *organizationReadRepository) loadMemberIDs(ctx context.Context, organiza
 	return ids, nil
 }
 
-func toOrganizationView(row organizationRow, memberIDs []uuid.UUID) *domainorganization.OrganizationView {
-	return &domainorganization.OrganizationView{
+func toProjectView(row projectRow, memberIDs []uuid.UUID) *domainproject.ProjectView {
+	return &domainproject.ProjectView{
 		ID:        row.ID,
 		Name:      row.Name,
 		CreatedAt: row.CreatedAt,

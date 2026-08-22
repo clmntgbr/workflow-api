@@ -71,16 +71,16 @@ func (h *SubscriptionHandler) GetQuota(c fiber.Ctx) error {
 		})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Active organization is required",
+			"message": "Active project is required",
 		})
 	}
 
 	usage, err := h.getQuotaUsageHandler.Handle(c.Context(), querysubscription.GetQuotaUsageQuery{
 		UserID:         user.ID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	})
 	if err != nil {
 		switch {
@@ -88,9 +88,9 @@ func (h *SubscriptionHandler) GetQuota(c fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"message": "Subscription not found",
 			})
-		case errors.Is(err, querysubscription.ErrActiveOrganizationRequired):
+		case errors.Is(err, querysubscription.ErrActiveProjectRequired):
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Active organization is required",
+				"message": "Active project is required",
 			})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

@@ -32,7 +32,7 @@ type StepRunView struct {
 	StepID           uuid.UUID
 	WorkflowID       uuid.UUID
 	EndpointID       uuid.UUID
-	OrganizationID   uuid.UUID
+	ProjectID   uuid.UUID
 	Name             string
 	Description      string
 	URL              string

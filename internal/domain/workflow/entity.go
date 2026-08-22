@@ -14,7 +14,7 @@ type Workflow struct {
 	Description string
 	Status      Status
 
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
@@ -39,7 +39,7 @@ type Workflow struct {
 type NewWorkflowParams struct {
 	Name                  string
 	Description           string
-	OrganizationID        uuid.UUID
+	ProjectID        uuid.UUID
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  ScheduleUnit
@@ -72,7 +72,7 @@ func NewWorkflow(p NewWorkflowParams) (*Workflow, error) {
 		Name:                  p.Name,
 		Description:           p.Description,
 		Status:                StatusInactive,
-		OrganizationID:        p.OrganizationID,
+		ProjectID:        p.ProjectID,
 		ScheduleType:          scheduleType,
 		ScheduleIntervalValue: p.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  p.ScheduleIntervalUnit,
@@ -195,7 +195,7 @@ func (w *Workflow) MarkDeleted() {
 	w.recordEvent(WorkflowDeleted{
 		ID:             uuid.New().String(),
 		WorkflowID:     w.ID.String(),
-		OrganizationID: w.OrganizationID.String(),
+		ProjectID: w.ProjectID.String(),
 		Timestamp:      w.UpdatedAt,
 	})
 }
@@ -204,7 +204,7 @@ func (w *Workflow) createdEvent(at time.Time) WorkflowCreated {
 	return WorkflowCreated{
 		ID:                    uuid.New().String(),
 		WorkflowID:            w.ID.String(),
-		OrganizationID:        w.OrganizationID.String(),
+		ProjectID:        w.ProjectID.String(),
 		Name:                  w.Name,
 		Description:           w.Description,
 		Status:                string(w.Status),
@@ -227,7 +227,7 @@ func (w *Workflow) updatedEvent(at time.Time) WorkflowUpdated {
 	return WorkflowUpdated{
 		ID:                    uuid.New().String(),
 		WorkflowID:            w.ID.String(),
-		OrganizationID:        w.OrganizationID.String(),
+		ProjectID:        w.ProjectID.String(),
 		Name:                  w.Name,
 		Description:           w.Description,
 		Status:                string(w.Status),

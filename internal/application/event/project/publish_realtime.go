@@ -1,4 +1,4 @@
-package organization
+package project
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
 
 	"github.com/google/uuid"
@@ -22,7 +22,7 @@ func NewPublishRealtimeHandler(realtimePublisher port.RealtimePublisher) *Publis
 }
 
 func (h *PublishRealtimeHandler) OnCreated(ctx context.Context, payload []byte) error {
-	var evt domainorganization.OrganizationCreated
+	var evt domainproject.ProjectCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
@@ -36,7 +36,7 @@ func (h *PublishRealtimeHandler) OnCreated(ctx context.Context, payload []byte) 
 }
 
 func (h *PublishRealtimeHandler) OnUpdated(ctx context.Context, payload []byte) error {
-	var evt domainorganization.OrganizationUpdated
+	var evt domainproject.ProjectUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
@@ -45,7 +45,7 @@ func (h *PublishRealtimeHandler) OnUpdated(ctx context.Context, payload []byte) 
 }
 
 func (h *PublishRealtimeHandler) OnDeleted(ctx context.Context, payload []byte) error {
-	var evt domainorganization.OrganizationDeleted
+	var evt domainproject.ProjectDeleted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
@@ -54,7 +54,7 @@ func (h *PublishRealtimeHandler) OnDeleted(ctx context.Context, payload []byte) 
 }
 
 func (h *PublishRealtimeHandler) OnMemberAdded(ctx context.Context, payload []byte) error {
-	var evt domainorganization.OrganizationMemberAdded
+	var evt domainproject.ProjectMemberAdded
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
@@ -68,7 +68,7 @@ func (h *PublishRealtimeHandler) OnMemberAdded(ctx context.Context, payload []by
 }
 
 func (h *PublishRealtimeHandler) OnMemberRemoved(ctx context.Context, payload []byte) error {
-	var evt domainorganization.OrganizationMemberRemoved
+	var evt domainproject.ProjectMemberRemoved
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
@@ -105,7 +105,7 @@ func (h *PublishRealtimeHandler) publishToUser(
 	action string,
 	payload any,
 ) error {
-	eventType := realtime.EventType(realtime.EntityOrganization, action)
+	eventType := realtime.EventType(realtime.EntityProject, action)
 	if err := h.realtime.PublishToUser(ctx, userID, eventType, payload); err != nil {
 		log.Printf("centrifugo publish failed type=%s userId=%s: %v", eventType, userID.String(), err)
 		return messaging.Retryable(err)

@@ -6,7 +6,7 @@ const (
 	EventTypeUserCreated                   = "user.created.v1"
 	EventTypeUserUpdated                   = "user.updated.v1"
 	EventTypeUserDeleted                   = "user.deleted.v1"
-	EventTypeUserActiveOrganizationChanged = "user.active_organization_changed.v1"
+	EventTypeUserActiveProjectChanged = "user.active_project_changed.v1"
 )
 
 type UserCreated struct {
@@ -53,16 +53,16 @@ func (e UserDeleted) EventType() string     { return EventTypeUserDeleted }
 func (e UserDeleted) AggregateID() string   { return e.UserID }
 func (e UserDeleted) OccurredAt() time.Time { return e.Timestamp }
 
-type UserActiveOrganizationChanged struct {
+type UserActiveProjectChanged struct {
 	ID             string    `json:"eventId"`
 	UserID         string    `json:"userId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
-func (e UserActiveOrganizationChanged) EventID() string { return e.ID }
-func (e UserActiveOrganizationChanged) EventType() string {
-	return EventTypeUserActiveOrganizationChanged
+func (e UserActiveProjectChanged) EventID() string { return e.ID }
+func (e UserActiveProjectChanged) EventType() string {
+	return EventTypeUserActiveProjectChanged
 }
-func (e UserActiveOrganizationChanged) AggregateID() string   { return e.UserID }
-func (e UserActiveOrganizationChanged) OccurredAt() time.Time { return e.Timestamp }
+func (e UserActiveProjectChanged) AggregateID() string   { return e.UserID }
+func (e UserActiveProjectChanged) OccurredAt() time.Time { return e.Timestamp }

@@ -9,7 +9,7 @@ type VariableCreated struct {
 	VariableID     string    `json:"variableId"`
 	WorkflowID     string    `json:"workflowId"`
 	StepID         string    `json:"stepId,omitempty"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Name           string    `json:"name"`
 	Key            string    `json:"key"`
 	Description    string    `json:"description"`
@@ -31,7 +31,7 @@ type VariableUpdated struct {
 	VariableID     string    `json:"variableId"`
 	WorkflowID     string    `json:"workflowId"`
 	StepID         string    `json:"stepId,omitempty"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Name           string    `json:"name"`
 	Key            string    `json:"key"`
 	Description    string    `json:"description"`

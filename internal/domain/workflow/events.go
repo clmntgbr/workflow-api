@@ -11,7 +11,7 @@ const (
 type WorkflowCreated struct {
 	ID                    string     `json:"eventId"`
 	WorkflowID            string     `json:"workflowId"`
-	OrganizationID        string     `json:"organizationId"`
+	ProjectID        string     `json:"projectId"`
 	Name                  string     `json:"name"`
 	Description           string     `json:"description"`
 	Status                string     `json:"status"`
@@ -37,7 +37,7 @@ func (e WorkflowCreated) OccurredAt() time.Time { return e.Timestamp }
 type WorkflowUpdated struct {
 	ID                    string     `json:"eventId"`
 	WorkflowID            string     `json:"workflowId"`
-	OrganizationID        string     `json:"organizationId"`
+	ProjectID        string     `json:"projectId"`
 	Name                  string     `json:"name"`
 	Description           string     `json:"description"`
 	Status                string     `json:"status"`
@@ -63,7 +63,7 @@ func (e WorkflowUpdated) OccurredAt() time.Time { return e.Timestamp }
 type WorkflowDeleted struct {
 	ID             string    `json:"eventId"`
 	WorkflowID     string    `json:"workflowId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

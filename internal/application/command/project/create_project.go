@@ -1,43 +1,43 @@
-package organization
+package project
 
 import (
 	"context"
 	"errors"
 
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
 	domainuser "go-api/internal/domain/user"
 
 	"github.com/google/uuid"
 )
 
-type CreateOrganizationCommand struct {
+type CreateProjectCommand struct {
 	Name          string
 	CreatorUserID uuid.UUID
 }
 
-type CreateOrganizationHandler struct {
-	orgRepo  domainorganization.OrganizationWriteRepository
+type CreateProjectHandler struct {
+	projectRepo domainproject.ProjectWriteRepository
 	userRepo domainuser.UserWriteRepository
 	outbox   port.OutboxRepository
 }
 
-func NewCreateOrganizationHandler(
-	orgRepo domainorganization.OrganizationWriteRepository,
+func NewCreateProjectHandler(
+	projectRepo domainproject.ProjectWriteRepository,
 	userRepo domainuser.UserWriteRepository,
 	outbox port.OutboxRepository,
-) *CreateOrganizationHandler {
-	return &CreateOrganizationHandler{
-		orgRepo:  orgRepo,
+) *CreateProjectHandler {
+	return &CreateProjectHandler{
+		projectRepo: projectRepo,
 		userRepo: userRepo,
 		outbox:   outbox,
 	}
 }
 
-func (h *CreateOrganizationHandler) Handle(
+func (h *CreateProjectHandler) Handle(
 	ctx context.Context,
-	cmd CreateOrganizationCommand,
-) (*domainorganization.Organization, error) {
+	cmd CreateProjectCommand,
+) (*domainproject.Project, error) {
 	if cmd.Name == "" {
 		return nil, errors.New("name is required")
 	}
@@ -45,11 +45,11 @@ func (h *CreateOrganizationHandler) Handle(
 		return nil, errors.New("creator user is required")
 	}
 
-	org := domainorganization.NewOrganization(cmd.Name, cmd.CreatorUserID)
+	org := domainproject.NewProject(cmd.Name, cmd.CreatorUserID)
 	org.AddMember(cmd.CreatorUserID)
 
-	err := h.orgRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := h.orgRepo.Save(txCtx, org); err != nil {
+	err := h.projectRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.projectRepo.Save(txCtx, org); err != nil {
 			return err
 		}
 
@@ -61,9 +61,9 @@ func (h *CreateOrganizationHandler) Handle(
 			return errors.New("creator user not found")
 		}
 
-		user.SetActiveOrganization(org.ID)
+		user.SetActiveProject(org.ID)
 		if err := h.userRepo.Update(txCtx, user); err != nil {
-			return errors.New("failed to set active organization")
+			return errors.New("failed to set active project")
 		}
 
 		events := append(org.PullEvents(), user.PullEvents()...)
@@ -71,10 +71,10 @@ func (h *CreateOrganizationHandler) Handle(
 	})
 	if err != nil {
 		if err.Error() == "creator user not found" || err.Error() == "failed to get creator user" ||
-			err.Error() == "failed to set active organization" {
+			err.Error() == "failed to set active project" {
 			return nil, err
 		}
-		return nil, errors.New("failed to create organization")
+		return nil, errors.New("failed to create project")
 	}
 
 	return org, nil

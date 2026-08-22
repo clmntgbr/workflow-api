@@ -6,7 +6,7 @@ import (
 	"time"
 
 	domainendpoint "go-api/internal/domain/endpoint"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/paginate"
 	domainsubscription "go-api/internal/domain/subscription"
 	domainuser "go-api/internal/domain/user"
@@ -16,17 +16,17 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrActiveOrganizationRequired = errors.New("active organization is required")
+var ErrActiveProjectRequired = errors.New("active project is required")
 
 type GetQuotaUsageQuery struct {
 	UserID         uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type GetQuotaUsageHandler struct {
 	userRepo         domainuser.UserReadRepository
 	subscriptionRepo domainsubscription.SubscriptionReadRepository
-	orgRepo          domainorganization.OrganizationReadRepository
+	projectRepo      domainproject.ProjectReadRepository
 	workflowRepo     domainworkflow.WorkflowReadRepository
 	endpointRepo     domainendpoint.EndpointReadRepository
 	workflowRunRepo  domainworkflowrun.WorkflowRunReadRepository
@@ -35,7 +35,7 @@ type GetQuotaUsageHandler struct {
 func NewGetQuotaUsageHandler(
 	userRepo domainuser.UserReadRepository,
 	subscriptionRepo domainsubscription.SubscriptionReadRepository,
-	orgRepo domainorganization.OrganizationReadRepository,
+	projectRepo domainproject.ProjectReadRepository,
 	workflowRepo domainworkflow.WorkflowReadRepository,
 	endpointRepo domainendpoint.EndpointReadRepository,
 	workflowRunRepo domainworkflowrun.WorkflowRunReadRepository,
@@ -43,7 +43,7 @@ func NewGetQuotaUsageHandler(
 	return &GetQuotaUsageHandler{
 		userRepo:         userRepo,
 		subscriptionRepo: subscriptionRepo,
-		orgRepo:          orgRepo,
+		projectRepo: projectRepo,
 		workflowRepo:     workflowRepo,
 		endpointRepo:     endpointRepo,
 		workflowRunRepo:  workflowRunRepo,
@@ -51,8 +51,8 @@ func NewGetQuotaUsageHandler(
 }
 
 func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery) (*QuotaUsageView, error) {
-	if q.OrganizationID == uuid.Nil {
-		return nil, ErrActiveOrganizationRequired
+	if q.ProjectID == uuid.Nil {
+		return nil, ErrActiveProjectRequired
 	}
 
 	user, err := h.userRepo.FindByID(ctx, q.UserID)
@@ -74,12 +74,12 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 		return nil, errors.New("subscription plan quota not found")
 	}
 
-	org, err := h.orgRepo.FindByID(ctx, q.OrganizationID)
+	org, err := h.projectRepo.FindByID(ctx, q.ProjectID)
 	if err != nil {
-		return nil, errors.New("failed to get organization")
+		return nil, errors.New("failed to get project")
 	}
 	if org == nil {
-		return nil, errors.New("organization not found")
+		return nil, errors.New("project not found")
 	}
 
 	anchor := sub.QuotaPeriodStart
@@ -92,7 +92,7 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 
 	periodStart, periodEnd := domainsubscription.CurrentQuotaPeriod(anchor, time.Now().UTC())
 
-	runStats, err := h.workflowRunRepo.FindAnalyticsByOrganization(ctx, q.OrganizationID, domainworkflowrun.WorkflowRunAnalyticsFilter{
+	runStats, err := h.workflowRunRepo.FindAnalyticsByProject(ctx, q.ProjectID, domainworkflowrun.WorkflowRunAnalyticsFilter{
 		From: &periodStart,
 		To:   &periodEnd,
 	})
@@ -100,7 +100,7 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 		return nil, errors.New("failed to count workflow run usage")
 	}
 
-	concurrentStats, err := h.workflowRunRepo.FindAnalyticsByOrganization(ctx, q.OrganizationID, domainworkflowrun.WorkflowRunAnalyticsFilter{})
+	concurrentStats, err := h.workflowRunRepo.FindAnalyticsByProject(ctx, q.ProjectID, domainworkflowrun.WorkflowRunAnalyticsFilter{})
 	if err != nil {
 		return nil, errors.New("failed to count concurrent runs")
 	}
@@ -108,12 +108,12 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 	countQuery := paginate.PaginateQuery{Page: 1, Limit: 1}
 	countQuery.Normalize()
 
-	_, workflowsTotal, err := h.workflowRepo.FindByOrganizationID(ctx, q.OrganizationID, countQuery)
+	_, workflowsTotal, err := h.workflowRepo.FindByProjectID(ctx, q.ProjectID, countQuery)
 	if err != nil {
 		return nil, errors.New("failed to count workflows")
 	}
 
-	_, endpointsTotal, err := h.endpointRepo.FindByOrganizationID(ctx, q.OrganizationID, domainendpoint.ListEndpointsFilter{
+	_, endpointsTotal, err := h.endpointRepo.FindByProjectID(ctx, q.ProjectID, domainendpoint.ListEndpointsFilter{
 		PaginateQuery: countQuery,
 	})
 	if err != nil {
@@ -144,8 +144,8 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 		},
 		Members: QuotaCounter{
 			Used: membersUsed,
-			Max:  quota.MaxOrganizationMembers,
-			Left: quotaLeft(quota.MaxOrganizationMembers, membersUsed),
+			Max:  quota.MaxProjectMembers,
+			Left: quotaLeft(quota.MaxProjectMembers, membersUsed),
 		},
 		ConcurrentRuns: QuotaCounter{
 			Used: concurrentUsed,

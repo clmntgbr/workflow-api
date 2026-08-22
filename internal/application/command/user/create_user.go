@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	domainplan "go-api/internal/domain/plan"
 	"go-api/internal/domain/port"
 	domainsubscription "go-api/internal/domain/subscription"
@@ -23,7 +23,7 @@ type CreateUserCommand struct {
 
 type CreateUserHandler struct {
 	userRepo         domainuser.UserWriteRepository
-	orgRepo          domainorganization.OrganizationWriteRepository
+	projectRepo      domainproject.ProjectWriteRepository
 	planRepo         domainplan.PlanWriteRepository
 	subscriptionRepo domainsubscription.SubscriptionWriteRepository
 	outbox           port.OutboxRepository
@@ -31,14 +31,14 @@ type CreateUserHandler struct {
 
 func NewCreateUserHandler(
 	userRepo domainuser.UserWriteRepository,
-	orgRepo domainorganization.OrganizationWriteRepository,
+	projectRepo domainproject.ProjectWriteRepository,
 	planRepo domainplan.PlanWriteRepository,
 	subscriptionRepo domainsubscription.SubscriptionWriteRepository,
 	outbox port.OutboxRepository,
 ) *CreateUserHandler {
 	return &CreateUserHandler{
 		userRepo:         userRepo,
-		orgRepo:          orgRepo,
+		projectRepo: projectRepo,
 		planRepo:         planRepo,
 		subscriptionRepo: subscriptionRepo,
 		outbox:           outbox,
@@ -53,9 +53,9 @@ func (h *CreateUserHandler) Handle(ctx context.Context, cmd CreateUserCommand) (
 			return err
 		}
 
-		org := domainorganization.NewOrganization(personalOrganizationName(cmd.FirstName, cmd.LastName), u.ID)
+		org := domainproject.NewProject(personalProjectName(cmd.FirstName, cmd.LastName), u.ID)
 		org.AddMember(u.ID)
-		if err := h.orgRepo.Save(txCtx, org); err != nil {
+		if err := h.projectRepo.Save(txCtx, org); err != nil {
 			return err
 		}
 
@@ -72,7 +72,7 @@ func (h *CreateUserHandler) Handle(ctx context.Context, cmd CreateUserCommand) (
 			return err
 		}
 
-		u.SetActiveOrganization(org.ID)
+		u.SetActiveProject(org.ID)
 		u.AssignSubscription(sub.ID)
 		if err := h.userRepo.Update(txCtx, u); err != nil {
 			return err
@@ -89,15 +89,15 @@ func (h *CreateUserHandler) Handle(ctx context.Context, cmd CreateUserCommand) (
 	return u, nil
 }
 
-func personalOrganizationName(firstName, lastName string) string {
+func personalProjectName(firstName, lastName string) string {
 	firstName = strings.TrimSpace(firstName)
 	lastName = strings.TrimSpace(lastName)
 	switch {
 	case firstName != "" && lastName != "":
 		return fmt.Sprintf("%s %s", firstName, lastName)
 	case firstName != "":
-		return fmt.Sprintf("%s's Organization", firstName)
+		return fmt.Sprintf("%s's Project", firstName)
 	default:
-		return "Personal Organization"
+		return "Personal Project"
 	}
 }

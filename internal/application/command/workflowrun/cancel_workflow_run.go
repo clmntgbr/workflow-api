@@ -14,7 +14,7 @@ import (
 
 type CancelWorkflowRunCommand struct {
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type CancelWorkflowRunHandler struct {
@@ -52,7 +52,7 @@ func (h *CancelWorkflowRunHandler) Handle(
 	}
 	if workflow == nil ||
 		workflow.Status == domainworkflow.StatusDeleted ||
-		workflow.OrganizationID != cmd.OrganizationID {
+		workflow.ProjectID != cmd.ProjectID {
 		return nil, domainworkflowrun.ErrWorkflowNotFound
 	}
 

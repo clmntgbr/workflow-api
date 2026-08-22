@@ -23,13 +23,13 @@ func SetUser(c fiber.Ctx, user domainuser.User) {
 	c.Locals(UserKey, &user)
 }
 
-func GetActiveOrganizationID(c fiber.Ctx) (uuid.UUID, error) {
+func GetActiveProjectID(c fiber.Ctx) (uuid.UUID, error) {
 	user, err := GetUser(c)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if user.ActiveOrganizationID == nil || *user.ActiveOrganizationID == uuid.Nil {
-		return uuid.Nil, errors.New("active organization is required")
+	if user.ActiveProjectID == nil || *user.ActiveProjectID == uuid.Nil {
+		return uuid.Nil, errors.New("active project is required")
 	}
-	return *user.ActiveOrganizationID, nil
+	return *user.ActiveProjectID, nil
 }

@@ -23,7 +23,7 @@ type Endpoint struct {
 	RetryCount     int
 	RetryDelay     int
 	Status         Status
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 
@@ -44,7 +44,7 @@ type NewEndpointParams struct {
 	RetryDelay       int
 	Status           Status
 	SkipCreatedEvent bool
-	OrganizationID   uuid.UUID
+	ProjectID   uuid.UUID
 }
 
 func NewEndpoint(p NewEndpointParams) *Endpoint {
@@ -77,7 +77,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		RetryCount:     p.RetryCount,
 		RetryDelay:     p.RetryDelay,
 		Status:         status,
-		OrganizationID: p.OrganizationID,
+		ProjectID: p.ProjectID,
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
@@ -85,7 +85,7 @@ func NewEndpoint(p NewEndpointParams) *Endpoint {
 		e.recordEvent(EndpointCreated{
 			ID:             uuid.New().String(),
 			EndpointID:     e.ID.String(),
-			OrganizationID: e.OrganizationID.String(),
+			ProjectID: e.ProjectID.String(),
 			Name:           e.Name,
 			Description:    e.Description,
 			URL:            e.URL,
@@ -153,7 +153,7 @@ func (e *Endpoint) ApplyUpdate(p UpdateEndpointParams) {
 	e.recordEvent(EndpointUpdated{
 		ID:             uuid.New().String(),
 		EndpointID:     e.ID.String(),
-		OrganizationID: e.OrganizationID.String(),
+		ProjectID: e.ProjectID.String(),
 		Name:           e.Name,
 		Description:    e.Description,
 		URL:            e.URL,
@@ -176,7 +176,7 @@ func (e *Endpoint) MarkDeleted() {
 	e.recordEvent(EndpointDeleted{
 		ID:             uuid.New().String(),
 		EndpointID:     e.ID.String(),
-		OrganizationID: e.OrganizationID.String(),
+		ProjectID: e.ProjectID.String(),
 		Timestamp:      e.UpdatedAt,
 	})
 }

@@ -13,8 +13,8 @@ import (
 func Models() []any {
 	return []any{
 		&write.UserModel{},
-		&write.OrganizationModel{},
-		&write.UserOrganizationModel{},
+		&write.ProjectModel{},
+		&write.UserProjectModel{},
 		&write.WorkflowModel{},
 		&write.EndpointModel{},
 		&write.StepModel{},

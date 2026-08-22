@@ -13,7 +13,7 @@ import (
 
 type CreateConnectionCommand struct {
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	SourceStepID   uuid.UUID
 	TargetStepID   uuid.UUID
 }
@@ -57,7 +57,7 @@ func (h *CreateConnectionHandler) Handle(
 	if source == nil || source.Status == domainstep.StatusDeleted {
 		return nil, errors.New("source step not found")
 	}
-	if source.WorkflowID != cmd.WorkflowID || source.OrganizationID != cmd.OrganizationID {
+	if source.WorkflowID != cmd.WorkflowID || source.ProjectID != cmd.ProjectID {
 		return nil, errors.New("source step not found")
 	}
 
@@ -68,13 +68,13 @@ func (h *CreateConnectionHandler) Handle(
 	if target == nil || target.Status == domainstep.StatusDeleted {
 		return nil, errors.New("target step not found")
 	}
-	if target.WorkflowID != cmd.WorkflowID || target.OrganizationID != cmd.OrganizationID {
+	if target.WorkflowID != cmd.WorkflowID || target.ProjectID != cmd.ProjectID {
 		return nil, errors.New("target step not found")
 	}
 
 	conn := domainconnection.NewConnection(domainconnection.NewConnectionParams{
 		WorkflowID:     cmd.WorkflowID,
-		OrganizationID: cmd.OrganizationID,
+		ProjectID: cmd.ProjectID,
 		SourceStepID:   cmd.SourceStepID,
 		TargetStepID:   cmd.TargetStepID,
 	})

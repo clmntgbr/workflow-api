@@ -18,7 +18,7 @@ type CreateStepCommand struct {
 	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Position       domainstep.Position
 }
 
@@ -62,8 +62,8 @@ func (h *CreateStepHandler) Handle(
 	if cmd.EndpointID == uuid.Nil {
 		return nil, errors.New("endpointId is required")
 	}
-	if cmd.OrganizationID == uuid.Nil {
-		return nil, errors.New("organizationId is required")
+	if cmd.ProjectID == uuid.Nil {
+		return nil, errors.New("projectId is required")
 	}
 	if cmd.UserID == uuid.Nil {
 		return nil, errors.New("userId is required")
@@ -75,7 +75,7 @@ func (h *CreateStepHandler) Handle(
 	if workflow == nil || workflow.Status == domainworkflow.StatusDeleted {
 		return nil, errors.New("workflow not found")
 	}
-	if workflow.OrganizationID != cmd.OrganizationID {
+	if workflow.ProjectID != cmd.ProjectID {
 		return nil, errors.New("workflow not found")
 	}
 
@@ -86,11 +86,11 @@ func (h *CreateStepHandler) Handle(
 	if endpoint == nil || endpoint.Status == domainendpoint.StatusDeleted {
 		return nil, errors.New("endpoint not found")
 	}
-	if endpoint.OrganizationID != cmd.OrganizationID {
+	if endpoint.ProjectID != cmd.ProjectID {
 		return nil, errors.New("endpoint not found")
 	}
 
-	if err := h.assert.AssertStepCreate(ctx, cmd.UserID, cmd.OrganizationID, cmd.WorkflowID); err != nil {
+	if err := h.assert.AssertStepCreate(ctx, cmd.UserID, cmd.ProjectID, cmd.WorkflowID); err != nil {
 		return nil, err
 	}
 
@@ -136,7 +136,7 @@ func (h *CreateStepHandler) Handle(
 		ID:             now.ID,
 		WorkflowID:     cmd.WorkflowID,
 		EndpointID:     cmd.EndpointID,
-		OrganizationID: cmd.OrganizationID,
+		ProjectID: cmd.ProjectID,
 		Endpoint: domainstep.EndpointSnapshot{
 			ID:             endpoint.ID,
 			Name:           endpoint.Name,

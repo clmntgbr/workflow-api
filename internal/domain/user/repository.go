@@ -30,7 +30,7 @@ type UserView struct {
 	LastName             string
 	Email                string
 	Banned               bool
-	ActiveOrganizationID *uuid.UUID
+	ActiveProjectID *uuid.UUID
 	SubscriptionID       *uuid.UUID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time

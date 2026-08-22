@@ -11,28 +11,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type ListEndpointsByOrganizationQuery struct {
-	OrganizationID uuid.UUID
+type ListEndpointsByProjectQuery struct {
+	ProjectID uuid.UUID
 	Query          paginate.PaginateQuery
 	Methods        []string
 }
 
-type ListEndpointsByOrganizationHandler struct {
+type ListEndpointsByProjectHandler struct {
 	readRepo domainendpoint.EndpointReadRepository
 }
 
-func NewListEndpointsByOrganizationHandler(
+func NewListEndpointsByProjectHandler(
 	readRepo domainendpoint.EndpointReadRepository,
-) *ListEndpointsByOrganizationHandler {
-	return &ListEndpointsByOrganizationHandler{readRepo: readRepo}
+) *ListEndpointsByProjectHandler {
+	return &ListEndpointsByProjectHandler{readRepo: readRepo}
 }
 
-func (h *ListEndpointsByOrganizationHandler) Handle(
+func (h *ListEndpointsByProjectHandler) Handle(
 	ctx context.Context,
-	q ListEndpointsByOrganizationQuery,
+	q ListEndpointsByProjectQuery,
 ) ([]domainendpoint.EndpointView, int64, error) {
-	if q.OrganizationID == uuid.Nil {
-		return nil, 0, errors.New("organizationId is required")
+	if q.ProjectID == uuid.Nil {
+		return nil, 0, errors.New("projectId is required")
 	}
 
 	methods, err := parseMethods(q.Methods)
@@ -40,7 +40,7 @@ func (h *ListEndpointsByOrganizationHandler) Handle(
 		return nil, 0, err
 	}
 
-	views, total, err := h.readRepo.FindByOrganizationID(ctx, q.OrganizationID, domainendpoint.ListEndpointsFilter{
+	views, total, err := h.readRepo.FindByProjectID(ctx, q.ProjectID, domainendpoint.ListEndpointsFilter{
 		PaginateQuery: q.Query,
 		Methods:       methods,
 	})

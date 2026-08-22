@@ -38,7 +38,7 @@ type ImportEndpointsFromOpenAPICommand struct {
 	RetryOnFailure bool
 	RetryCount     int
 	RetryDelay     int
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type ImportEndpointsFromOpenAPIHandler struct {
@@ -66,8 +66,8 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 	ctx context.Context,
 	cmd ImportEndpointsFromOpenAPICommand,
 ) ([]domainendpoint.Endpoint, error) {
-	if cmd.OrganizationID == uuid.Nil {
-		return nil, errors.New("organizationId is required")
+	if cmd.ProjectID == uuid.Nil {
+		return nil, errors.New("projectId is required")
 	}
 	if cmd.UserID == uuid.Nil {
 		return nil, errors.New("userId is required")
@@ -114,14 +114,14 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 			RetryDelay:       cmd.RetryDelay,
 			Status:           cmd.Status,
 			SkipCreatedEvent: true,
-			OrganizationID:   cmd.OrganizationID,
+			ProjectID:   cmd.ProjectID,
 		})
 	}
 	if len(prepared) == 0 {
 		return nil, domainendpoint.ErrNoOperations
 	}
 
-	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.OrganizationID, len(prepared)); err != nil {
+	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.ProjectID, len(prepared)); err != nil {
 		return nil, err
 	}
 
@@ -138,7 +138,7 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 		}
 		events = append(events, domainendpoint.EndpointImported{
 			ID:             uuid.NewString(),
-			OrganizationID: cmd.OrganizationID.String(),
+			ProjectID: cmd.ProjectID.String(),
 			Count:          len(created),
 			Timestamp:      time.Now().UTC(),
 		})

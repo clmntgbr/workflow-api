@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS endpoints (
     method VARCHAR(10) NOT NULL,
     headers JSONB NOT NULL DEFAULT '{}'::jsonb,
     status VARCHAR(20) NOT NULL DEFAULT 'active',
-    organization_id UUID NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT endpoints_method_check CHECK (method IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS')),
@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS endpoints (
 
 CREATE INDEX IF NOT EXISTS idx_endpoint_name ON endpoints (name);
 CREATE INDEX IF NOT EXISTS idx_endpoint_status ON endpoints (status);
-CREATE INDEX IF NOT EXISTS idx_endpoint_org ON endpoints (organization_id);
-CREATE INDEX IF NOT EXISTS idx_endpoint_org_status ON endpoints (organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_endpoint_org ON endpoints (project_id);
+CREATE INDEX IF NOT EXISTS idx_endpoint_org_status ON endpoints (project_id, status);
 CREATE INDEX IF NOT EXISTS idx_endpoint_created ON endpoints (created_at);
 -- +goose StatementEnd
 

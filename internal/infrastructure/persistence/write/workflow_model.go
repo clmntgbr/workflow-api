@@ -13,7 +13,7 @@ type WorkflowModel struct {
 	Name                  string     `gorm:"column:name"`
 	Description           string     `gorm:"column:description"`
 	Status                string     `gorm:"column:status"`
-	OrganizationID        uuid.UUID  `gorm:"column:organization_id"`
+	ProjectID        uuid.UUID  `gorm:"column:project_id"`
 	ScheduleType          string     `gorm:"column:schedule_type"`
 	ScheduleIntervalValue int        `gorm:"column:schedule_interval_value"`
 	ScheduleIntervalUnit  *string    `gorm:"column:schedule_interval_unit"`
@@ -39,7 +39,7 @@ func workflowModelFromDomain(w *domainworkflow.Workflow) *WorkflowModel {
 		Name:                  w.Name,
 		Description:           w.Description,
 		Status:                string(w.Status),
-		OrganizationID:        w.OrganizationID,
+		ProjectID:        w.ProjectID,
 		ScheduleType:          string(w.ScheduleType),
 		ScheduleIntervalValue: w.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  scheduleUnitPointer(w.ScheduleIntervalUnit),
@@ -62,7 +62,7 @@ func workflowDomainFromModel(m *WorkflowModel) *domainworkflow.Workflow {
 		Name:                  m.Name,
 		Description:           m.Description,
 		Status:                domainworkflow.Status(m.Status),
-		OrganizationID:        m.OrganizationID,
+		ProjectID:        m.ProjectID,
 		ScheduleType:          domainworkflow.ScheduleType(m.ScheduleType),
 		ScheduleIntervalValue: m.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  scheduleUnitFromPointer(m.ScheduleIntervalUnit),

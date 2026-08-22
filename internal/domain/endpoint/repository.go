@@ -24,9 +24,9 @@ type ListEndpointsFilter struct {
 
 type EndpointReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*EndpointView, error)
-	FindByOrganizationID(
+	FindByProjectID(
 		ctx context.Context,
-		organizationID uuid.UUID,
+		projectID uuid.UUID,
 		filter ListEndpointsFilter,
 	) ([]EndpointView, int64, error)
 }
@@ -45,7 +45,7 @@ type EndpointView struct {
 	RetryCount     int
 	RetryDelay     int
 	Status         Status
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

@@ -36,7 +36,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupSubscriptionRoutes(api, container)
 	setupInvoiceRoutes(api, container)
 	setupUserRoutes(api, container)
-	setupOrganizationRoutes(api, container)
+	setupProjectRoutes(api, container)
 	setupWorkflowRoutes(api, container)
 	setupEndpointRoutes(api, container)
 	setupStepRoutes(api, container)
@@ -49,25 +49,24 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 func setupUserRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/users/me", container.UserHandler.GetUser)
-	api.Put("/users/me/active-organization", container.UserHandler.SetActiveOrganization)
+	api.Put("/users/me/active-project", container.UserHandler.SetActiveProject)
 }
 
-func setupOrganizationRoutes(api fiber.Router, container *di.Container) {
+func setupProjectRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
-	api.Get("/organizations", container.OrganizationHandler.List)
-	api.Post("/organizations", container.OrganizationHandler.Create)
-	api.Get("/organizations/:id", container.OrganizationHandler.GetByID)
-	api.Put("/organizations/:id", container.OrganizationHandler.Update)
-	api.Post("/organizations/:id/activate", container.OrganizationHandler.Activate)
-	api.Delete("/organizations/:id", container.OrganizationHandler.Delete)
-	api.Post("/organizations/:id/members", container.OrganizationHandler.AddMember)
-	api.Delete("/organizations/:id/members/:userId", container.OrganizationHandler.RemoveMember)
+	api.Get("/projects", container.ProjectHandler.List)
+	api.Post("/projects", container.ProjectHandler.Create)
+	api.Get("/projects/:id", container.ProjectHandler.GetByID)
+	api.Put("/projects/:id", container.ProjectHandler.Update)
+	api.Post("/projects/:id/activate", container.ProjectHandler.Activate)
+	api.Delete("/projects/:id", container.ProjectHandler.Delete)
+	api.Delete("/projects/:id/members/:userId", container.ProjectHandler.RemoveMember)
 }
 
 func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows", container.WorkflowHandler.Create)
-	api.Get("/workflows", container.WorkflowHandler.ListByOrganization)
+	api.Get("/workflows", container.WorkflowHandler.ListByProject)
 	api.Get("/workflows/:id", container.WorkflowHandler.GetByID)
 	api.Put("/workflows/:id", container.WorkflowHandler.Update)
 	api.Post("/workflows/:id/activate", container.WorkflowHandler.Activate)
@@ -79,7 +78,7 @@ func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/endpoints", container.EndpointHandler.Create)
 	api.Post("/endpoints/import", container.EndpointHandler.ImportFromOpenAPI)
-	api.Get("/endpoints", container.EndpointHandler.ListByOrganization)
+	api.Get("/endpoints", container.EndpointHandler.ListByProject)
 	api.Get("/endpoints/:id", container.EndpointHandler.GetByID)
 	api.Put("/endpoints/:id", container.EndpointHandler.Update)
 	api.Delete("/endpoints/:id", container.EndpointHandler.Delete)

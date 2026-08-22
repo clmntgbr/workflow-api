@@ -12,7 +12,7 @@ type QuotaModel struct {
 	ID   uuid.UUID `gorm:"column:id;primaryKey"`
 	Name string    `gorm:"column:name"`
 
-	MaxOrganizationMembers  int `gorm:"column:max_organization_members"`
+	MaxProjectMembers  int `gorm:"column:max_project_members"`
 	MaxWorkflows            int `gorm:"column:max_workflows"`
 	MaxStepsPerWorkflow     int `gorm:"column:max_steps_per_workflow"`
 	MaxEndpoints            int `gorm:"column:max_endpoints"`
@@ -44,7 +44,7 @@ func quotaModelFromDomain(q *domainquota.Quota) *QuotaModel {
 	return &QuotaModel{
 		ID:                         q.ID,
 		Name:                       q.Name,
-		MaxOrganizationMembers:     q.MaxOrganizationMembers,
+		MaxProjectMembers:     q.MaxProjectMembers,
 		MaxWorkflows:               q.MaxWorkflows,
 		MaxStepsPerWorkflow:        q.MaxStepsPerWorkflow,
 		MaxEndpoints:               q.MaxEndpoints,
@@ -70,7 +70,7 @@ func quotaDomainFromModel(m *QuotaModel) *domainquota.Quota {
 	return &domainquota.Quota{
 		ID:                         m.ID,
 		Name:                       m.Name,
-		MaxOrganizationMembers:     m.MaxOrganizationMembers,
+		MaxProjectMembers:     m.MaxProjectMembers,
 		MaxWorkflows:               m.MaxWorkflows,
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,
@@ -96,7 +96,7 @@ func quotaViewFromModel(m *QuotaModel) domainquota.QuotaView {
 	return domainquota.QuotaView{
 		ID:                         m.ID,
 		Name:                       m.Name,
-		MaxOrganizationMembers:     m.MaxOrganizationMembers,
+		MaxProjectMembers:     m.MaxProjectMembers,
 		MaxWorkflows:               m.MaxWorkflows,
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,

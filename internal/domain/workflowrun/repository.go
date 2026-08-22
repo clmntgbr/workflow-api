@@ -25,14 +25,14 @@ type WorkflowRunReadRepository interface {
 		workflowID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowRunView, int64, error)
-	FindByOrganizationID(
+	FindByProjectID(
 		ctx context.Context,
-		organizationID uuid.UUID,
+		projectID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowRunView, int64, error)
-	FindAnalyticsByOrganization(
+	FindAnalyticsByProject(
 		ctx context.Context,
-		organizationID uuid.UUID,
+		projectID uuid.UUID,
 		filter WorkflowRunAnalyticsFilter,
 	) (*WorkflowRunAnalytics, error)
 }
@@ -61,7 +61,7 @@ type WorkflowRunAnalytics struct {
 type WorkflowRunView struct {
 	ID                uuid.UUID
 	WorkflowID        uuid.UUID
-	OrganizationID    uuid.UUID
+	ProjectID    uuid.UUID
 	Status            Status
 	TriggeredBy       TriggeredBy
 	TriggeredByUserID *uuid.UUID

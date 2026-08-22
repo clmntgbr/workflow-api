@@ -20,9 +20,9 @@ type WorkflowWriteRepository interface {
 
 type WorkflowReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*WorkflowView, error)
-	FindByOrganizationID(
+	FindByProjectID(
 		ctx context.Context,
-		organizationID uuid.UUID,
+		projectID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowView, int64, error)
 	GetWorkflowsForExecution(ctx context.Context) ([]WorkflowView, error)
@@ -33,7 +33,7 @@ type WorkflowView struct {
 	Name                  string
 	Description           string
 	Status                Status
-	OrganizationID        uuid.UUID
+	ProjectID        uuid.UUID
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  ScheduleUnit

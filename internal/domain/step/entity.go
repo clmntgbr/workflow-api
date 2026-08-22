@@ -13,7 +13,7 @@ type Step struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 
 	Name           string
 	Description    string
@@ -58,7 +58,7 @@ type NewStepParams struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Endpoint       EndpointSnapshot
 	Index          string
 	ExecutionOrder int
@@ -86,7 +86,7 @@ func NewStep(p NewStepParams) *Step {
 		ID:             id,
 		WorkflowID:     p.WorkflowID,
 		EndpointID:     p.EndpointID,
-		OrganizationID: p.OrganizationID,
+		ProjectID: p.ProjectID,
 		Name:           p.Endpoint.Name,
 		Description:    p.Endpoint.Description,
 		URL:            p.Endpoint.URL,
@@ -111,7 +111,7 @@ func NewStep(p NewStepParams) *Step {
 		StepID:         s.ID.String(),
 		WorkflowID:     s.WorkflowID.String(),
 		EndpointID:     s.EndpointID.String(),
-		OrganizationID: s.OrganizationID.String(),
+		ProjectID: s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -186,7 +186,7 @@ func (s *Step) recordUpdatedEvent() {
 		ID:             uuid.New().String(),
 		StepID:         s.ID.String(),
 		WorkflowID:     s.WorkflowID.String(),
-		OrganizationID: s.OrganizationID.String(),
+		ProjectID: s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -213,7 +213,7 @@ func (s *Step) MarkDeleted() {
 		ID:             uuid.New().String(),
 		StepID:         s.ID.String(),
 		WorkflowID:     s.WorkflowID.String(),
-		OrganizationID: s.OrganizationID.String(),
+		ProjectID: s.ProjectID.String(),
 		Timestamp:      s.UpdatedAt,
 	})
 }

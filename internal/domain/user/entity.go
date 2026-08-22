@@ -15,7 +15,7 @@ type User struct {
 	LastName             string
 	Banned               bool
 	Email                string
-	ActiveOrganizationID *uuid.UUID
+	ActiveProjectID *uuid.UUID
 	SubscriptionID       *uuid.UUID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
@@ -93,32 +93,32 @@ func (u *User) AssignSubscription(subscriptionID uuid.UUID) {
 	u.UpdatedAt = time.Now().UTC()
 }
 
-func (u *User) SetActiveOrganization(organizationID uuid.UUID) bool {
-	if u.ActiveOrganizationID != nil && *u.ActiveOrganizationID == organizationID {
+func (u *User) SetActiveProject(projectID uuid.UUID) bool {
+	if u.ActiveProjectID != nil && *u.ActiveProjectID == projectID {
 		return false
 	}
-	id := organizationID
-	u.ActiveOrganizationID = &id
+	id := projectID
+	u.ActiveProjectID = &id
 	u.UpdatedAt = time.Now().UTC()
-	u.recordEvent(UserActiveOrganizationChanged{
+	u.recordEvent(UserActiveProjectChanged{
 		ID:             uuid.New().String(),
 		UserID:         u.ID.String(),
-		OrganizationID: organizationID.String(),
+		ProjectID: projectID.String(),
 		Timestamp:      u.UpdatedAt,
 	})
 	return true
 }
 
-func (u *User) ClearActiveOrganization() bool {
-	if u.ActiveOrganizationID == nil {
+func (u *User) ClearActiveProject() bool {
+	if u.ActiveProjectID == nil {
 		return false
 	}
-	u.ActiveOrganizationID = nil
+	u.ActiveProjectID = nil
 	u.UpdatedAt = time.Now().UTC()
-	u.recordEvent(UserActiveOrganizationChanged{
+	u.recordEvent(UserActiveProjectChanged{
 		ID:             uuid.New().String(),
 		UserID:         u.ID.String(),
-		OrganizationID: "",
+		ProjectID: "",
 		Timestamp:      u.UpdatedAt,
 	})
 	return true

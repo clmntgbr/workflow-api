@@ -88,7 +88,7 @@ func (h *StartWorkflowRunHandler) Handle(
 
 	if err := h.assert.AssertWorkflowRunStart(
 		ctx,
-		workflow.OrganizationID,
+		workflow.ProjectID,
 		cmd.TriggeredByUserID,
 		1,
 	); err != nil {

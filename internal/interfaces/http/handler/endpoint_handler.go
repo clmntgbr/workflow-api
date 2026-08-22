@@ -26,7 +26,7 @@ type EndpointHandler struct {
 	updateHandler    *endpointcmd.UpdateEndpointHandler
 	deleteHandler    *endpointcmd.DeleteEndpointHandler
 	getByIDHandler   *queryendpoint.GetEndpointByIDHandler
-	listByOrgHandler *queryendpoint.ListEndpointsByOrganizationHandler
+	listByOrgHandler *queryendpoint.ListEndpointsByProjectHandler
 }
 
 func NewEndpointHandler(
@@ -35,7 +35,7 @@ func NewEndpointHandler(
 	updateHandler *endpointcmd.UpdateEndpointHandler,
 	deleteHandler *endpointcmd.DeleteEndpointHandler,
 	getByIDHandler *queryendpoint.GetEndpointByIDHandler,
-	listByOrgHandler *queryendpoint.ListEndpointsByOrganizationHandler,
+	listByOrgHandler *queryendpoint.ListEndpointsByProjectHandler,
 ) *EndpointHandler {
 	return &EndpointHandler{
 		createHandler:    createHandler,
@@ -53,9 +53,9 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	var req dto.CreateEndpointRequest
@@ -102,7 +102,7 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		RetryOnFailure: *req.RetryOnFailure,
 		RetryCount:     *req.RetryCount,
 		RetryDelay:     *req.RetryDelay,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	})
 	if err != nil {
 		if handled, resp := respondQuotaError(c, err); handled {
@@ -122,9 +122,9 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	fileHeader, err := c.FormFile("file")
@@ -194,7 +194,7 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 		RetryOnFailure: *req.RetryOnFailure,
 		RetryCount:     *req.RetryCount,
 		RetryDelay:     *req.RetryDelay,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	})
 	if err != nil {
 		if handled, resp := respondQuotaError(c, err); handled {
@@ -213,9 +213,9 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 }
 
 func (h *EndpointHandler) Update(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	id, err := uuid.Parse(c.Params("id"))
@@ -230,7 +230,7 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get endpoint"})
 	}
-	if existing.OrganizationID != orgID {
+	if existing.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Endpoint not found"})
 	}
 
@@ -304,9 +304,9 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *EndpointHandler) GetByID(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	id, err := uuid.Parse(c.Params("id"))
@@ -321,17 +321,17 @@ func (h *EndpointHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get endpoint"})
 	}
-	if view.OrganizationID != orgID {
+	if view.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Endpoint not found"})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewEndpointDetailResponseFromView(*view))
 }
 
-func (h *EndpointHandler) ListByOrganization(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+func (h *EndpointHandler) ListByProject(c fiber.Ctx) error {
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	var listQuery struct {
@@ -355,8 +355,8 @@ func (h *EndpointHandler) ListByOrganization(c fiber.Ctx) error {
 		listQuery.OrderBy = paginate.OrderByDesc
 	}
 
-	views, total, err := h.listByOrgHandler.Handle(c.Context(), queryendpoint.ListEndpointsByOrganizationQuery{
-		OrganizationID: orgID,
+	views, total, err := h.listByOrgHandler.Handle(c.Context(), queryendpoint.ListEndpointsByProjectQuery{
+		ProjectID: orgID,
 		Query:          listQuery.PaginateQuery,
 		Methods:        listQuery.Method,
 	})
@@ -375,9 +375,9 @@ func (h *EndpointHandler) ListByOrganization(c fiber.Ctx) error {
 }
 
 func (h *EndpointHandler) Delete(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	id, err := uuid.Parse(c.Params("id"))
@@ -387,7 +387,7 @@ func (h *EndpointHandler) Delete(c fiber.Ctx) error {
 
 	if err := h.deleteHandler.Handle(c.Context(), endpointcmd.DeleteEndpointCommand{
 		ID:             id,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	}); err != nil {
 		if err.Error() == "endpoint not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Endpoint not found"})

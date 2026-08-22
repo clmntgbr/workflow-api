@@ -1,4 +1,4 @@
-package organization
+package project
 
 import (
 	"time"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Organization struct {
+type Project struct {
 	ID        uuid.UUID
 	Name      string
 	CreatedAt time.Time
@@ -18,18 +18,18 @@ type Organization struct {
 	events []event.DomainEvent
 }
 
-func NewOrganization(name string, createdByUserID uuid.UUID) *Organization {
+func NewProject(name string, createdByUserID uuid.UUID) *Project {
 	now := time.Now().UTC()
-	org := &Organization{
+	org := &Project{
 		ID:        uuid.New(),
 		Name:      name,
 		CreatedAt: now,
 		UpdatedAt: now,
 		MemberIDs: nil,
 	}
-	org.recordEvent(OrganizationCreated{
+	org.recordEvent(ProjectCreated{
 		ID:              uuid.New().String(),
-		OrganizationID:  org.ID.String(),
+		ProjectID:  org.ID.String(),
 		Name:            org.Name,
 		CreatedByUserID: createdByUserID.String(),
 		Timestamp:       now,
@@ -37,32 +37,32 @@ func NewOrganization(name string, createdByUserID uuid.UUID) *Organization {
 	return org
 }
 
-func (o *Organization) PullEvents() []event.DomainEvent {
+func (o *Project) PullEvents() []event.DomainEvent {
 	events := o.events
 	o.events = nil
 	return events
 }
 
-func (o *Organization) recordEvent(e event.DomainEvent) {
+func (o *Project) recordEvent(e event.DomainEvent) {
 	o.events = append(o.events, e)
 }
 
-func (o *Organization) ApplyUpdate(name string) {
+func (o *Project) ApplyUpdate(name string) {
 	o.Name = name
 	o.UpdatedAt = time.Now().UTC()
-	o.recordEvent(OrganizationUpdated{
+	o.recordEvent(ProjectUpdated{
 		ID:             uuid.New().String(),
-		OrganizationID: o.ID.String(),
+		ProjectID: o.ID.String(),
 		Name:           o.Name,
 		MemberIDs:      uuidStrings(o.MemberIDs),
 		Timestamp:      o.UpdatedAt,
 	})
 }
 
-func (o *Organization) MarkDeleted() {
-	o.recordEvent(OrganizationDeleted{
+func (o *Project) MarkDeleted() {
+	o.recordEvent(ProjectDeleted{
 		ID:             uuid.New().String(),
-		OrganizationID: o.ID.String(),
+		ProjectID: o.ID.String(),
 		MemberIDs:      uuidStrings(o.MemberIDs),
 		Timestamp:      time.Now().UTC(),
 	})
@@ -76,7 +76,7 @@ func uuidStrings(ids []uuid.UUID) []string {
 	return out
 }
 
-func (o *Organization) AddMember(userID uuid.UUID) bool {
+func (o *Project) AddMember(userID uuid.UUID) bool {
 	for _, id := range o.MemberIDs {
 		if id == userID {
 			return false
@@ -84,16 +84,16 @@ func (o *Organization) AddMember(userID uuid.UUID) bool {
 	}
 	o.MemberIDs = append(o.MemberIDs, userID)
 	o.UpdatedAt = time.Now().UTC()
-	o.recordEvent(OrganizationMemberAdded{
+	o.recordEvent(ProjectMemberAdded{
 		ID:             uuid.New().String(),
-		OrganizationID: o.ID.String(),
+		ProjectID: o.ID.String(),
 		UserID:         userID.String(),
 		Timestamp:      o.UpdatedAt,
 	})
 	return true
 }
 
-func (o *Organization) RemoveMember(userID uuid.UUID) bool {
+func (o *Project) RemoveMember(userID uuid.UUID) bool {
 	idx := -1
 	for i, id := range o.MemberIDs {
 		if id == userID {
@@ -106,9 +106,9 @@ func (o *Organization) RemoveMember(userID uuid.UUID) bool {
 	}
 	o.MemberIDs = append(o.MemberIDs[:idx], o.MemberIDs[idx+1:]...)
 	o.UpdatedAt = time.Now().UTC()
-	o.recordEvent(OrganizationMemberRemoved{
+	o.recordEvent(ProjectMemberRemoved{
 		ID:             uuid.New().String(),
-		OrganizationID: o.ID.String(),
+		ProjectID: o.ID.String(),
 		UserID:         userID.String(),
 		Timestamp:      o.UpdatedAt,
 	})

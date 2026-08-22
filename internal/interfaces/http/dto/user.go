@@ -1,5 +1,5 @@
 package dto
 
-type SetActiveOrganizationRequest struct {
-	OrganizationID string `json:"organizationId" validate:"required,uuid"`
+type SetActiveProjectRequest struct {
+	ProjectID string `json:"projectId" validate:"required,uuid"`
 }

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS step_runs (
     step_id UUID NOT NULL REFERENCES steps (id),
     workflow_id UUID NOT NULL REFERENCES workflows (id),
     endpoint_id UUID NOT NULL REFERENCES endpoints (id),
-    organization_id UUID NOT NULL REFERENCES organizations (id),
+    project_id UUID NOT NULL REFERENCES projects (id),
     name TEXT NOT NULL,
     description TEXT NULL,
     url TEXT NOT NULL,

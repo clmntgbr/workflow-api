@@ -2,7 +2,7 @@
 CREATE TABLE connections (
     id UUID PRIMARY KEY,
     workflow_id UUID NOT NULL REFERENCES workflows(id),
-    organization_id UUID NOT NULL REFERENCES organizations(id),
+    project_id UUID NOT NULL REFERENCES projects(id),
     source_step_id UUID NOT NULL REFERENCES steps(id),
     target_step_id UUID NOT NULL REFERENCES steps(id),
 

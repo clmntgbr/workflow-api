@@ -14,7 +14,7 @@ type UserDetailResponse struct {
 	FirstName            string    `json:"firstName"`
 	LastName             string    `json:"lastName"`
 	Email                string    `json:"email"`
-	ActiveOrganizationID *string   `json:"activeOrganizationId"`
+	ActiveProjectID *string   `json:"activeProjectId"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
 }
@@ -34,7 +34,7 @@ func NewUserDetailResponseFromView(view domainuser.UserView) UserDetailResponse 
 		FirstName:            view.FirstName,
 		LastName:             view.LastName,
 		Email:                view.Email,
-		ActiveOrganizationID: optionalUUIDString(view.ActiveOrganizationID),
+		ActiveProjectID: optionalUUIDString(view.ActiveProjectID),
 		CreatedAt:            view.CreatedAt,
 		UpdatedAt:            view.UpdatedAt,
 	}
@@ -47,7 +47,7 @@ func NewUserDetailResponseFromEntity(user domainuser.User) UserDetailResponse {
 		FirstName:            user.FirstName,
 		LastName:             user.LastName,
 		Email:                user.Email,
-		ActiveOrganizationID: optionalUUIDString(user.ActiveOrganizationID),
+		ActiveProjectID: optionalUUIDString(user.ActiveProjectID),
 		CreatedAt:            user.CreatedAt,
 		UpdatedAt:            user.UpdatedAt,
 	}

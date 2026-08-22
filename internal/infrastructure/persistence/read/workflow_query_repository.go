@@ -18,7 +18,7 @@ type workflowRow struct {
 	Name                  string
 	Description           string
 	Status                string
-	OrganizationID        uuid.UUID
+	ProjectID        uuid.UUID
 	ScheduleType          string
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  *string
@@ -37,7 +37,7 @@ type workflowRow struct {
 func (workflowRow) TableName() string { return "workflows" }
 
 var workflowSelectColumns = []string{
-	"id", "name", "description", "status", "organization_id",
+	"id", "name", "description", "status", "project_id",
 	"schedule_type", "schedule_interval_value", "schedule_interval_unit",
 	"schedule_at", "schedule_timezone", "next_run_at",
 	"concurrency",
@@ -67,9 +67,9 @@ func (r *workflowReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 	return toWorkflowView(row), nil
 }
 
-func (r *workflowReadRepository) FindByOrganizationID(
+func (r *workflowReadRepository) FindByProjectID(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	query paginate.PaginateQuery,
 ) ([]domainworkflow.WorkflowView, int64, error) {
 	query.Normalize()
@@ -82,7 +82,7 @@ func (r *workflowReadRepository) FindByOrganizationID(
 
 	db := r.db.WithContext(ctx).
 		Model(&workflowRow{}).
-		Where("organization_id = ? AND status <> ?", organizationID, domainworkflow.StatusDeleted)
+		Where("project_id = ? AND status <> ?", projectID, domainworkflow.StatusDeleted)
 
 	if query.Search != "" {
 		like := "%" + query.Search + "%"
@@ -142,7 +142,7 @@ func toWorkflowView(row workflowRow) *domainworkflow.WorkflowView {
 		Name:                  row.Name,
 		Description:           row.Description,
 		Status:                domainworkflow.Status(row.Status),
-		OrganizationID:        row.OrganizationID,
+		ProjectID:        row.ProjectID,
 		ScheduleType:          domainworkflow.ScheduleType(row.ScheduleType),
 		ScheduleIntervalValue: row.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  unit,

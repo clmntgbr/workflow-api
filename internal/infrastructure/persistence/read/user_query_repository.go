@@ -18,7 +18,7 @@ type userRow struct {
 	LastName             string
 	Email                string
 	Banned               bool
-	ActiveOrganizationID *uuid.UUID
+	ActiveProjectID *uuid.UUID
 	SubscriptionID       *uuid.UUID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
@@ -37,7 +37,7 @@ func NewUserReadRepository(db *gorm.DB) domainuser.UserReadRepository {
 func (r *userReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domainuser.UserView, error) {
 	var row userRow
 	err := r.db.WithContext(ctx).
-		Select("id", "clerk_id", "first_name", "last_name", "email", "banned", "active_organization_id", "subscription_id", "created_at", "updated_at").
+		Select("id", "clerk_id", "first_name", "last_name", "email", "banned", "active_project_id", "subscription_id", "created_at", "updated_at").
 		First(&row, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -51,7 +51,7 @@ func (r *userReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domai
 func (r *userReadRepository) FindByClerkID(ctx context.Context, clerkID string) (*domainuser.UserView, error) {
 	var row userRow
 	err := r.db.WithContext(ctx).
-		Select("id", "clerk_id", "first_name", "last_name", "email", "banned", "active_organization_id", "subscription_id", "created_at", "updated_at").
+		Select("id", "clerk_id", "first_name", "last_name", "email", "banned", "active_project_id", "subscription_id", "created_at", "updated_at").
 		Where("clerk_id = ?", clerkID).
 		First(&row).Error
 	if err != nil {
@@ -71,7 +71,7 @@ func toUserView(row userRow) *domainuser.UserView {
 		LastName:             row.LastName,
 		Email:                row.Email,
 		Banned:               row.Banned,
-		ActiveOrganizationID: row.ActiveOrganizationID,
+		ActiveProjectID: row.ActiveProjectID,
 		SubscriptionID:       row.SubscriptionID,
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,

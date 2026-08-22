@@ -7,7 +7,7 @@ import (
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventinvoice "go-api/internal/application/event/invoice"
-	eventorganization "go-api/internal/application/event/organization"
+	eventproject "go-api/internal/application/event/project"
 	eventstep "go-api/internal/application/event/step"
 	eventsteprun "go-api/internal/application/event/steprun"
 	eventsubscription "go-api/internal/application/event/subscription"
@@ -19,7 +19,7 @@ import (
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domaininvoice "go-api/internal/domain/invoice"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainsubscription "go-api/internal/domain/subscription"
@@ -74,7 +74,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	dedupRepo := processed.NewRepository(db)
 	notifier := notification.NewLogNotifier()
 	realtimePublisher := centrifugo.NewPublisher(env)
-	orgReadRepo := read.NewOrganizationReadRepository(db)
+	projectReadRepo := read.NewProjectReadRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	stepReadRepo := read.NewStepReadRepository(db)
 	connReadRepo := read.NewConnectionReadRepository(db)
@@ -91,14 +91,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	)
 	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
-	publishOrgRealtime := eventorganization.NewPublishRealtimeHandler(realtimePublisher)
-	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
-	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
-	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
-	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
-	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
-	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, orgReadRepo)
-	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, orgReadRepo)
+	publishProjectRealtime := eventproject.NewPublishRealtimeHandler(realtimePublisher)
+	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishEndpointRealtime := eventendpoint.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
+	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -136,66 +136,66 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_user_deleted_realtime",
 		publishUserRealtime.OnDeleted,
 	))
-	reg.Register(domainuser.EventTypeUserActiveOrganizationChanged, dedup.With(
+	reg.Register(domainuser.EventTypeUserActiveProjectChanged, dedup.With(
 		dedupRepo,
-		"user_active_organization_changed",
-		eventuser.NewUserActiveOrganizationChangedHandler().Handle,
+		"user_active_project_changed",
+		eventuser.NewUserActiveProjectChangedHandler().Handle,
 	))
-	reg.Register(domainuser.EventTypeUserActiveOrganizationChanged, dedup.With(
+	reg.Register(domainuser.EventTypeUserActiveProjectChanged, dedup.With(
 		dedupRepo,
-		"publish_user_active_organization_changed_realtime",
-		publishUserRealtime.OnActiveOrganizationChanged,
+		"publish_user_active_project_changed_realtime",
+		publishUserRealtime.OnActiveProjectChanged,
 	))
 
-	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
+	reg.Register(domainproject.EventTypeProjectCreated, dedup.With(
 		dedupRepo,
-		"organization_created",
-		eventorganization.NewOrganizationCreatedHandler().Handle,
+		"project_created",
+		eventproject.NewProjectCreatedHandler().Handle,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationCreated, dedup.With(
+	reg.Register(domainproject.EventTypeProjectCreated, dedup.With(
 		dedupRepo,
-		"publish_organization_created_realtime",
-		publishOrgRealtime.OnCreated,
+		"publish_project_created_realtime",
+		publishProjectRealtime.OnCreated,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationUpdated, dedup.With(
+	reg.Register(domainproject.EventTypeProjectUpdated, dedup.With(
 		dedupRepo,
-		"organization_updated",
-		eventorganization.NewOrganizationUpdatedHandler().Handle,
+		"project_updated",
+		eventproject.NewProjectUpdatedHandler().Handle,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationUpdated, dedup.With(
+	reg.Register(domainproject.EventTypeProjectUpdated, dedup.With(
 		dedupRepo,
-		"publish_organization_updated_realtime",
-		publishOrgRealtime.OnUpdated,
+		"publish_project_updated_realtime",
+		publishProjectRealtime.OnUpdated,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationDeleted, dedup.With(
+	reg.Register(domainproject.EventTypeProjectDeleted, dedup.With(
 		dedupRepo,
-		"organization_deleted",
-		eventorganization.NewOrganizationDeletedHandler().Handle,
+		"project_deleted",
+		eventproject.NewProjectDeletedHandler().Handle,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationDeleted, dedup.With(
+	reg.Register(domainproject.EventTypeProjectDeleted, dedup.With(
 		dedupRepo,
-		"publish_organization_deleted_realtime",
-		publishOrgRealtime.OnDeleted,
+		"publish_project_deleted_realtime",
+		publishProjectRealtime.OnDeleted,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationMemberAdded, dedup.With(
+	reg.Register(domainproject.EventTypeProjectMemberAdded, dedup.With(
 		dedupRepo,
-		"organization_member_added",
-		eventorganization.NewOrganizationMemberAddedHandler().Handle,
+		"project_member_added",
+		eventproject.NewProjectMemberAddedHandler().Handle,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationMemberAdded, dedup.With(
+	reg.Register(domainproject.EventTypeProjectMemberAdded, dedup.With(
 		dedupRepo,
-		"publish_organization_member_added_realtime",
-		publishOrgRealtime.OnMemberAdded,
+		"publish_project_member_added_realtime",
+		publishProjectRealtime.OnMemberAdded,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationMemberRemoved, dedup.With(
+	reg.Register(domainproject.EventTypeProjectMemberRemoved, dedup.With(
 		dedupRepo,
-		"organization_member_removed",
-		eventorganization.NewOrganizationMemberRemovedHandler().Handle,
+		"project_member_removed",
+		eventproject.NewProjectMemberRemovedHandler().Handle,
 	))
-	reg.Register(domainorganization.EventTypeOrganizationMemberRemoved, dedup.With(
+	reg.Register(domainproject.EventTypeProjectMemberRemoved, dedup.With(
 		dedupRepo,
-		"publish_organization_member_removed_realtime",
-		publishOrgRealtime.OnMemberRemoved,
+		"publish_project_member_removed_realtime",
+		publishProjectRealtime.OnMemberRemoved,
 	))
 
 	reg.Register(domainworkflow.EventTypeWorkflowCreated, dedup.With(

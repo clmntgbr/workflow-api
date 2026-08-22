@@ -62,16 +62,16 @@ func (h *VariableHandler) ensureWorkflow(c fiber.Ctx, workflowID, orgID uuid.UUI
 		}
 		return fiber.StatusInternalServerError, "Failed to get workflow"
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return fiber.StatusNotFound, "Workflow not found"
 	}
 	return 0, ""
 }
 
 func (h *VariableHandler) Create(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -106,7 +106,7 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 
 	variable, err := h.createHandler.Handle(c.Context(), variablecmd.CreateVariableCommand{
 		WorkflowID:     workflowID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		StepID:         stepID,
 		Kind:           kind,
 		Name:           req.Name,
@@ -129,9 +129,9 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) List(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -149,9 +149,9 @@ func (h *VariableHandler) List(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) ListAvailable(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -181,9 +181,9 @@ func (h *VariableHandler) ListAvailable(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) SearchPaths(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -223,9 +223,9 @@ func (h *VariableHandler) SearchPaths(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) GetByID(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -253,9 +253,9 @@ func (h *VariableHandler) GetByID(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) Update(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
@@ -277,7 +277,7 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 	variable, err := h.updateHandler.Handle(c.Context(), variablecmd.UpdateVariableCommand{
 		ID:             id,
 		WorkflowID:     workflowID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		Name:           req.Name,
 		Key:            req.Key,
 		Description:    req.Description,
@@ -298,9 +298,9 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) Delete(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {

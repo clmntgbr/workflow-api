@@ -8,7 +8,7 @@ type ConnectionCreated struct {
 	ID             string    `json:"eventId"`
 	ConnectionID   string    `json:"connectionId"`
 	WorkflowID     string    `json:"workflowId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	SourceStepID   string    `json:"sourceStepId"`
 	TargetStepID   string    `json:"targetStepId"`
 	Timestamp      time.Time `json:"timestamp"`
@@ -25,7 +25,7 @@ type ConnectionDeleted struct {
 	ID             string    `json:"eventId"`
 	ConnectionID   string    `json:"connectionId"`
 	WorkflowID     string    `json:"workflowId"`
-	OrganizationID string    `json:"organizationId"`
+	ProjectID string    `json:"projectId"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

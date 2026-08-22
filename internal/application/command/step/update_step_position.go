@@ -13,7 +13,7 @@ import (
 
 type UpdateStepPositionCommand struct {
 	ID             uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	WorkflowID     uuid.UUID
 	Position       domainstep.Position
 }
@@ -50,7 +50,7 @@ func (h *UpdateStepPositionHandler) Handle(
 	if s == nil || s.Status == domainstep.StatusDeleted {
 		return nil, errors.New("step not found")
 	}
-	if s.OrganizationID != cmd.OrganizationID || s.WorkflowID != cmd.WorkflowID {
+	if s.ProjectID != cmd.ProjectID || s.WorkflowID != cmd.WorkflowID {
 		return nil, errors.New("step not found")
 	}
 

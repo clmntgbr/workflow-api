@@ -18,7 +18,7 @@ import (
 type workflowRunRow struct {
 	ID                uuid.UUID
 	WorkflowID        uuid.UUID
-	OrganizationID    uuid.UUID
+	ProjectID    uuid.UUID
 	Status            string
 	TriggeredBy       string
 	TriggeredByUserID *uuid.UUID
@@ -48,7 +48,7 @@ func (r *workflowRunReadRepository) FindByID(
 	err := r.db.WithContext(ctx).
 		Table("workflow_runs").
 		Select(
-			"workflow_runs.id, workflow_runs.workflow_id, workflows.organization_id, workflow_runs.status, "+
+			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, "+
 				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, "+
 				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, "+
 				"workflow_runs.created_at, workflow_runs.updated_at",
@@ -90,7 +90,7 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	var rows []workflowRunRow
 	err = db.
 		Select(
-			"workflow_runs.id, workflow_runs.workflow_id, workflows.organization_id, workflow_runs.status, " +
+			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, " +
 				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, " +
 				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, " +
 				"workflow_runs.created_at, workflow_runs.updated_at",
@@ -112,9 +112,9 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	return views, total, nil
 }
 
-func (r *workflowRunReadRepository) FindByOrganizationID(
+func (r *workflowRunReadRepository) FindByProjectID(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	query paginate.PaginateQuery,
 ) ([]domainworkflowrun.WorkflowRunView, int64, error) {
 	query.Normalize()
@@ -128,7 +128,7 @@ func (r *workflowRunReadRepository) FindByOrganizationID(
 	db := r.db.WithContext(ctx).
 		Table("workflow_runs").
 		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.organization_id = ?", organizationID)
+		Where("workflows.project_id = ?", projectID)
 
 	db, total, err := Paginate(db, query)
 	if err != nil {
@@ -138,7 +138,7 @@ func (r *workflowRunReadRepository) FindByOrganizationID(
 	var rows []workflowRunRow
 	err = db.
 		Select(
-			"workflow_runs.id, workflow_runs.workflow_id, workflows.organization_id, workflow_runs.status, " +
+			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, " +
 				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, " +
 				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, " +
 				"workflow_runs.created_at, workflow_runs.updated_at",
@@ -159,15 +159,15 @@ func (r *workflowRunReadRepository) FindByOrganizationID(
 	return views, total, nil
 }
 
-func (r *workflowRunReadRepository) FindAnalyticsByOrganization(
+func (r *workflowRunReadRepository) FindAnalyticsByProject(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	filter domainworkflowrun.WorkflowRunAnalyticsFilter,
 ) (*domainworkflowrun.WorkflowRunAnalytics, error) {
 	db := r.db.WithContext(ctx).
 		Table("workflow_runs").
 		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.organization_id = ?", organizationID)
+		Where("workflows.project_id = ?", projectID)
 
 	if filter.WorkflowID != nil {
 		db = db.Where("workflow_runs.workflow_id = ?", *filter.WorkflowID)
@@ -247,7 +247,7 @@ func toWorkflowRunView(row workflowRunRow) (*domainworkflowrun.WorkflowRunView, 
 	return &domainworkflowrun.WorkflowRunView{
 		ID:                row.ID,
 		WorkflowID:        row.WorkflowID,
-		OrganizationID:    row.OrganizationID,
+		ProjectID:    row.ProjectID,
 		Status:            domainworkflowrun.Status(row.Status),
 		TriggeredBy:       domainworkflowrun.TriggeredBy(row.TriggeredBy),
 		TriggeredByUserID: row.TriggeredByUserID,

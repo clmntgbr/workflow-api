@@ -16,7 +16,7 @@ type CreateWorkflowCommand struct {
 	UserID                uuid.UUID
 	Name                  string
 	Description           string
-	OrganizationID        uuid.UUID
+	ProjectID        uuid.UUID
 	ScheduleType          domainworkflow.ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  domainworkflow.ScheduleUnit
@@ -50,21 +50,21 @@ func (h *CreateWorkflowHandler) Handle(
 	if cmd.Name == "" {
 		return nil, errors.New("name is required")
 	}
-	if cmd.OrganizationID == uuid.Nil {
-		return nil, errors.New("organizationId is required")
+	if cmd.ProjectID == uuid.Nil {
+		return nil, errors.New("projectId is required")
 	}
 	if cmd.UserID == uuid.Nil {
 		return nil, errors.New("userId is required")
 	}
 
-	if err := h.assert.AssertWorkflowCreate(ctx, cmd.UserID, cmd.OrganizationID); err != nil {
+	if err := h.assert.AssertWorkflowCreate(ctx, cmd.UserID, cmd.ProjectID); err != nil {
 		return nil, err
 	}
 
 	w, err := domainworkflow.NewWorkflow(domainworkflow.NewWorkflowParams{
 		Name:                  cmd.Name,
 		Description:           cmd.Description,
-		OrganizationID:        cmd.OrganizationID,
+		ProjectID:        cmd.ProjectID,
 		ScheduleType:          cmd.ScheduleType,
 		ScheduleIntervalValue: cmd.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  cmd.ScheduleIntervalUnit,

@@ -33,7 +33,7 @@ type NewVariableParams struct {
 	Value          any
 	StepID         *uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 func NewVariable(p NewVariableParams) (*Variable, error) {
@@ -60,7 +60,7 @@ func NewVariable(p NewVariableParams) (*Variable, error) {
 		VariableID:     v.ID.String(),
 		WorkflowID:     v.WorkflowID.String(),
 		StepID:         optionalUUIDString(v.StepID),
-		OrganizationID: p.OrganizationID.String(),
+		ProjectID: p.ProjectID.String(),
 		Name:           v.Name,
 		Key:            v.Key,
 		Description:    v.Description,
@@ -96,7 +96,7 @@ func (v *Variable) Update(p UpdateVariableParams) error {
 		VariableID:     v.ID.String(),
 		WorkflowID:     v.WorkflowID.String(),
 		StepID:         optionalUUIDString(v.StepID),
-		OrganizationID: p.OrganizationID.String(),
+		ProjectID: p.ProjectID.String(),
 		Name:           v.Name,
 		Key:            v.Key,
 		Description:    v.Description,
@@ -114,7 +114,7 @@ type UpdateVariableParams struct {
 	Description    string
 	Path           string
 	Value          any
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 func (v *Variable) PullEvents() []event.DomainEvent {

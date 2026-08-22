@@ -21,10 +21,10 @@ func (h *EndpointImportedHandler) Handle(ctx context.Context, payload []byte) er
 		return messaging.NonRetryable(err)
 	}
 	log.Printf(
-		"event handled %s eventId=%s organizationId=%s count=%d",
+		"event handled %s eventId=%s projectId=%s count=%d",
 		domainendpoint.EventTypeEndpointImported,
 		evt.ID,
-		evt.OrganizationID,
+		evt.ProjectID,
 		evt.Count,
 	)
 	return nil

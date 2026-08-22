@@ -21,11 +21,11 @@ func (h *WorkflowCreatedHandler) Handle(ctx context.Context, payload []byte) err
 		return messaging.NonRetryable(err)
 	}
 	log.Printf(
-		"event handled %s eventId=%s workflowId=%s organizationId=%s name=%s",
+		"event handled %s eventId=%s workflowId=%s projectId=%s name=%s",
 		domainworkflow.EventTypeWorkflowCreated,
 		evt.ID,
 		evt.WorkflowID,
-		evt.OrganizationID,
+		evt.ProjectID,
 		evt.Name,
 	)
 	return nil

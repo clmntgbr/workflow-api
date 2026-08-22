@@ -4,7 +4,7 @@ const (
 	ActionCreated                   = "created"
 	ActionUpdated                   = "updated"
 	ActionDeleted                   = "deleted"
-	ActionActiveOrganizationChanged = "active_organization_changed"
+	ActionActiveProjectChanged = "active_project_changed"
 	ActionMemberAdded               = "member_added"
 	ActionMemberRemoved             = "member_removed"
 	ActionStarted                   = "started"
@@ -14,7 +14,7 @@ const (
 	ActionImported                  = "imported"
 
 	EntityUser         = "user"
-	EntityOrganization = "organization"
+	EntityProject      = "project"
 	EntityWorkflow     = "workflow"
 	EntityEndpoint     = "endpoint"
 	EntityStep         = "step"

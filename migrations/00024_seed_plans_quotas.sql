@@ -6,7 +6,7 @@ DELETE FROM quotas;
 INSERT INTO quotas (
     id,
     name,
-    max_organization_members,
+    max_project_members,
     max_workflows,
     max_steps_per_workflow,
     max_endpoints,

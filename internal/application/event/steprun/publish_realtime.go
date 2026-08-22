@@ -7,7 +7,7 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
 	domainsteprun "go-api/internal/domain/steprun"
 
@@ -16,16 +16,16 @@ import (
 
 type PublishRealtimeHandler struct {
 	realtime port.RealtimePublisher
-	orgRepo  domainorganization.OrganizationReadRepository
+	projectRepo domainproject.ProjectReadRepository
 }
 
 func NewPublishRealtimeHandler(
 	realtimePublisher port.RealtimePublisher,
-	orgRepo domainorganization.OrganizationReadRepository,
+	projectRepo domainproject.ProjectReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
 		realtime: realtimePublisher,
-		orgRepo:  orgRepo,
+		projectRepo: projectRepo,
 	}
 }
 
@@ -34,7 +34,7 @@ func (h *PublishRealtimeHandler) OnStarted(ctx context.Context, payload []byte) 
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
-	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionStarted, evt)
+	return h.publishToProjectMembers(ctx, evt.ProjectID, realtime.ActionStarted, evt)
 }
 
 func (h *PublishRealtimeHandler) OnSucceeded(ctx context.Context, payload []byte) error {
@@ -42,7 +42,7 @@ func (h *PublishRealtimeHandler) OnSucceeded(ctx context.Context, payload []byte
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
-	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionSucceeded, evt)
+	return h.publishToProjectMembers(ctx, evt.ProjectID, realtime.ActionSucceeded, evt)
 }
 
 func (h *PublishRealtimeHandler) OnFailed(ctx context.Context, payload []byte) error {
@@ -50,35 +50,35 @@ func (h *PublishRealtimeHandler) OnFailed(ctx context.Context, payload []byte) e
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
-	return h.publishToOrganizationMembers(ctx, evt.OrganizationID, realtime.ActionFailed, evt)
+	return h.publishToProjectMembers(ctx, evt.ProjectID, realtime.ActionFailed, evt)
 }
 
-func (h *PublishRealtimeHandler) publishToOrganizationMembers(
+func (h *PublishRealtimeHandler) publishToProjectMembers(
 	ctx context.Context,
-	organizationIDRaw string,
+	projectIDRaw string,
 	action string,
 	payload any,
 ) error {
-	organizationID, err := uuid.Parse(organizationIDRaw)
+	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return messaging.NonRetryable(err)
 	}
 
-	org, err := h.orgRepo.FindByID(ctx, organizationID)
+	org, err := h.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
 		return messaging.Retryable(err)
 	}
 	if org == nil {
-		return messaging.NonRetryable(errOrganizationNotFound)
+		return messaging.NonRetryable(errProjectNotFound)
 	}
 
 	eventType := realtime.EventType(realtime.EntityStepRun, action)
 	for _, memberID := range org.MemberIDs {
 		if err := h.realtime.PublishToUser(ctx, memberID, eventType, payload); err != nil {
 			log.Printf(
-				"centrifugo publish failed type=%s organizationId=%s userId=%s: %v",
+				"centrifugo publish failed type=%s projectId=%s userId=%s: %v",
 				eventType,
-				organizationIDRaw,
+				projectIDRaw,
 				memberID.String(),
 				err,
 			)
@@ -88,10 +88,10 @@ func (h *PublishRealtimeHandler) publishToOrganizationMembers(
 	return nil
 }
 
-type organizationNotFoundError struct{}
+type projectNotFoundError struct{}
 
-func (organizationNotFoundError) Error() string {
-	return "organization not found for step run realtime publish"
+func (projectNotFoundError) Error() string {
+	return "project not found for step run realtime publish"
 }
 
-var errOrganizationNotFound error = organizationNotFoundError{}
+var errProjectNotFound error = projectNotFoundError{}

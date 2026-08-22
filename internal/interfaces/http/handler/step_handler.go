@@ -57,9 +57,9 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -84,7 +84,7 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		UserID:         user.ID,
 		WorkflowID:     workflowID,
 		EndpointID:     endpointID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,
@@ -106,9 +106,9 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) GetByID(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -128,7 +128,7 @@ func (h *StepHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get step"})
 	}
-	if view.OrganizationID != orgID || view.WorkflowID != workflowID {
+	if view.ProjectID != orgID || view.WorkflowID != workflowID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
 	}
 
@@ -136,9 +136,9 @@ func (h *StepHandler) GetByID(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -153,7 +153,7 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
@@ -187,9 +187,9 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Update(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -231,7 +231,7 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 	s, err := h.updateHandler.Handle(c.Context(), stepcmd.UpdateStepCommand{
 		ID:             id,
 		WorkflowID:     workflowID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		Name:           req.Name,
 		Description:    req.Description,
 		URL:            req.URL,
@@ -255,9 +255,9 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -280,7 +280,7 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 
 	s, err := h.updatePositionHandler.Handle(c.Context(), stepcmd.UpdateStepPositionCommand{
 		ID:             id,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		WorkflowID:     workflowID,
 		Position: domainstep.Position{
 			X: req.Position.X,
@@ -300,9 +300,9 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Delete(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -318,7 +318,7 @@ func (h *StepHandler) Delete(c fiber.Ctx) error {
 	if err := h.deleteHandler.Handle(c.Context(), stepcmd.DeleteStepCommand{
 		ID:             id,
 		WorkflowID:     workflowID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	}); err != nil {
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})

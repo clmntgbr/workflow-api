@@ -29,7 +29,7 @@ type endpointRow struct {
 	RetryCount     int
 	RetryDelay     int  `gorm:"column:retry_delay_ms"`
 	Status         string
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -39,7 +39,7 @@ func (endpointRow) TableName() string { return "endpoints" }
 var endpointSelectColumns = []string{
 	"id", "name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms", "status",
-	"organization_id", "created_at", "updated_at",
+	"project_id", "created_at", "updated_at",
 }
 
 type endpointReadRepository struct {
@@ -64,9 +64,9 @@ func (r *endpointReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 	return toEndpointView(row)
 }
 
-func (r *endpointReadRepository) FindByOrganizationID(
+func (r *endpointReadRepository) FindByProjectID(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	filter domainendpoint.ListEndpointsFilter,
 ) ([]domainendpoint.EndpointView, int64, error) {
 	query := filter.PaginateQuery
@@ -80,7 +80,7 @@ func (r *endpointReadRepository) FindByOrganizationID(
 
 	db := r.db.WithContext(ctx).
 		Model(&endpointRow{}).
-		Where("organization_id = ? AND status <> ?", organizationID, domainendpoint.StatusDeleted)
+		Where("project_id = ? AND status <> ?", projectID, domainendpoint.StatusDeleted)
 
 	if query.Search != "" {
 		like := "%" + query.Search + "%"
@@ -151,7 +151,7 @@ func toEndpointView(row endpointRow) (*domainendpoint.EndpointView, error) {
 		RetryCount:     row.RetryCount,
 		RetryDelay:     row.RetryDelay,
 		Status:         domainendpoint.Status(row.Status),
-		OrganizationID: row.OrganizationID,
+		ProjectID: row.ProjectID,
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
 	}, nil

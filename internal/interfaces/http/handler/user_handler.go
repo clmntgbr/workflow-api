@@ -14,16 +14,16 @@ import (
 
 type UserHandler struct {
 	getUserByIDHandler           *queryuser.GetUserByIDHandler
-	setActiveOrganizationHandler *usercmd.SetActiveOrganizationHandler
+	setActiveProjectHandler *usercmd.SetActiveProjectHandler
 }
 
 func NewUserHandler(
 	getUserByIDHandler *queryuser.GetUserByIDHandler,
-	setActiveOrganizationHandler *usercmd.SetActiveOrganizationHandler,
+	setActiveProjectHandler *usercmd.SetActiveProjectHandler,
 ) *UserHandler {
 	return &UserHandler{
 		getUserByIDHandler:           getUserByIDHandler,
-		setActiveOrganizationHandler: setActiveOrganizationHandler,
+		setActiveProjectHandler: setActiveProjectHandler,
 	}
 }
 
@@ -45,13 +45,13 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(presenter.NewUserDetailResponseFromView(*view))
 }
 
-func (h *UserHandler) SetActiveOrganization(c fiber.Ctx) error {
+func (h *UserHandler) SetActiveProject(c fiber.Ctx) error {
 	user, err := httpctx.GetUser(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	var req dto.SetActiveOrganizationRequest
+	var req dto.SetActiveProjectRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
@@ -59,23 +59,23 @@ func (h *UserHandler) SetActiveOrganization(c fiber.Ctx) error {
 		return err
 	}
 
-	orgID, err := uuid.Parse(req.OrganizationID)
+	orgID, err := uuid.Parse(req.ProjectID)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid organization id"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid project id"})
 	}
 
-	err = h.setActiveOrganizationHandler.Handle(c.Context(), usercmd.SetActiveOrganizationCommand{
+	err = h.setActiveProjectHandler.Handle(c.Context(), usercmd.SetActiveProjectCommand{
 		UserID:         user.ID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	})
 	if err != nil {
 		switch err.Error() {
-		case "organization not found":
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Organization not found"})
-		case "user is not a member of the organization":
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "User is not a member of the organization"})
+		case "project not found":
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Project not found"})
+		case "user is not a member of the project":
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "User is not a member of the project"})
 		default:
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to set active organization"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to set active project"})
 		}
 	}
 

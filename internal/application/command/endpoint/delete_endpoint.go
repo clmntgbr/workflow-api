@@ -12,7 +12,7 @@ import (
 
 type DeleteEndpointCommand struct {
 	ID             uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type DeleteEndpointHandler struct {
@@ -36,7 +36,7 @@ func (h *DeleteEndpointHandler) Handle(ctx context.Context, cmd DeleteEndpointCo
 		if e == nil || e.Status == domainendpoint.StatusDeleted {
 			return errors.New("endpoint not found")
 		}
-		if e.OrganizationID != cmd.OrganizationID {
+		if e.ProjectID != cmd.ProjectID {
 			return errors.New("endpoint not found")
 		}
 

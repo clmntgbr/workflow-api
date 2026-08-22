@@ -19,9 +19,9 @@ func respondQuotaError(c fiber.Ctx, err error) (bool, error) {
 		return true, c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"message": "No active subscription found",
 		})
-	case errors.Is(err, querysubscription.ErrActiveOrganizationRequired):
+	case errors.Is(err, querysubscription.ErrActiveProjectRequired):
 		return true, c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Active organization is required",
+			"message": "Active project is required",
 		})
 	case errors.Is(err, cmdquota.ErrWorkflowQuotaExceeded),
 		errors.Is(err, cmdquota.ErrEndpointQuotaExceeded),

@@ -16,7 +16,7 @@ import (
 type DeleteStepCommand struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type DeleteStepHandler struct {
@@ -54,7 +54,7 @@ func (h *DeleteStepHandler) Handle(ctx context.Context, cmd DeleteStepCommand) e
 	if s == nil || s.Status == domainstep.StatusDeleted {
 		return errors.New("step not found")
 	}
-	if s.OrganizationID != cmd.OrganizationID || s.WorkflowID != cmd.WorkflowID {
+	if s.ProjectID != cmd.ProjectID || s.WorkflowID != cmd.WorkflowID {
 		return errors.New("step not found")
 	}
 

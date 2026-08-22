@@ -31,7 +31,7 @@ type WorkflowRunHandler struct {
 	getByIDHandler     *queryworkflowrun.GetWorkflowRunByIDHandler
 	analyticsHandler   *queryworkflowrun.GetWorkflowRunAnalyticsHandler
 	listByWorkflow     *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
-	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler
+	listByProject *queryworkflowrun.ListWorkflowRunsByProjectHandler
 	listStepRuns       *querysteprun.ListStepRunsByWorkflowRunHandler
 	listStepRunsByIDs  *querysteprun.ListStepRunsByWorkflowRunIDsHandler
 	listInsightsByIDs  *queryinsight.ListInsightsByStepRunIDsHandler
@@ -45,7 +45,7 @@ func NewWorkflowRunHandler(
 	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
 	analyticsHandler *queryworkflowrun.GetWorkflowRunAnalyticsHandler,
 	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
-	listByOrganization *queryworkflowrun.ListWorkflowRunsByOrganizationHandler,
+	listByProject *queryworkflowrun.ListWorkflowRunsByProjectHandler,
 	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
 	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
 	listInsightsByIDs *queryinsight.ListInsightsByStepRunIDsHandler,
@@ -58,7 +58,7 @@ func NewWorkflowRunHandler(
 		getByIDHandler:      getByIDHandler,
 		analyticsHandler:    analyticsHandler,
 		listByWorkflow:      listByWorkflow,
-		listByOrganization:  listByOrganization,
+		listByProject:  listByProject,
 		listStepRuns:        listStepRuns,
 		listStepRunsByIDs:   listStepRunsByIDs,
 		listInsightsByIDs:   listInsightsByIDs,
@@ -68,9 +68,9 @@ func NewWorkflowRunHandler(
 }
 
 func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	var query dto.WorkflowRunAnalyticsQuery
@@ -97,7 +97,7 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 		}
-		if workflow.OrganizationID != orgID {
+		if workflow.ProjectID != orgID {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 		}
 		workflowID = &parsed
@@ -113,7 +113,7 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 	}
 
 	stats, err := h.analyticsHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunAnalyticsQuery{
-		OrganizationID: orgID,
+		ProjectID: orgID,
 		WorkflowID:     workflowID,
 		From:           from,
 		To:             to,
@@ -149,9 +149,9 @@ func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("id"))
@@ -166,13 +166,13 @@ func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
 	run, err := h.cancelHandler.Handle(c.Context(), workflowruncmd.CancelWorkflowRunCommand{
 		WorkflowID:     workflowID,
-		OrganizationID: orgID,
+		ProjectID: orgID,
 	})
 	if err != nil {
 		if errors.Is(err, domainworkflowrun.ErrWorkflowNotFound) {
@@ -199,9 +199,9 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(workflowIDParam)
@@ -216,7 +216,7 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
@@ -254,9 +254,9 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 }
 
 func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -271,7 +271,7 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
@@ -334,9 +334,9 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 }
 
 func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	workflowID, err := uuid.Parse(c.Params("workflowId"))
@@ -356,7 +356,7 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
-	if workflow.OrganizationID != orgID {
+	if workflow.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
@@ -398,9 +398,9 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 }
 
 func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	var query paginate.PaginateQuery
@@ -421,8 +421,8 @@ func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
 		query.OrderBy = paginate.OrderByDesc
 	}
 
-	views, total, err := h.listByOrganization.Handle(c.Context(), queryworkflowrun.ListWorkflowRunsByOrganizationQuery{
-		OrganizationID: orgID,
+	views, total, err := h.listByProject.Handle(c.Context(), queryworkflowrun.ListWorkflowRunsByProjectQuery{
+		ProjectID: orgID,
 		Query:          query,
 	})
 	if err != nil {
@@ -462,9 +462,9 @@ func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
 }
 
 func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveOrganizationID(c)
+	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
 	id, err := uuid.Parse(c.Params("id"))
@@ -479,7 +479,7 @@ func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow run"})
 	}
-	if view.OrganizationID != orgID {
+	if view.ProjectID != orgID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
 	}
 

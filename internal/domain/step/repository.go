@@ -27,7 +27,7 @@ type StepView struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Name           string
 	Description    string
 	URL            string

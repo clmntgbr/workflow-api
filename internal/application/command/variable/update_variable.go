@@ -14,7 +14,7 @@ import (
 type UpdateVariableCommand struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Name           string
 	Key            string
 	Description    string
@@ -61,7 +61,7 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 		Description:    strings.TrimSpace(cmd.Description),
 		Path:           path,
 		Value:          value,
-		OrganizationID: cmd.OrganizationID,
+		ProjectID: cmd.ProjectID,
 	}); err != nil {
 		return nil, err
 	}

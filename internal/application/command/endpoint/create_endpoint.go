@@ -25,7 +25,7 @@ type CreateEndpointCommand struct {
 	RetryOnFailure bool
 	RetryCount     int
 	RetryDelay     int
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type CreateEndpointHandler struct {
@@ -55,14 +55,14 @@ func (h *CreateEndpointHandler) Handle(
 	if !cmd.Method.Valid() {
 		return nil, errors.New("invalid method")
 	}
-	if cmd.OrganizationID == uuid.Nil {
-		return nil, errors.New("organizationId is required")
+	if cmd.ProjectID == uuid.Nil {
+		return nil, errors.New("projectId is required")
 	}
 	if cmd.UserID == uuid.Nil {
 		return nil, errors.New("userId is required")
 	}
 
-	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.OrganizationID, 1); err != nil {
+	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.ProjectID, 1); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (h *CreateEndpointHandler) Handle(
 		RetryOnFailure: cmd.RetryOnFailure,
 		RetryCount:     cmd.RetryCount,
 		RetryDelay:     cmd.RetryDelay,
-		OrganizationID: cmd.OrganizationID,
+		ProjectID: cmd.ProjectID,
 	})
 
 	err := h.repo.WithTransaction(ctx, func(txCtx context.Context) error {

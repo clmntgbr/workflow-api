@@ -7,7 +7,7 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -18,18 +18,18 @@ import (
 type PublishRealtimeHandler struct {
 	realtime     port.RealtimePublisher
 	workflowRepo domainworkflow.WorkflowReadRepository
-	orgRepo      domainorganization.OrganizationReadRepository
+	projectRepo  domainproject.ProjectReadRepository
 }
 
 func NewPublishRealtimeHandler(
 	realtimePublisher port.RealtimePublisher,
 	workflowRepo domainworkflow.WorkflowReadRepository,
-	orgRepo domainorganization.OrganizationReadRepository,
+	projectRepo domainproject.ProjectReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
 		realtime:     realtimePublisher,
 		workflowRepo: workflowRepo,
-		orgRepo:      orgRepo,
+		projectRepo: projectRepo,
 	}
 }
 
@@ -84,12 +84,12 @@ func (h *PublishRealtimeHandler) publishForWorkflow(
 		return messaging.NonRetryable(errWorkflowNotFound)
 	}
 
-	org, err := h.orgRepo.FindByID(ctx, workflow.OrganizationID)
+	org, err := h.projectRepo.FindByID(ctx, workflow.ProjectID)
 	if err != nil {
 		return messaging.Retryable(err)
 	}
 	if org == nil {
-		return messaging.NonRetryable(errOrganizationNotFound)
+		return messaging.NonRetryable(errProjectNotFound)
 	}
 
 	eventType := realtime.EventType(realtime.EntityWorkflowRun, action)
@@ -116,10 +116,10 @@ func (workflowNotFoundError) Error() string {
 
 var errWorkflowNotFound error = workflowNotFoundError{}
 
-type organizationNotFoundError struct{}
+type projectNotFoundError struct{}
 
-func (organizationNotFoundError) Error() string {
-	return "organization not found for workflow run realtime publish"
+func (projectNotFoundError) Error() string {
+	return "project not found for workflow run realtime publish"
 }
 
-var errOrganizationNotFound error = organizationNotFoundError{}
+var errProjectNotFound error = projectNotFoundError{}

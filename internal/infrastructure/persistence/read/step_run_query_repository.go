@@ -21,7 +21,7 @@ type stepRunRow struct {
 	StepID             uuid.UUID
 	WorkflowID         uuid.UUID
 	EndpointID         uuid.UUID
-	OrganizationID     uuid.UUID
+	ProjectID     uuid.UUID
 	Name               string
 	Description        string
 	URL                string
@@ -53,7 +53,7 @@ type stepRunRow struct {
 func (stepRunRow) TableName() string { return "step_runs" }
 
 var stepRunSelectColumns = []string{
-	"id", "workflow_run_id", "step_id", "workflow_id", "endpoint_id", "organization_id",
+	"id", "workflow_run_id", "step_id", "workflow_id", "endpoint_id", "project_id",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
@@ -242,7 +242,7 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		StepID:         row.StepID,
 		WorkflowID:     row.WorkflowID,
 		EndpointID:     row.EndpointID,
-		OrganizationID: row.OrganizationID,
+		ProjectID: row.ProjectID,
 		Name:           row.Name,
 		Description:    row.Description,
 		URL:            row.URL,

@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	querysubscription "go-api/internal/application/query/subscription"
-	domainorganization "go-api/internal/domain/organization"
+	domainproject "go-api/internal/domain/project"
 	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
 
@@ -23,20 +23,20 @@ var (
 type AssertCreateAllowedHandler struct {
 	getQuotaUsage *querysubscription.GetQuotaUsageHandler
 	stepReadRepo  domainstep.StepReadRepository
-	orgReadRepo   domainorganization.OrganizationReadRepository
+	projectReadRepo   domainproject.ProjectReadRepository
 	userReadRepo  domainuser.UserReadRepository
 }
 
 func NewAssertCreateAllowedHandler(
 	getQuotaUsage *querysubscription.GetQuotaUsageHandler,
 	stepReadRepo domainstep.StepReadRepository,
-	orgReadRepo domainorganization.OrganizationReadRepository,
+	projectReadRepo domainproject.ProjectReadRepository,
 	userReadRepo domainuser.UserReadRepository,
 ) *AssertCreateAllowedHandler {
 	return &AssertCreateAllowedHandler{
 		getQuotaUsage: getQuotaUsage,
 		stepReadRepo:  stepReadRepo,
-		orgReadRepo:   orgReadRepo,
+		projectReadRepo:   projectReadRepo,
 		userReadRepo:  userReadRepo,
 	}
 }
@@ -44,11 +44,11 @@ func NewAssertCreateAllowedHandler(
 func (h *AssertCreateAllowedHandler) AssertWorkflowCreate(
 	ctx context.Context,
 	userID uuid.UUID,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 ) error {
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
 		UserID:         userID,
-		OrganizationID: organizationID,
+		ProjectID: projectID,
 	})
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowCreate(
 func (h *AssertCreateAllowedHandler) AssertEndpointCreate(
 	ctx context.Context,
 	userID uuid.UUID,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	count int,
 ) error {
 	if count <= 0 {
@@ -71,7 +71,7 @@ func (h *AssertCreateAllowedHandler) AssertEndpointCreate(
 
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
 		UserID:         userID,
-		OrganizationID: organizationID,
+		ProjectID: projectID,
 	})
 	if err != nil {
 		return err
@@ -85,12 +85,12 @@ func (h *AssertCreateAllowedHandler) AssertEndpointCreate(
 func (h *AssertCreateAllowedHandler) AssertStepCreate(
 	ctx context.Context,
 	userID uuid.UUID,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	workflowID uuid.UUID,
 ) error {
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
 		UserID:         userID,
-		OrganizationID: organizationID,
+		ProjectID: projectID,
 	})
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (h *AssertCreateAllowedHandler) AssertStepCreate(
 
 func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	preferredUserID *uuid.UUID,
 	count int,
 ) error {
@@ -116,14 +116,14 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(
 		count = 1
 	}
 
-	userID, err := h.resolveBillingUserID(ctx, organizationID, preferredUserID)
+	userID, err := h.resolveBillingUserID(ctx, projectID, preferredUserID)
 	if err != nil {
 		return err
 	}
 
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
 		UserID:         userID,
-		OrganizationID: organizationID,
+		ProjectID: projectID,
 	})
 	if err != nil {
 		return err
@@ -139,19 +139,19 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(
 
 func (h *AssertCreateAllowedHandler) resolveBillingUserID(
 	ctx context.Context,
-	organizationID uuid.UUID,
+	projectID uuid.UUID,
 	preferredUserID *uuid.UUID,
 ) (uuid.UUID, error) {
 	if preferredUserID != nil && *preferredUserID != uuid.Nil {
 		return *preferredUserID, nil
 	}
 
-	org, err := h.orgReadRepo.FindByID(ctx, organizationID)
+	org, err := h.projectReadRepo.FindByID(ctx, projectID)
 	if err != nil {
 		return uuid.Nil, errors.New("failed to resolve billing user")
 	}
 	if org == nil {
-		return uuid.Nil, errors.New("organization not found")
+		return uuid.Nil, errors.New("project not found")
 	}
 
 	for _, memberID := range org.MemberIDs {

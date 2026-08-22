@@ -17,7 +17,7 @@ type StepRun struct {
 
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -61,7 +61,7 @@ type NewStepRunParams struct {
 	StepID         uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -88,7 +88,7 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 		StepID:         p.StepID,
 		WorkflowID:     p.WorkflowID,
 		EndpointID:     p.EndpointID,
-		OrganizationID: p.OrganizationID,
+		ProjectID: p.ProjectID,
 		Name:           p.Name,
 		Description:    p.Description,
 		URL:            p.URL,
@@ -250,7 +250,7 @@ func (s *StepRun) startedEvent(at time.Time) StepRunStarted {
 		StepID:         s.StepID.String(),
 		WorkflowID:     s.WorkflowID.String(),
 		EndpointID:     s.EndpointID.String(),
-		OrganizationID: s.OrganizationID.String(),
+		ProjectID: s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -278,7 +278,7 @@ func (s *StepRun) succeededEvent(at time.Time) StepRunSucceeded {
 		StepRunID:          s.ID.String(),
 		WorkflowRunID:      s.WorkflowRunID.String(),
 		StepID:             s.StepID.String(),
-		OrganizationID:     s.OrganizationID.String(),
+		ProjectID:     s.ProjectID.String(),
 		Status:             string(s.Status),
 		Attempt:            s.Attempt,
 		ResponseSnapshot:   s.ResponseSnapshot,
@@ -293,7 +293,7 @@ func (s *StepRun) failedEvent(at time.Time) StepRunFailed {
 		StepRunID:        s.ID.String(),
 		WorkflowRunID:    s.WorkflowRunID.String(),
 		StepID:           s.StepID.String(),
-		OrganizationID:   s.OrganizationID.String(),
+		ProjectID:   s.ProjectID.String(),
 		Status:           string(s.Status),
 		Attempt:          s.Attempt,
 		ResponseSnapshot: s.ResponseSnapshot,

@@ -14,7 +14,7 @@ import (
 
 type CreateVariableCommand struct {
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	StepID         *uuid.UUID
 	Kind           domainvariable.Kind
 	Name           string
@@ -78,7 +78,7 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		if step == nil || step.Status == domainstep.StatusDeleted {
 			return nil, errors.New("step not found")
 		}
-		if step.WorkflowID != cmd.WorkflowID || step.OrganizationID != cmd.OrganizationID {
+		if step.WorkflowID != cmd.WorkflowID || step.ProjectID != cmd.ProjectID {
 			return nil, errors.New("step not found")
 		}
 		stepID = cmd.StepID
@@ -106,7 +106,7 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		Value:          value,
 		StepID:         stepID,
 		WorkflowID:     cmd.WorkflowID,
-		OrganizationID: cmd.OrganizationID,
+		ProjectID: cmd.ProjectID,
 	})
 	if err != nil {
 		return nil, err

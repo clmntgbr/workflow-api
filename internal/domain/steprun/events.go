@@ -34,7 +34,7 @@ type StepRunStarted struct {
 	StepID         string              `json:"stepId"`
 	WorkflowID     string              `json:"workflowId"`
 	EndpointID     string              `json:"endpointId"`
-	OrganizationID string              `json:"organizationId"`
+	ProjectID string              `json:"projectId"`
 	Name           string              `json:"name"`
 	Description    string              `json:"description"`
 	URL            string              `json:"url"`
@@ -65,7 +65,7 @@ type StepRunSucceeded struct {
 	StepRunID          string            `json:"stepRunId"`
 	WorkflowRunID      string            `json:"workflowRunId"`
 	StepID             string            `json:"stepId"`
-	OrganizationID     string            `json:"organizationId"`
+	ProjectID     string            `json:"projectId"`
 	Status             string            `json:"status"`
 	Attempt            int               `json:"attempt"`
 	ResponseSnapshot   *ResponseSnapshot `json:"responseSnapshot"`
@@ -83,7 +83,7 @@ type StepRunFailed struct {
 	StepRunID        string            `json:"stepRunId"`
 	WorkflowRunID    string            `json:"workflowRunId"`
 	StepID           string            `json:"stepId"`
-	OrganizationID   string            `json:"organizationId"`
+	ProjectID   string            `json:"projectId"`
 	Status           string            `json:"status"`
 	Attempt          int               `json:"attempt"`
 	ResponseSnapshot *ResponseSnapshot `json:"responseSnapshot"`

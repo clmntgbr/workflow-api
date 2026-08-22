@@ -8,7 +8,7 @@ import (
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
 	cmdquota "go-api/internal/application/command/quota"
-	orgcmd "go-api/internal/application/command/organization"
+	projectcmd "go-api/internal/application/command/project"
 	subscriptioncmd "go-api/internal/application/command/subscription"
 	stepcmd "go-api/internal/application/command/step"
 	usercmd "go-api/internal/application/command/user"
@@ -19,7 +19,7 @@ import (
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryinvoice "go-api/internal/application/query/invoice"
 	queryinsight "go-api/internal/application/query/insight"
-	queryorganization "go-api/internal/application/query/organization"
+	queryproject "go-api/internal/application/query/project"
 	queryplan "go-api/internal/application/query/plan"
 	querysubscription "go-api/internal/application/query/subscription"
 	querystep "go-api/internal/application/query/step"
@@ -48,7 +48,7 @@ type Container struct {
 	BillingWebhookMiddleware *middleware.BillingWebhookMiddleware
 	BillingWebhookHandler    *httphandler.BillingWebhookHandler
 	UserHandler            *httphandler.UserHandler
-	OrganizationHandler    *httphandler.OrganizationHandler
+	ProjectHandler    *httphandler.ProjectHandler
 	WorkflowHandler        *httphandler.WorkflowHandler
 	EndpointHandler        *httphandler.EndpointHandler
 	StepHandler            *httphandler.StepHandler
@@ -69,8 +69,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	userWriteRepo := write.NewUserWriteRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
-	orgWriteRepo := write.NewOrganizationWriteRepository(db)
-	orgReadRepo := read.NewOrganizationReadRepository(db)
+	projectWriteRepo := write.NewProjectWriteRepository(db)
+	projectReadRepo := read.NewProjectReadRepository(db)
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	endpointWriteRepo := write.NewEndpointWriteRepository(db)
@@ -96,7 +96,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createUserHandler := usercmd.NewCreateUserHandler(
 		userWriteRepo,
-		orgWriteRepo,
+		projectWriteRepo,
 		planWriteRepo,
 		subscriptionWriteRepo,
 		outboxRepo,
@@ -104,30 +104,29 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	updateUserHandler := usercmd.NewUpdateUserHandler(userWriteRepo, outboxRepo)
 	getUserByExternalIDHandler := usercmd.NewGetUserByExternalIDHandler(userWriteRepo)
 	deleteUserByExternalIDHandler := usercmd.NewDeleteUserByExternalIDHandler(userWriteRepo, outboxRepo)
-	setActiveOrganizationHandler := usercmd.NewSetActiveOrganizationHandler(userWriteRepo, orgWriteRepo, outboxRepo)
+	setActiveProjectHandler := usercmd.NewSetActiveProjectHandler(userWriteRepo, projectWriteRepo, outboxRepo)
 	validateTokenHandler := authcmd.NewValidateTokenHandler(jwksProvider, userWriteRepo)
 	fetchUserHandler := identitycmd.NewFetchUserHandler(infraClerk.NewUserGateway(env.ClerkSecretKey))
 	getUserByIDHandler := queryuser.NewGetUserByIDHandler(userReadRepo)
 
-	createOrgHandler := orgcmd.NewCreateOrganizationHandler(orgWriteRepo, userWriteRepo, outboxRepo)
-	updateOrgHandler := orgcmd.NewUpdateOrganizationHandler(orgWriteRepo, outboxRepo)
-	deleteOrgHandler := orgcmd.NewDeleteOrganizationHandler(orgWriteRepo, outboxRepo)
-	addOrgMemberHandler := orgcmd.NewAddOrganizationMemberHandler(orgWriteRepo, userWriteRepo, outboxRepo)
-	removeOrgMemberHandler := orgcmd.NewRemoveOrganizationMemberHandler(orgWriteRepo, userWriteRepo, outboxRepo)
-	getOrgByIDHandler := queryorganization.NewGetOrganizationByIDHandler(orgReadRepo)
-	listOrgsByUserHandler := queryorganization.NewListOrganizationsByUserHandler(orgReadRepo)
+	createOrgHandler := projectcmd.NewCreateProjectHandler(projectWriteRepo, userWriteRepo, outboxRepo)
+	updateOrgHandler := projectcmd.NewUpdateProjectHandler(projectWriteRepo, outboxRepo)
+	deleteOrgHandler := projectcmd.NewDeleteProjectHandler(projectWriteRepo, outboxRepo)
+	removeOrgMemberHandler := projectcmd.NewRemoveProjectMemberHandler(projectWriteRepo, userWriteRepo, outboxRepo)
+	getProjectByIDHandler := queryproject.NewGetProjectByIDHandler(projectReadRepo)
+	listProjectsByUserHandler := queryproject.NewListProjectsByUserHandler(projectReadRepo)
 
 	updateWorkflowHandler := workflowcmd.NewUpdateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	activateWorkflowHandler := workflowcmd.NewActivateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	deactivateWorkflowHandler := workflowcmd.NewDeactivateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	deleteWorkflowHandler := workflowcmd.NewDeleteWorkflowHandler(workflowWriteRepo, outboxRepo)
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
-	listWorkflowsByOrgHandler := queryworkflow.NewListWorkflowsByOrganizationHandler(workflowReadRepo)
+	listWorkflowsByProjectHandler := queryworkflow.NewListWorkflowsByProjectHandler(workflowReadRepo)
 
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	deleteEndpointHandler := endpointcmd.NewDeleteEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
-	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByOrganizationHandler(endpointReadRepo)
+	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByProjectHandler(endpointReadRepo)
 
 	createConnHandler := conncmd.NewCreateConnectionHandler(
 		connWriteRepo,
@@ -174,7 +173,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
 	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo)
 	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
-	listWorkflowRunsByOrgHandler := queryworkflowrun.NewListWorkflowRunsByOrganizationHandler(workflowRunReadRepo)
+	listWorkflowRunsByProjectHandler := queryworkflowrun.NewListWorkflowRunsByProjectHandler(workflowRunReadRepo)
 	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
 	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
 	latestStepRunStatusesHandler := querysteprun.NewGetLatestStepRunStatusesByStepIDsHandler(stepRunReadRepo)
@@ -191,7 +190,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getQuotaUsageHandler := querysubscription.NewGetQuotaUsageHandler(
 		userReadRepo,
 		subscriptionReadRepo,
-		orgReadRepo,
+		projectReadRepo,
 		workflowReadRepo,
 		endpointReadRepo,
 		workflowRunReadRepo,
@@ -199,7 +198,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
 		getQuotaUsageHandler,
 		stepReadRepo,
-		orgReadRepo,
+		projectReadRepo,
 		userReadRepo,
 	)
 
@@ -319,16 +318,15 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			invoicePaymentFailedHandler,
 			upsertInvoiceHandler,
 		),
-		UserHandler: httphandler.NewUserHandler(getUserByIDHandler, setActiveOrganizationHandler),
-		OrganizationHandler: httphandler.NewOrganizationHandler(
+		UserHandler: httphandler.NewUserHandler(getUserByIDHandler, setActiveProjectHandler),
+		ProjectHandler: httphandler.NewProjectHandler(
 			createOrgHandler,
 			updateOrgHandler,
 			deleteOrgHandler,
-			addOrgMemberHandler,
 			removeOrgMemberHandler,
-			getOrgByIDHandler,
-			listOrgsByUserHandler,
-			setActiveOrganizationHandler,
+			getProjectByIDHandler,
+			listProjectsByUserHandler,
+			setActiveProjectHandler,
 		),
 		WorkflowHandler: httphandler.NewWorkflowHandler(
 			createWorkflowHandler,
@@ -337,8 +335,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			deactivateWorkflowHandler,
 			deleteWorkflowHandler,
 			getWorkflowByIDHandler,
-			listWorkflowsByOrgHandler,
-			getOrgByIDHandler,
+			listWorkflowsByProjectHandler,
+			getProjectByIDHandler,
 		),
 		EndpointHandler: httphandler.NewEndpointHandler(
 			createEndpointHandler,
@@ -370,7 +368,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getWorkflowRunByIDHandler,
 			getWorkflowRunAnalyticsHandler,
 			listWorkflowRunsHandler,
-			listWorkflowRunsByOrgHandler,
+			listWorkflowRunsByProjectHandler,
 			listStepRunsHandler,
 			listStepRunsByIDsHandler,
 			listInsightsByIDsHandler,

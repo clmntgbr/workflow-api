@@ -12,7 +12,7 @@ import (
 
 type DeactivateWorkflowCommand struct {
 	ID             uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 type DeactivateWorkflowHandler struct {
@@ -34,7 +34,7 @@ func (h *DeactivateWorkflowHandler) Handle(ctx context.Context, cmd DeactivateWo
 		if err != nil {
 			return errors.New("failed to get workflow")
 		}
-		if w == nil || w.Status == domainworkflow.StatusDeleted || w.OrganizationID != cmd.OrganizationID {
+		if w == nil || w.Status == domainworkflow.StatusDeleted || w.ProjectID != cmd.ProjectID {
 			return errors.New("workflow not found")
 		}
 		if err := w.Deactivate(); err != nil {

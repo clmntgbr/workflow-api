@@ -90,7 +90,7 @@ func (h *Orchestrator) buildStepRun(
 		StepID:           step.ID,
 		WorkflowID:       step.WorkflowID,
 		EndpointID:       step.EndpointID,
-		OrganizationID:   step.OrganizationID,
+		ProjectID:   step.ProjectID,
 		Name:             step.Name,
 		Description:      step.Description,
 		URL:              step.URL,

@@ -12,7 +12,7 @@ import (
 type connectionReadRow struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 	SourceStepID   uuid.UUID
 	TargetStepID   uuid.UUID
 }
@@ -42,7 +42,7 @@ func (r *connectionReadRepository) FindByWorkflowID(ctx context.Context, workflo
 		views = append(views, domainconnection.ConnectionView{
 			ID:             row.ID,
 			WorkflowID:     row.WorkflowID,
-			OrganizationID: row.OrganizationID,
+			ProjectID: row.ProjectID,
 			SourceStepID:   row.SourceStepID,
 			TargetStepID:   row.TargetStepID,
 		})

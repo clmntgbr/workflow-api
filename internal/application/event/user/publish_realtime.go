@@ -45,12 +45,12 @@ func (h *PublishRealtimeHandler) OnDeleted(ctx context.Context, payload []byte) 
 	return h.publish(ctx, evt.UserID, realtime.ActionDeleted, evt)
 }
 
-func (h *PublishRealtimeHandler) OnActiveOrganizationChanged(ctx context.Context, payload []byte) error {
-	var evt domainuser.UserActiveOrganizationChanged
+func (h *PublishRealtimeHandler) OnActiveProjectChanged(ctx context.Context, payload []byte) error {
+	var evt domainuser.UserActiveProjectChanged
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return messaging.NonRetryable(err)
 	}
-	return h.publish(ctx, evt.UserID, realtime.ActionActiveOrganizationChanged, evt)
+	return h.publish(ctx, evt.UserID, realtime.ActionActiveProjectChanged, evt)
 }
 
 func (h *PublishRealtimeHandler) publish(ctx context.Context, userIDRaw, action string, payload any) error {

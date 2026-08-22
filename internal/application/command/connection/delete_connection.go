@@ -38,7 +38,7 @@ func NewDeleteConnectionHandler(
 type DeleteConnectionCommand struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	OrganizationID uuid.UUID
+	ProjectID uuid.UUID
 }
 
 func (h *DeleteConnectionHandler) Handle(ctx context.Context, cmd DeleteConnectionCommand) error {
@@ -49,7 +49,7 @@ func (h *DeleteConnectionHandler) Handle(ctx context.Context, cmd DeleteConnecti
 	if conn == nil {
 		return errors.New("connection not found")
 	}
-	if conn.OrganizationID != cmd.OrganizationID || conn.WorkflowID != cmd.WorkflowID {
+	if conn.ProjectID != cmd.ProjectID || conn.WorkflowID != cmd.WorkflowID {
 		return errors.New("connection not found")
 	}
 

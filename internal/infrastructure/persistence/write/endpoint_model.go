@@ -25,7 +25,7 @@ type EndpointModel struct {
 	RetryCount     int          `gorm:"column:retry_count"`
 	RetryDelay     int          `gorm:"column:retry_delay_ms"`
 	Status         string       `gorm:"column:status"`
-	OrganizationID uuid.UUID    `gorm:"column:organization_id"`
+	ProjectID uuid.UUID    `gorm:"column:project_id"`
 	CreatedAt      time.Time    `gorm:"column:created_at"`
 	UpdatedAt      time.Time    `gorm:"column:updated_at"`
 }
@@ -75,7 +75,7 @@ func endpointModelFromDomain(e *domainendpoint.Endpoint) (*EndpointModel, error)
 		RetryCount:     e.RetryCount,
 		RetryDelay:     e.RetryDelay,
 		Status:         string(e.Status),
-		OrganizationID: e.OrganizationID,
+		ProjectID: e.ProjectID,
 		CreatedAt:      e.CreatedAt,
 		UpdatedAt:      e.UpdatedAt,
 	}, nil
@@ -116,7 +116,7 @@ func endpointDomainFromModel(m *EndpointModel) (*domainendpoint.Endpoint, error)
 		RetryCount:     m.RetryCount,
 		RetryDelay:     m.RetryDelay,
 		Status:         domainendpoint.Status(m.Status),
-		OrganizationID: m.OrganizationID,
+		ProjectID: m.ProjectID,
 		CreatedAt:      m.CreatedAt,
 		UpdatedAt:      m.UpdatedAt,
 	}, nil

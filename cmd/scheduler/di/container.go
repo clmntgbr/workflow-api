@@ -27,7 +27,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	variableReadRepo := read.NewVariableReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
-	orgReadRepo := read.NewOrganizationReadRepository(db)
+	projectReadRepo := read.NewProjectReadRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	endpointReadRepo := read.NewEndpointReadRepository(db)
 	quotaReadRepo := read.NewQuotaReadRepository(db)
@@ -39,7 +39,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getQuotaUsageHandler := querysubscription.NewGetQuotaUsageHandler(
 		userReadRepo,
 		subscriptionReadRepo,
-		orgReadRepo,
+		projectReadRepo,
 		workflowReadRepo,
 		endpointReadRepo,
 		workflowRunReadRepo,
@@ -47,7 +47,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
 		getQuotaUsageHandler,
 		stepReadRepo,
-		orgReadRepo,
+		projectReadRepo,
 		userReadRepo,
 	)
 

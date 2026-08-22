@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS quotas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
 
-    max_organization_members INTEGER NOT NULL DEFAULT 0,
+    max_project_members INTEGER NOT NULL DEFAULT 0,
     max_workflows INTEGER NOT NULL DEFAULT 0,
     max_steps_per_workflow INTEGER NOT NULL DEFAULT 0,
     max_endpoints INTEGER NOT NULL DEFAULT 0,

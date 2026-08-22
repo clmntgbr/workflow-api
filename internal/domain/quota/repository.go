@@ -23,7 +23,7 @@ type QuotaView struct {
 	ID   uuid.UUID
 	Name string
 
-	MaxOrganizationMembers  int
+	MaxProjectMembers  int
 	MaxWorkflows            int
 	MaxStepsPerWorkflow     int
 	MaxEndpoints            int
