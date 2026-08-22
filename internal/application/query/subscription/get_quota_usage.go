@@ -105,6 +105,12 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 		return nil, errors.New("failed to count concurrent runs")
 	}
 
+	projects, err := h.projectRepo.FindByUserID(ctx, q.UserID)
+	if err != nil {
+		return nil, errors.New("failed to count projects")
+	}
+	projectsTotal := int64(len(projects))
+
 	countQuery := paginate.PaginateQuery{Page: 1, Limit: 1}
 	countQuery.Normalize()
 
@@ -131,6 +137,11 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 			Used:        runStats.TotalRuns,
 			Max:         quota.MaxWorkflowRunsPerMonth,
 			Left:        quotaLeft(quota.MaxWorkflowRunsPerMonth, runStats.TotalRuns),
+		},
+		Projects: QuotaCounter{
+			Used: projectsTotal,
+			Max:  quota.MaxProjects,
+			Left: quotaLeft(quota.MaxProjects, projectsTotal),
 		},
 		Workflows: QuotaCounter{
 			Used: workflowsTotal,

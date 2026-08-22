@@ -24,6 +24,7 @@ type QuotaView struct {
 	Name string
 
 	MaxProjectMembers  int
+	MaxProjects             int
 	MaxWorkflows            int
 	MaxStepsPerWorkflow     int
 	MaxEndpoints            int

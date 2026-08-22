@@ -11,6 +11,7 @@ type Quota struct {
 	Name string
 
 	MaxProjectMembers  int
+	MaxProjects             int
 	MaxWorkflows            int
 	MaxStepsPerWorkflow     int
 	MaxEndpoints            int
@@ -39,6 +40,7 @@ type Quota struct {
 type NewQuotaParams struct {
 	Name                       string
 	MaxProjectMembers     int
+	MaxProjects                int
 	MaxWorkflows               int
 	MaxStepsPerWorkflow        int
 	MaxEndpoints               int
@@ -63,6 +65,7 @@ func NewQuota(p NewQuotaParams) *Quota {
 		ID:                         uuid.New(),
 		Name:                       p.Name,
 		MaxProjectMembers:     p.MaxProjectMembers,
+		MaxProjects:                p.MaxProjects,
 		MaxWorkflows:               p.MaxWorkflows,
 		MaxStepsPerWorkflow:        p.MaxStepsPerWorkflow,
 		MaxEndpoints:               p.MaxEndpoints,
@@ -87,6 +90,7 @@ func NewQuota(p NewQuotaParams) *Quota {
 func (q *Quota) ApplyUpdate(p NewQuotaParams) {
 	q.Name = p.Name
 	q.MaxProjectMembers = p.MaxProjectMembers
+	q.MaxProjects = p.MaxProjects
 	q.MaxWorkflows = p.MaxWorkflows
 	q.MaxStepsPerWorkflow = p.MaxStepsPerWorkflow
 	q.MaxEndpoints = p.MaxEndpoints

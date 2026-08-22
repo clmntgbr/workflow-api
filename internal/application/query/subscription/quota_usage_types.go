@@ -33,6 +33,7 @@ type QuotaLimits struct {
 
 type QuotaUsageView struct {
 	WorkflowRuns   MonthlyQuotaCounter
+	Projects       QuotaCounter
 	Workflows      QuotaCounter
 	Endpoints      QuotaCounter
 	Members        QuotaCounter

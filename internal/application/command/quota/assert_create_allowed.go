@@ -18,6 +18,7 @@ var (
 	ErrStepQuotaExceeded        = errors.New("step quota exceeded for your current plan")
 	ErrWorkflowRunQuotaExceeded = errors.New("workflow run quota exceeded for your current plan")
 	ErrConcurrentRunQuotaExceeded = errors.New("concurrent run quota exceeded for your current plan")
+	ErrProjectQuotaExceeded     = errors.New("project quota exceeded for your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
@@ -39,6 +40,31 @@ func NewAssertCreateAllowedHandler(
 		projectReadRepo:   projectReadRepo,
 		userReadRepo:  userReadRepo,
 	}
+}
+
+func (h *AssertCreateAllowedHandler) AssertProjectCreate(
+	ctx context.Context,
+	userID uuid.UUID,
+) error {
+	projects, err := h.projectReadRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		return errors.New("failed to count projects")
+	}
+	if len(projects) == 0 {
+		return nil
+	}
+
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projects[0].ID,
+	})
+	if err != nil {
+		return err
+	}
+	if usage.Projects.Left <= 0 {
+		return ErrProjectQuotaExceeded
+	}
+	return nil
 }
 
 func (h *AssertCreateAllowedHandler) AssertWorkflowCreate(

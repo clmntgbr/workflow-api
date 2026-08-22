@@ -15,6 +15,7 @@ type quotaRow struct {
 	ID                         uuid.UUID
 	Name                       string
 	MaxProjectMembers     int
+	MaxProjects                int
 	MaxWorkflows               int
 	MaxStepsPerWorkflow        int
 	MaxEndpoints               int
@@ -79,6 +80,7 @@ func toQuotaView(row quotaRow) domainquota.QuotaView {
 		ID:                         row.ID,
 		Name:                       row.Name,
 		MaxProjectMembers:     row.MaxProjectMembers,
+		MaxProjects:                row.MaxProjects,
 		MaxWorkflows:               row.MaxWorkflows,
 		MaxStepsPerWorkflow:        row.MaxStepsPerWorkflow,
 		MaxEndpoints:               row.MaxEndpoints,

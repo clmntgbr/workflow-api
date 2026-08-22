@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS quotas (
     name VARCHAR(255) NOT NULL,
 
     max_project_members INTEGER NOT NULL DEFAULT 0,
+    max_projects INTEGER NOT NULL DEFAULT 1,
     max_workflows INTEGER NOT NULL DEFAULT 0,
     max_steps_per_workflow INTEGER NOT NULL DEFAULT 0,
     max_endpoints INTEGER NOT NULL DEFAULT 0,

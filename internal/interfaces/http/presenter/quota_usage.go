@@ -37,6 +37,7 @@ type QuotaLimitsResponse struct {
 
 type QuotaUsageResponse struct {
 	WorkflowRuns   MonthlyQuotaCounterResponse `json:"workflowRuns"`
+	Projects       QuotaCounterResponse        `json:"projects"`
 	Workflows      QuotaCounterResponse        `json:"workflows"`
 	Endpoints      QuotaCounterResponse        `json:"endpoints"`
 	Members        QuotaCounterResponse        `json:"members"`
@@ -52,6 +53,11 @@ func NewQuotaUsageResponse(usage *querysubscription.QuotaUsageView) QuotaUsageRe
 			Used:        usage.WorkflowRuns.Used,
 			Max:         usage.WorkflowRuns.Max,
 			Left:        usage.WorkflowRuns.Left,
+		},
+		Projects: QuotaCounterResponse{
+			Used: usage.Projects.Used,
+			Max:  usage.Projects.Max,
+			Left: usage.Projects.Left,
 		},
 		Workflows: QuotaCounterResponse{
 			Used: usage.Workflows.Used,

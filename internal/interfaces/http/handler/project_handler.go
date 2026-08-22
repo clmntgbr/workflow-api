@@ -83,6 +83,9 @@ func (h *ProjectHandler) Create(c fiber.Ctx) error {
 		CreatorUserID: user.ID,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create project"})
 	}
 

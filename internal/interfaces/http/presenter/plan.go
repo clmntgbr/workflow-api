@@ -12,6 +12,7 @@ type QuotaResponse struct {
 	Name string `json:"name"`
 
 	MaxProjectMembers  int `json:"maxProjectMembers"`
+	MaxProjects             int `json:"maxProjects"`
 	MaxWorkflows            int `json:"maxWorkflows"`
 	MaxStepsPerWorkflow     int `json:"maxStepsPerWorkflow"`
 	MaxEndpoints            int `json:"maxEndpoints"`
@@ -58,6 +59,7 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 		ID:                         view.ID.String(),
 		Name:                       view.Name,
 		MaxProjectMembers:     view.MaxProjectMembers,
+		MaxProjects:                view.MaxProjects,
 		MaxWorkflows:               view.MaxWorkflows,
 		MaxStepsPerWorkflow:        view.MaxStepsPerWorkflow,
 		MaxEndpoints:               view.MaxEndpoints,

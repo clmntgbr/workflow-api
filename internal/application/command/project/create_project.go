@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	cmdquota "go-api/internal/application/command/quota"
 	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
 	domainuser "go-api/internal/domain/user"
@@ -18,19 +19,22 @@ type CreateProjectCommand struct {
 
 type CreateProjectHandler struct {
 	projectRepo domainproject.ProjectWriteRepository
-	userRepo domainuser.UserWriteRepository
-	outbox   port.OutboxRepository
+	userRepo    domainuser.UserWriteRepository
+	outbox      port.OutboxRepository
+	assert      *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateProjectHandler(
 	projectRepo domainproject.ProjectWriteRepository,
 	userRepo domainuser.UserWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateProjectHandler {
 	return &CreateProjectHandler{
 		projectRepo: projectRepo,
-		userRepo: userRepo,
-		outbox:   outbox,
+		userRepo:    userRepo,
+		outbox:      outbox,
+		assert:      assert,
 	}
 }
 
@@ -43,6 +47,10 @@ func (h *CreateProjectHandler) Handle(
 	}
 	if cmd.CreatorUserID == uuid.Nil {
 		return nil, errors.New("creator user is required")
+	}
+
+	if err := h.assert.AssertProjectCreate(ctx, cmd.CreatorUserID); err != nil {
+		return nil, err
 	}
 
 	org := domainproject.NewProject(cmd.Name, cmd.CreatorUserID)

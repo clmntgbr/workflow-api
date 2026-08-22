@@ -109,7 +109,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	fetchUserHandler := identitycmd.NewFetchUserHandler(infraClerk.NewUserGateway(env.ClerkSecretKey))
 	getUserByIDHandler := queryuser.NewGetUserByIDHandler(userReadRepo)
 
-	createOrgHandler := projectcmd.NewCreateProjectHandler(projectWriteRepo, userWriteRepo, outboxRepo)
 	updateOrgHandler := projectcmd.NewUpdateProjectHandler(projectWriteRepo, outboxRepo)
 	deleteOrgHandler := projectcmd.NewDeleteProjectHandler(projectWriteRepo, outboxRepo)
 	removeOrgMemberHandler := projectcmd.NewRemoveProjectMemberHandler(projectWriteRepo, userWriteRepo, outboxRepo)
@@ -200,6 +199,13 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		stepReadRepo,
 		projectReadRepo,
 		userReadRepo,
+	)
+
+	createOrgHandler := projectcmd.NewCreateProjectHandler(
+		projectWriteRepo,
+		userWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
 	)
 
 	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(

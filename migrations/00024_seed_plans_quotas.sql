@@ -7,6 +7,7 @@ INSERT INTO quotas (
     id,
     name,
     max_project_members,
+    max_projects,
     max_workflows,
     max_steps_per_workflow,
     max_endpoints,
@@ -29,7 +30,7 @@ INSERT INTO quotas (
 (
     '01941f29-7c00-7558-b853-0fef65937505',
     'Free',
-    2, 5, 10, 10, 5,
+    2, 1, 5, 10, 10, 5,
     100, 1, 60, 7,
     15, 1, 128, 128,
     FALSE, FALSE, FALSE, 0,
@@ -39,7 +40,7 @@ INSERT INTO quotas (
 (
     '01941f29-7c01-7ff3-b3eb-d5c787d32ba4',
     'Starter',
-    5, 20, 50, 100, 50,
+    5, 5, 20, 50, 100, 50,
     1000, 2, 30, 30,
     30, 3, 256, 256,
     FALSE, TRUE, FALSE, 2,
@@ -49,7 +50,7 @@ INSERT INTO quotas (
 (
     '01941f29-7c02-798d-b4c6-9d777505cdbc',
     'Pro',
-    10, 50, 100, 200, 100,
+    10, 10, 50, 100, 200, 100,
     5000, 5, 10, 90,
     60, 5, 1024, 1024,
     TRUE, TRUE, TRUE, 5,
@@ -59,7 +60,7 @@ INSERT INTO quotas (
 (
     '01941f29-7c03-7a99-937e-5307a3f91734',
     'Business',
-    50, 100, 200, 500, 200,
+    50, 50, 100, 200, 500, 200,
     50000, 25, 1, 365,
     300, 10, 5120, 5120,
     TRUE, TRUE, TRUE, 10,
