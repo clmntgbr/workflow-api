@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go-api/cmd/scheduler/di"
+	cmdquota "go-api/internal/application/command/quota"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -128,7 +129,9 @@ func processClaimedBatch(
 				ScheduleAlreadyAdvanced: true,
 			})
 			if err != nil {
-				if errors.Is(err, domainworkflowrun.ErrAlreadyInProgress) {
+				if errors.Is(err, domainworkflowrun.ErrAlreadyInProgress) ||
+					errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded) ||
+					errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded) {
 					atomic.AddInt64(skipped, 1)
 					return
 				}

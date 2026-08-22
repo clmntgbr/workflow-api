@@ -7,6 +7,7 @@ import (
 	conncmd "go-api/internal/application/command/connection"
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
+	cmdquota "go-api/internal/application/command/quota"
 	orgcmd "go-api/internal/application/command/organization"
 	subscriptioncmd "go-api/internal/application/command/subscription"
 	stepcmd "go-api/internal/application/command/step"
@@ -116,7 +117,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getOrgByIDHandler := queryorganization.NewGetOrganizationByIDHandler(orgReadRepo)
 	listOrgsByUserHandler := queryorganization.NewListOrganizationsByUserHandler(orgReadRepo)
 
-	createWorkflowHandler := workflowcmd.NewCreateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	updateWorkflowHandler := workflowcmd.NewUpdateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	activateWorkflowHandler := workflowcmd.NewActivateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	deactivateWorkflowHandler := workflowcmd.NewDeactivateWorkflowHandler(workflowWriteRepo, outboxRepo)
@@ -124,12 +124,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
 	listWorkflowsByOrgHandler := queryworkflow.NewListWorkflowsByOrganizationHandler(workflowReadRepo)
 
-	createEndpointHandler := endpointcmd.NewCreateEndpointHandler(endpointWriteRepo, outboxRepo)
-	importEndpointsHandler := endpointcmd.NewImportEndpointsFromOpenAPIHandler(
-		endpointWriteRepo,
-		infraopenapi.NewParser(),
-		outboxRepo,
-	)
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	deleteEndpointHandler := endpointcmd.NewDeleteEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
@@ -151,14 +145,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	)
 	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
-	createStepHandler := stepcmd.NewCreateStepHandler(
-		stepWriteRepo,
-		stepReadRepo,
-		connReadRepo,
-		endpointReadRepo,
-		workflowReadRepo,
-		outboxRepo,
-	)
 	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
@@ -185,18 +171,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listAvailableVariablesHandler := queryvariable.NewListAvailableVariablesHandler(variableReadRepo, connReadRepo)
 	searchVariablePathsHandler := queryvariable.NewSearchVariablePathsHandler(stepRunReadRepo)
 
-	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(
-		workflowWriteRepo,
-		workflowRunWriteRepo,
-		variableReadRepo,
-		outboxRepo,
-	)
-	cancelWorkflowRunHandler := workflowruncmd.NewCancelWorkflowRunHandler(
-		workflowWriteRepo,
-		workflowRunWriteRepo,
-		stepRunWriteRepo,
-		outboxRepo,
-	)
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
 	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo)
 	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
@@ -222,6 +196,52 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		endpointReadRepo,
 		workflowRunReadRepo,
 	)
+	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
+		getQuotaUsageHandler,
+		stepReadRepo,
+		orgReadRepo,
+		userReadRepo,
+	)
+
+	startWorkflowRunHandler := workflowruncmd.NewStartWorkflowRunHandler(
+		workflowWriteRepo,
+		workflowRunWriteRepo,
+		variableReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	cancelWorkflowRunHandler := workflowruncmd.NewCancelWorkflowRunHandler(
+		workflowWriteRepo,
+		workflowRunWriteRepo,
+		stepRunWriteRepo,
+		outboxRepo,
+	)
+	createWorkflowHandler := workflowcmd.NewCreateWorkflowHandler(
+		workflowWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	createEndpointHandler := endpointcmd.NewCreateEndpointHandler(
+		endpointWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	importEndpointsHandler := endpointcmd.NewImportEndpointsFromOpenAPIHandler(
+		endpointWriteRepo,
+		infraopenapi.NewParser(),
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	createStepHandler := stepcmd.NewCreateStepHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
+		endpointReadRepo,
+		workflowReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+
 	previewPlanChangeHandler := querysubscription.NewPreviewPlanChangeHandler(
 		userReadRepo,
 		planReadRepo,

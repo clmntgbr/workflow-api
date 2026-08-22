@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -12,6 +13,7 @@ import (
 )
 
 type CreateWorkflowCommand struct {
+	UserID                uuid.UUID
 	Name                  string
 	Description           string
 	OrganizationID        uuid.UUID
@@ -30,13 +32,15 @@ type CreateWorkflowCommand struct {
 type CreateWorkflowHandler struct {
 	repo   domainworkflow.WorkflowWriteRepository
 	outbox port.OutboxRepository
+	assert *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateWorkflowHandler(
 	repo domainworkflow.WorkflowWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateWorkflowHandler {
-	return &CreateWorkflowHandler{repo: repo, outbox: outbox}
+	return &CreateWorkflowHandler{repo: repo, outbox: outbox, assert: assert}
 }
 
 func (h *CreateWorkflowHandler) Handle(
@@ -48,6 +52,13 @@ func (h *CreateWorkflowHandler) Handle(
 	}
 	if cmd.OrganizationID == uuid.Nil {
 		return nil, errors.New("organizationId is required")
+	}
+	if cmd.UserID == uuid.Nil {
+		return nil, errors.New("userId is required")
+	}
+
+	if err := h.assert.AssertWorkflowCreate(ctx, cmd.UserID, cmd.OrganizationID); err != nil {
+		return nil, err
 	}
 
 	w, err := domainworkflow.NewWorkflow(domainworkflow.NewWorkflowParams{

@@ -3,6 +3,7 @@ package step
 import (
 	"context"
 	"errors"
+	cmdquota "go-api/internal/application/command/quota"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/port"
@@ -14,6 +15,7 @@ import (
 )
 
 type CreateStepCommand struct {
+	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
 	OrganizationID uuid.UUID
@@ -27,6 +29,7 @@ type CreateStepHandler struct {
 	endpointRepo domainendpoint.EndpointReadRepository
 	workflowRepo domainworkflow.WorkflowReadRepository
 	outbox       port.OutboxRepository
+	assert       *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateStepHandler(
@@ -36,6 +39,7 @@ func NewCreateStepHandler(
 	endpointRepo domainendpoint.EndpointReadRepository,
 	workflowRepo domainworkflow.WorkflowReadRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateStepHandler {
 	return &CreateStepHandler{
 		stepRepo:     stepRepo,
@@ -44,6 +48,7 @@ func NewCreateStepHandler(
 		endpointRepo: endpointRepo,
 		workflowRepo: workflowRepo,
 		outbox:       outbox,
+		assert:       assert,
 	}
 }
 
@@ -59,6 +64,9 @@ func (h *CreateStepHandler) Handle(
 	}
 	if cmd.OrganizationID == uuid.Nil {
 		return nil, errors.New("organizationId is required")
+	}
+	if cmd.UserID == uuid.Nil {
+		return nil, errors.New("userId is required")
 	}
 	workflow, err := h.workflowRepo.FindByID(ctx, cmd.WorkflowID)
 	if err != nil {
@@ -80,6 +88,10 @@ func (h *CreateStepHandler) Handle(
 	}
 	if endpoint.OrganizationID != cmd.OrganizationID {
 		return nil, errors.New("endpoint not found")
+	}
+
+	if err := h.assert.AssertStepCreate(ctx, cmd.UserID, cmd.OrganizationID, cmd.WorkflowID); err != nil {
+		return nil, err
 	}
 
 	now := domainstep.PositionedStep{

@@ -48,6 +48,11 @@ func NewEndpointHandler(
 }
 
 func (h *EndpointHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
@@ -85,6 +90,7 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 	}
 
 	e, err := h.createHandler.Handle(c.Context(), endpointcmd.CreateEndpointCommand{
+		UserID:         user.ID,
 		Name:           req.Name,
 		Description:    req.Description,
 		URL:            req.URL,
@@ -99,6 +105,9 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		OrganizationID: orgID,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create endpoint"})
 	}
 
@@ -108,6 +117,11 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 const maxOpenAPIImportFileSize = 8 << 20
 
 func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
@@ -169,6 +183,7 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 	}
 
 	created, err := h.importHandler.Handle(c.Context(), endpointcmd.ImportEndpointsFromOpenAPICommand{
+		UserID:         user.ID,
 		Spec:           spec,
 		BaseURL:        req.BaseURL,
 		Status:         status,
@@ -182,6 +197,9 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 		OrganizationID: orgID,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if errors.Is(err, domainendpoint.ErrInvalidOpenAPI) ||
 			errors.Is(err, domainendpoint.ErrNoOperations) ||
 			errors.Is(err, domainendpoint.ErrTooManyOperations) ||

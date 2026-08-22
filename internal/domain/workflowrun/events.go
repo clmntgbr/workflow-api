@@ -77,4 +77,7 @@ func (e WorkflowRunScheduledSkipped) EventType() string     { return EventTypeWo
 func (e WorkflowRunScheduledSkipped) AggregateID() string   { return e.WorkflowID }
 func (e WorkflowRunScheduledSkipped) OccurredAt() time.Time { return e.Timestamp }
 
-const ScheduledSkipReasonAlreadyInProgress = "already_in_progress"
+const (
+	ScheduledSkipReasonAlreadyInProgress = "already_in_progress"
+	ScheduledSkipReasonQuotaExceeded     = "quota_exceeded"
+)

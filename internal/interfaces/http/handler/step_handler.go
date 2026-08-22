@@ -52,6 +52,11 @@ func NewStepHandler(
 }
 
 func (h *StepHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
@@ -76,6 +81,7 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 	}
 
 	s, err := h.createHandler.Handle(c.Context(), stepcmd.CreateStepCommand{
+		UserID:         user.ID,
 		WorkflowID:     workflowID,
 		EndpointID:     endpointID,
 		OrganizationID: orgID,
@@ -85,6 +91,9 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 		},
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		switch err.Error() {
 		case "workflow not found", "endpoint not found":
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": err.Error()})

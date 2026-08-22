@@ -52,6 +52,11 @@ func NewWorkflowHandler(
 }
 
 func (h *WorkflowHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveOrganizationID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active organization is required"})
@@ -68,6 +73,7 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 	}
 
 	w, err := h.createHandler.Handle(c.Context(), workflowcmd.CreateWorkflowCommand{
+		UserID:                user.ID,
 		Name:                  req.Name,
 		Description:           req.Description,
 		OrganizationID:        orgID,
@@ -83,6 +89,9 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 		NotifyOnCancel:        boolOrDefault(req.NotifyOnCancel, true),
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if status, message := scheduleError(err); status != 0 {
 			return c.Status(status).JSON(fiber.Map{"message": message})
 		}

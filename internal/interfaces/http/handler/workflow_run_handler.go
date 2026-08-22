@@ -244,6 +244,9 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 				"message": "A workflow run is already in progress",
 			})
 		}
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to start workflow run"})
 	}
 

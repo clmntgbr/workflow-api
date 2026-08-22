@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	cmdquota "go-api/internal/application/command/quota"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
@@ -12,6 +13,7 @@ import (
 )
 
 type CreateEndpointCommand struct {
+	UserID         uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -29,13 +31,15 @@ type CreateEndpointCommand struct {
 type CreateEndpointHandler struct {
 	repo   domainendpoint.EndpointWriteRepository
 	outbox port.OutboxRepository
+	assert *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateEndpointHandler(
 	repo domainendpoint.EndpointWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateEndpointHandler {
-	return &CreateEndpointHandler{repo: repo, outbox: outbox}
+	return &CreateEndpointHandler{repo: repo, outbox: outbox, assert: assert}
 }
 
 func (h *CreateEndpointHandler) Handle(
@@ -53,6 +57,13 @@ func (h *CreateEndpointHandler) Handle(
 	}
 	if cmd.OrganizationID == uuid.Nil {
 		return nil, errors.New("organizationId is required")
+	}
+	if cmd.UserID == uuid.Nil {
+		return nil, errors.New("userId is required")
+	}
+
+	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.OrganizationID, 1); err != nil {
+		return nil, err
 	}
 
 	e := domainendpoint.NewEndpoint(domainendpoint.NewEndpointParams{

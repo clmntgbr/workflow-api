@@ -13,6 +13,8 @@ import (
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 
+	cmdquota "go-api/internal/application/command/quota"
+
 	"github.com/google/uuid"
 )
 
@@ -25,6 +27,7 @@ const (
 )
 
 type ImportEndpointsFromOpenAPICommand struct {
+	UserID         uuid.UUID
 	Spec           []byte
 	BaseURL        string
 	Status         domainendpoint.Status
@@ -42,17 +45,20 @@ type ImportEndpointsFromOpenAPIHandler struct {
 	repo   domainendpoint.EndpointWriteRepository
 	parser port.OpenAPISpecParser
 	outbox port.OutboxRepository
+	assert *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewImportEndpointsFromOpenAPIHandler(
 	repo domainendpoint.EndpointWriteRepository,
 	parser port.OpenAPISpecParser,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *ImportEndpointsFromOpenAPIHandler {
 	return &ImportEndpointsFromOpenAPIHandler{
 		repo:   repo,
 		parser: parser,
 		outbox: outbox,
+		assert: assert,
 	}
 }
 
@@ -62,6 +68,9 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 ) ([]domainendpoint.Endpoint, error) {
 	if cmd.OrganizationID == uuid.Nil {
 		return nil, errors.New("organizationId is required")
+	}
+	if cmd.UserID == uuid.Nil {
+		return nil, errors.New("userId is required")
 	}
 	if strings.TrimSpace(cmd.BaseURL) == "" {
 		return nil, errors.New("baseUrl is required")
@@ -110,6 +119,10 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 	}
 	if len(prepared) == 0 {
 		return nil, domainendpoint.ErrNoOperations
+	}
+
+	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.OrganizationID, len(prepared)); err != nil {
+		return nil, err
 	}
 
 	created := make([]domainendpoint.Endpoint, 0, len(prepared))

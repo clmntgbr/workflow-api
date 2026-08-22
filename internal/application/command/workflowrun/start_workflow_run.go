@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainvariable "go-api/internal/domain/variable"
@@ -29,6 +30,7 @@ type StartWorkflowRunHandler struct {
 	runRepo      domainworkflowrun.WorkflowRunWriteRepository
 	variableRead domainvariable.VariableReadRepository
 	outbox       port.OutboxRepository
+	assert       *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewStartWorkflowRunHandler(
@@ -36,12 +38,14 @@ func NewStartWorkflowRunHandler(
 	runRepo domainworkflowrun.WorkflowRunWriteRepository,
 	variableRead domainvariable.VariableReadRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *StartWorkflowRunHandler {
 	return &StartWorkflowRunHandler{
 		workflowRepo: workflowRepo,
 		runRepo:      runRepo,
 		variableRead: variableRead,
 		outbox:       outbox,
+		assert:       assert,
 	}
 }
 
@@ -70,11 +74,36 @@ func (h *StartWorkflowRunHandler) Handle(
 	}
 	if inProgress {
 		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
-			if err := h.recordScheduledSkip(ctx, workflow, cmd.ScheduleAlreadyAdvanced); err != nil {
+			if err := h.recordScheduledSkip(
+				ctx,
+				workflow,
+				cmd.ScheduleAlreadyAdvanced,
+				domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+			); err != nil {
 				return nil, errors.New("failed to start workflow run")
 			}
 		}
 		return nil, domainworkflowrun.ErrAlreadyInProgress
+	}
+
+	if err := h.assert.AssertWorkflowRunStart(
+		ctx,
+		workflow.OrganizationID,
+		cmd.TriggeredByUserID,
+		1,
+	); err != nil {
+		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule && isQuotaExceeded(err) {
+			if skipErr := h.recordScheduledSkip(
+				ctx,
+				workflow,
+				cmd.ScheduleAlreadyAdvanced,
+				domainworkflowrun.ScheduledSkipReasonQuotaExceeded,
+			); skipErr != nil {
+				return nil, errors.New("failed to start workflow run")
+			}
+			return nil, err
+		}
+		return nil, err
 	}
 
 	variables, err := h.variableRead.FindByWorkflowID(ctx, cmd.WorkflowID)
@@ -105,7 +134,12 @@ func (h *StartWorkflowRunHandler) Handle(
 	if err != nil {
 		if isUniqueViolation(err) {
 			if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
-				if skipErr := h.recordScheduledSkip(ctx, workflow, cmd.ScheduleAlreadyAdvanced); skipErr != nil {
+				if skipErr := h.recordScheduledSkip(
+					ctx,
+					workflow,
+					cmd.ScheduleAlreadyAdvanced,
+					domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+				); skipErr != nil {
 					return nil, errors.New("failed to start workflow run")
 				}
 			}
@@ -117,16 +151,22 @@ func (h *StartWorkflowRunHandler) Handle(
 	return run, nil
 }
 
+func isQuotaExceeded(err error) bool {
+	return errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded) ||
+		errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded)
+}
+
 func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	ctx context.Context,
 	workflow *domainworkflow.Workflow,
 	scheduleAlreadyAdvanced bool,
+	reason string,
 ) error {
 	now := time.Now().UTC()
 	skipped := domainworkflowrun.WorkflowRunScheduledSkipped{
 		ID:         uuid.New().String(),
 		WorkflowID: workflow.ID.String(),
-		Reason:     domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+		Reason:     reason,
 		Timestamp:  now,
 	}
 
