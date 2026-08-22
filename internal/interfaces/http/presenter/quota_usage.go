@@ -6,30 +6,21 @@ import (
 	querysubscription "go-api/internal/application/query/subscription"
 )
 
-type QuotaUsageResponse struct {
+type MonthlyQuotaCounterResponse struct {
 	PeriodStart time.Time `json:"periodStart"`
 	PeriodEnd   time.Time `json:"periodEnd"`
+	Used        int64     `json:"used"`
+	Max         int       `json:"max"`
+	Left        int64     `json:"left"`
+}
 
-	WorkflowRunsUsed int64 `json:"workflowRunsUsed"`
-	WorkflowRunsMax  int   `json:"workflowRunsMax"`
-	WorkflowRunsLeft int64 `json:"workflowRunsLeft"`
+type QuotaCounterResponse struct {
+	Used int64 `json:"used"`
+	Max  int   `json:"max"`
+	Left int64 `json:"left"`
+}
 
-	WorkflowsUsed int64 `json:"workflowsUsed"`
-	WorkflowsMax  int   `json:"workflowsMax"`
-	WorkflowsLeft int64 `json:"workflowsLeft"`
-
-	EndpointsUsed int64 `json:"endpointsUsed"`
-	EndpointsMax  int   `json:"endpointsMax"`
-	EndpointsLeft int64 `json:"endpointsLeft"`
-
-	MembersUsed int64 `json:"membersUsed"`
-	MembersMax  int   `json:"membersMax"`
-	MembersLeft int64 `json:"membersLeft"`
-
-	ConcurrentRunsUsed int64 `json:"concurrentRunsUsed"`
-	ConcurrentRunsMax  int   `json:"concurrentRunsMax"`
-	ConcurrentRunsLeft int64 `json:"concurrentRunsLeft"`
-
+type QuotaLimitsResponse struct {
 	MaxStepsPerWorkflow        int  `json:"maxStepsPerWorkflow"`
 	MaxVariablesPerWorkflow    int  `json:"maxVariablesPerWorkflow"`
 	MinScheduleIntervalMinutes int  `json:"minScheduleIntervalMinutes"`
@@ -44,42 +35,57 @@ type QuotaUsageResponse struct {
 	ExecutorPriority           int  `json:"executorPriority"`
 }
 
+type QuotaUsageResponse struct {
+	WorkflowRuns   MonthlyQuotaCounterResponse `json:"workflowRuns"`
+	Workflows      QuotaCounterResponse        `json:"workflows"`
+	Endpoints      QuotaCounterResponse        `json:"endpoints"`
+	Members        QuotaCounterResponse        `json:"members"`
+	ConcurrentRuns QuotaCounterResponse        `json:"concurrentRuns"`
+	Limits         QuotaLimitsResponse         `json:"limits"`
+}
+
 func NewQuotaUsageResponse(usage *querysubscription.QuotaUsageView) QuotaUsageResponse {
 	return QuotaUsageResponse{
-		PeriodStart: usage.PeriodStart,
-		PeriodEnd:   usage.PeriodEnd,
-
-		WorkflowRunsUsed: usage.WorkflowRunsUsed,
-		WorkflowRunsMax:  usage.WorkflowRunsMax,
-		WorkflowRunsLeft: usage.WorkflowRunsLeft,
-
-		WorkflowsUsed: usage.WorkflowsUsed,
-		WorkflowsMax:  usage.WorkflowsMax,
-		WorkflowsLeft: usage.WorkflowsLeft,
-
-		EndpointsUsed: usage.EndpointsUsed,
-		EndpointsMax:  usage.EndpointsMax,
-		EndpointsLeft: usage.EndpointsLeft,
-
-		MembersUsed: usage.MembersUsed,
-		MembersMax:  usage.MembersMax,
-		MembersLeft: usage.MembersLeft,
-
-		ConcurrentRunsUsed: usage.ConcurrentRunsUsed,
-		ConcurrentRunsMax:  usage.ConcurrentRunsMax,
-		ConcurrentRunsLeft: usage.ConcurrentRunsLeft,
-
-		MaxStepsPerWorkflow:        usage.MaxStepsPerWorkflow,
-		MaxVariablesPerWorkflow:    usage.MaxVariablesPerWorkflow,
-		MinScheduleIntervalMinutes: usage.MinScheduleIntervalMinutes,
-		RunHistoryRetentionDays:    usage.RunHistoryRetentionDays,
-		MaxStepTimeoutSeconds:      usage.MaxStepTimeoutSeconds,
-		MaxRetryCountPerStep:       usage.MaxRetryCountPerStep,
-		MaxRequestBodySizeKB:       usage.MaxRequestBodySizeKB,
-		MaxResponseBodySizeKB:      usage.MaxResponseBodySizeKB,
-		AllowsOpenAPIImport:        usage.AllowsOpenAPIImport,
-		AllowsInsights:             usage.AllowsInsights,
-		AllowsDataExport:           usage.AllowsDataExport,
-		ExecutorPriority:           usage.ExecutorPriority,
+		WorkflowRuns: MonthlyQuotaCounterResponse{
+			PeriodStart: usage.WorkflowRuns.PeriodStart,
+			PeriodEnd:   usage.WorkflowRuns.PeriodEnd,
+			Used:        usage.WorkflowRuns.Used,
+			Max:         usage.WorkflowRuns.Max,
+			Left:        usage.WorkflowRuns.Left,
+		},
+		Workflows: QuotaCounterResponse{
+			Used: usage.Workflows.Used,
+			Max:  usage.Workflows.Max,
+			Left: usage.Workflows.Left,
+		},
+		Endpoints: QuotaCounterResponse{
+			Used: usage.Endpoints.Used,
+			Max:  usage.Endpoints.Max,
+			Left: usage.Endpoints.Left,
+		},
+		Members: QuotaCounterResponse{
+			Used: usage.Members.Used,
+			Max:  usage.Members.Max,
+			Left: usage.Members.Left,
+		},
+		ConcurrentRuns: QuotaCounterResponse{
+			Used: usage.ConcurrentRuns.Used,
+			Max:  usage.ConcurrentRuns.Max,
+			Left: usage.ConcurrentRuns.Left,
+		},
+		Limits: QuotaLimitsResponse{
+			MaxStepsPerWorkflow:        usage.Limits.MaxStepsPerWorkflow,
+			MaxVariablesPerWorkflow:    usage.Limits.MaxVariablesPerWorkflow,
+			MinScheduleIntervalMinutes: usage.Limits.MinScheduleIntervalMinutes,
+			RunHistoryRetentionDays:    usage.Limits.RunHistoryRetentionDays,
+			MaxStepTimeoutSeconds:      usage.Limits.MaxStepTimeoutSeconds,
+			MaxRetryCountPerStep:       usage.Limits.MaxRetryCountPerStep,
+			MaxRequestBodySizeKB:       usage.Limits.MaxRequestBodySizeKB,
+			MaxResponseBodySizeKB:      usage.Limits.MaxResponseBodySizeKB,
+			AllowsOpenAPIImport:        usage.Limits.AllowsOpenAPIImport,
+			AllowsInsights:             usage.Limits.AllowsInsights,
+			AllowsDataExport:           usage.Limits.AllowsDataExport,
+			ExecutorPriority:           usage.Limits.ExecutorPriority,
+		},
 	}
 }

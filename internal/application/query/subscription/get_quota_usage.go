@@ -23,44 +23,6 @@ type GetQuotaUsageQuery struct {
 	OrganizationID uuid.UUID
 }
 
-type QuotaUsageView struct {
-	PeriodStart time.Time
-	PeriodEnd   time.Time
-
-	WorkflowRunsUsed int64
-	WorkflowRunsMax  int
-	WorkflowRunsLeft int64
-
-	WorkflowsUsed int64
-	WorkflowsMax  int
-	WorkflowsLeft int64
-
-	EndpointsUsed int64
-	EndpointsMax  int
-	EndpointsLeft int64
-
-	MembersUsed int64
-	MembersMax  int
-	MembersLeft int64
-
-	ConcurrentRunsUsed int64
-	ConcurrentRunsMax  int
-	ConcurrentRunsLeft int64
-
-	MaxStepsPerWorkflow        int
-	MaxVariablesPerWorkflow    int
-	MinScheduleIntervalMinutes int
-	RunHistoryRetentionDays    int
-	MaxStepTimeoutSeconds      int
-	MaxRetryCountPerStep       int
-	MaxRequestBodySizeKB       int
-	MaxResponseBodySizeKB      int
-	AllowsOpenAPIImport        bool
-	AllowsInsights             bool
-	AllowsDataExport           bool
-	ExecutorPriority           int
-}
-
 type GetQuotaUsageHandler struct {
 	userRepo         domainuser.UserReadRepository
 	subscriptionRepo domainsubscription.SubscriptionReadRepository
@@ -163,41 +125,47 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 	concurrentUsed := concurrentStats.RunningCount + concurrentStats.PendingCount
 
 	return &QuotaUsageView{
-		PeriodStart: periodStart,
-		PeriodEnd:   periodEnd,
-
-		WorkflowRunsUsed: runStats.TotalRuns,
-		WorkflowRunsMax:  quota.MaxWorkflowRunsPerMonth,
-		WorkflowRunsLeft: quotaLeft(quota.MaxWorkflowRunsPerMonth, runStats.TotalRuns),
-
-		WorkflowsUsed: workflowsTotal,
-		WorkflowsMax:  quota.MaxWorkflows,
-		WorkflowsLeft: quotaLeft(quota.MaxWorkflows, workflowsTotal),
-
-		EndpointsUsed: endpointsTotal,
-		EndpointsMax:  quota.MaxEndpoints,
-		EndpointsLeft: quotaLeft(quota.MaxEndpoints, endpointsTotal),
-
-		MembersUsed: membersUsed,
-		MembersMax:  quota.MaxOrganizationMembers,
-		MembersLeft: quotaLeft(quota.MaxOrganizationMembers, membersUsed),
-
-		ConcurrentRunsUsed: concurrentUsed,
-		ConcurrentRunsMax:  quota.MaxConcurrentRuns,
-		ConcurrentRunsLeft: quotaLeft(quota.MaxConcurrentRuns, concurrentUsed),
-
-		MaxStepsPerWorkflow:        quota.MaxStepsPerWorkflow,
-		MaxVariablesPerWorkflow:    quota.MaxVariablesPerWorkflow,
-		MinScheduleIntervalMinutes: quota.MinScheduleIntervalMinutes,
-		RunHistoryRetentionDays:    quota.RunHistoryRetentionDays,
-		MaxStepTimeoutSeconds:      quota.MaxStepTimeoutSeconds,
-		MaxRetryCountPerStep:       quota.MaxRetryCountPerStep,
-		MaxRequestBodySizeKB:       quota.MaxRequestBodySizeKB,
-		MaxResponseBodySizeKB:      quota.MaxResponseBodySizeKB,
-		AllowsOpenAPIImport:        quota.AllowsOpenAPIImport,
-		AllowsInsights:             quota.AllowsInsights,
-		AllowsDataExport:           quota.AllowsDataExport,
-		ExecutorPriority:           quota.ExecutorPriority,
+		WorkflowRuns: MonthlyQuotaCounter{
+			PeriodStart: periodStart,
+			PeriodEnd:   periodEnd,
+			Used:        runStats.TotalRuns,
+			Max:         quota.MaxWorkflowRunsPerMonth,
+			Left:        quotaLeft(quota.MaxWorkflowRunsPerMonth, runStats.TotalRuns),
+		},
+		Workflows: QuotaCounter{
+			Used: workflowsTotal,
+			Max:  quota.MaxWorkflows,
+			Left: quotaLeft(quota.MaxWorkflows, workflowsTotal),
+		},
+		Endpoints: QuotaCounter{
+			Used: endpointsTotal,
+			Max:  quota.MaxEndpoints,
+			Left: quotaLeft(quota.MaxEndpoints, endpointsTotal),
+		},
+		Members: QuotaCounter{
+			Used: membersUsed,
+			Max:  quota.MaxOrganizationMembers,
+			Left: quotaLeft(quota.MaxOrganizationMembers, membersUsed),
+		},
+		ConcurrentRuns: QuotaCounter{
+			Used: concurrentUsed,
+			Max:  quota.MaxConcurrentRuns,
+			Left: quotaLeft(quota.MaxConcurrentRuns, concurrentUsed),
+		},
+		Limits: QuotaLimits{
+			MaxStepsPerWorkflow:        quota.MaxStepsPerWorkflow,
+			MaxVariablesPerWorkflow:    quota.MaxVariablesPerWorkflow,
+			MinScheduleIntervalMinutes: quota.MinScheduleIntervalMinutes,
+			RunHistoryRetentionDays:    quota.RunHistoryRetentionDays,
+			MaxStepTimeoutSeconds:      quota.MaxStepTimeoutSeconds,
+			MaxRetryCountPerStep:       quota.MaxRetryCountPerStep,
+			MaxRequestBodySizeKB:       quota.MaxRequestBodySizeKB,
+			MaxResponseBodySizeKB:      quota.MaxResponseBodySizeKB,
+			AllowsOpenAPIImport:        quota.AllowsOpenAPIImport,
+			AllowsInsights:             quota.AllowsInsights,
+			AllowsDataExport:           quota.AllowsDataExport,
+			ExecutorPriority:           quota.ExecutorPriority,
+		},
 	}, nil
 }
 
