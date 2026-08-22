@@ -51,10 +51,10 @@ func (h *CreateBillingPortalHandler) Handle(ctx context.Context, cmd CreateBilli
 	if subscriptionView == nil {
 		return "", querysubscription.ErrSubscriptionNotFound
 	}
-	if subscriptionView.Plan != nil && subscriptionView.Plan.Slug == plan.FreePlanSlug {
-		return "", ErrFreePlanBillingPortal
-	}
 	if subscriptionView.StripeCustomerID == "" {
+		if subscriptionView.Plan != nil && subscriptionView.Plan.Slug == plan.FreePlanSlug {
+			return "", ErrFreePlanBillingPortal
+		}
 		return "", ErrMissingStripeCustomer
 	}
 
