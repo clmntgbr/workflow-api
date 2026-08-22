@@ -112,53 +112,6 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	return views, total, nil
 }
 
-func (r *workflowRunReadRepository) FindByProjectID(
-	ctx context.Context,
-	projectID uuid.UUID,
-	query paginate.PaginateQuery,
-) ([]domainworkflowrun.WorkflowRunView, int64, error) {
-	query.Normalize()
-	if query.SortBy == "" {
-		query.SortBy = "workflow_runs.created_at"
-	}
-	if query.OrderBy != paginate.OrderByAsc {
-		query.OrderBy = paginate.OrderByDesc
-	}
-
-	db := r.db.WithContext(ctx).
-		Table("workflow_runs").
-		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.project_id = ?", projectID)
-
-	db, total, err := Paginate(db, query)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var rows []workflowRunRow
-	err = db.
-		Select(
-			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, " +
-				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, " +
-				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, " +
-				"workflow_runs.created_at, workflow_runs.updated_at",
-		).
-		Find(&rows).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	views := make([]domainworkflowrun.WorkflowRunView, 0, len(rows))
-	for _, row := range rows {
-		view, err := toWorkflowRunView(row)
-		if err != nil {
-			return nil, 0, err
-		}
-		views = append(views, *view)
-	}
-	return views, total, nil
-}
-
 func (r *workflowRunReadRepository) FindAnalyticsByProject(
 	ctx context.Context,
 	projectID uuid.UUID,

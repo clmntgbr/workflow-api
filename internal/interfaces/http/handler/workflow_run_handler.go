@@ -26,16 +26,15 @@ import (
 )
 
 type WorkflowRunHandler struct {
-	startHandler       *workflowruncmd.StartWorkflowRunHandler
-	cancelHandler      *workflowruncmd.CancelWorkflowRunHandler
-	getByIDHandler     *queryworkflowrun.GetWorkflowRunByIDHandler
-	analyticsHandler   *queryworkflowrun.GetWorkflowRunAnalyticsHandler
-	listByWorkflow     *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
-	listByProject *queryworkflowrun.ListWorkflowRunsByProjectHandler
-	listStepRuns       *querysteprun.ListStepRunsByWorkflowRunHandler
-	listStepRunsByIDs  *querysteprun.ListStepRunsByWorkflowRunIDsHandler
-	listInsightsByIDs  *queryinsight.ListInsightsByStepRunIDsHandler
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	startHandler        *workflowruncmd.StartWorkflowRunHandler
+	cancelHandler       *workflowruncmd.CancelWorkflowRunHandler
+	getByIDHandler      *queryworkflowrun.GetWorkflowRunByIDHandler
+	analyticsHandler    *queryworkflowrun.GetWorkflowRunAnalyticsHandler
+	listByWorkflow      *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
+	listStepRuns        *querysteprun.ListStepRunsByWorkflowRunHandler
+	listStepRunsByIDs   *querysteprun.ListStepRunsByWorkflowRunIDsHandler
+	listInsightsByIDs   *queryinsight.ListInsightsByStepRunIDsHandler
+	getWorkflowHandler  *queryworkflow.GetWorkflowByIDHandler
 	listStepsByWorkflow *querystep.ListStepsByWorkflowHandler
 }
 
@@ -45,7 +44,6 @@ func NewWorkflowRunHandler(
 	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
 	analyticsHandler *queryworkflowrun.GetWorkflowRunAnalyticsHandler,
 	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
-	listByProject *queryworkflowrun.ListWorkflowRunsByProjectHandler,
 	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
 	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
 	listInsightsByIDs *queryinsight.ListInsightsByStepRunIDsHandler,
@@ -58,7 +56,6 @@ func NewWorkflowRunHandler(
 		getByIDHandler:      getByIDHandler,
 		analyticsHandler:    analyticsHandler,
 		listByWorkflow:      listByWorkflow,
-		listByProject:  listByProject,
 		listStepRuns:        listStepRuns,
 		listStepRunsByIDs:   listStepRunsByIDs,
 		listInsightsByIDs:   listInsightsByIDs,
@@ -73,6 +70,22 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: workflowID})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
+	}
+	if workflow.ProjectID != orgID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+	}
+
 	var query dto.WorkflowRunAnalyticsQuery
 	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -82,25 +95,6 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 	}
 	if err := validation.Struct(c, &query); err != nil {
 		return err
-	}
-
-	var workflowID *uuid.UUID
-	if query.WorkflowID != "" {
-		parsed, err := uuid.Parse(query.WorkflowID)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
-		}
-		workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: parsed})
-		if err != nil {
-			if err.Error() == "workflow not found" {
-				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-			}
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
-		}
-		if workflow.ProjectID != orgID {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-		}
-		workflowID = &parsed
 	}
 
 	from, err := parseRFC3339Nullable(query.From)
@@ -113,10 +107,10 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 	}
 
 	stats, err := h.analyticsHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunAnalyticsQuery{
-		ProjectID: orgID,
-		WorkflowID:     workflowID,
-		From:           from,
-		To:             to,
+		ProjectID:  orgID,
+		WorkflowID: workflowID,
+		From:       from,
+		To:         to,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "from must be before to") {
@@ -369,126 +363,6 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 	}
 	if view.WorkflowID != workflowID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
-	}
-
-	stepRuns, err := h.listStepRuns.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunQuery{
-		WorkflowRunID: view.ID,
-	})
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
-	}
-
-	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
-	}
-
-	stepsByID, err := h.loadStepsByWorkflow(c, view.WorkflowID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list steps"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowRunDetailResponseFromViewWithRelations(
-		*view,
-		workflow,
-		stepRuns,
-		stepsByID,
-		insightsByStepRunID,
-	))
-}
-
-func (h *WorkflowRunHandler) List(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveProjectID(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
-	}
-
-	var query paginate.PaginateQuery
-	if err := c.Bind().Query(&query); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid query parameters",
-			"errors":  err.Error(),
-		})
-	}
-
-	orderBy := query.OrderBy
-	sortBy := query.SortBy
-	query.Normalize()
-	if sortBy == "" {
-		query.SortBy = "workflow_runs.created_at"
-	}
-	if orderBy == "" {
-		query.OrderBy = paginate.OrderByDesc
-	}
-
-	views, total, err := h.listByProject.Handle(c.Context(), queryworkflowrun.ListWorkflowRunsByProjectQuery{
-		ProjectID: orgID,
-		Query:          query,
-	})
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list workflow runs"})
-	}
-
-	ids := make([]uuid.UUID, 0, len(views))
-	for _, view := range views {
-		ids = append(ids, view.ID)
-	}
-
-	stepRuns, err := h.listStepRunsByIDs.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunIDsQuery{
-		WorkflowRunIDs: ids,
-	})
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
-	}
-
-	stepRunsByWorkflowRunID := make(map[uuid.UUID][]domainsteprun.StepRunView, len(views))
-	for _, stepRun := range stepRuns {
-		stepRunsByWorkflowRunID[stepRun.WorkflowRunID] = append(
-			stepRunsByWorkflowRunID[stepRun.WorkflowRunID],
-			stepRun,
-		)
-	}
-
-	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
-		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID, insightsByStepRunID),
-		int(total),
-		query,
-	))
-}
-
-func (h *WorkflowRunHandler) Get(c fiber.Ctx) error {
-	orgID, err := httpctx.GetActiveProjectID(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
-	}
-
-	id, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow run id"})
-	}
-
-	view, err := h.getByIDHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunByIDQuery{ID: id})
-	if err != nil {
-		if err.Error() == "workflow run not found" {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow run"})
-	}
-	if view.ProjectID != orgID {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})
-	}
-
-	workflow, err := h.getWorkflowHandler.Handle(c.Context(), queryworkflow.GetWorkflowByIDQuery{ID: view.WorkflowID})
-	if err != nil {
-		if err.Error() == "workflow not found" {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get workflow"})
 	}
 
 	stepRuns, err := h.listStepRuns.Handle(c.Context(), querysteprun.ListStepRunsByWorkflowRunQuery{

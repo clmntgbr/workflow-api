@@ -172,7 +172,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
 	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo)
 	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
-	listWorkflowRunsByProjectHandler := queryworkflowrun.NewListWorkflowRunsByProjectHandler(workflowRunReadRepo)
 	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
 	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
 	latestStepRunStatusesHandler := querysteprun.NewGetLatestStepRunStatusesByStepIDsHandler(stepRunReadRepo)
@@ -374,7 +373,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getWorkflowRunByIDHandler,
 			getWorkflowRunAnalyticsHandler,
 			listWorkflowRunsHandler,
-			listWorkflowRunsByProjectHandler,
 			listStepRunsHandler,
 			listStepRunsByIDsHandler,
 			listInsightsByIDsHandler,

@@ -11,10 +11,10 @@ import (
 )
 
 type GetWorkflowRunAnalyticsQuery struct {
-	ProjectID uuid.UUID
-	WorkflowID     *uuid.UUID
-	From           *time.Time
-	To             *time.Time
+	ProjectID  uuid.UUID
+	WorkflowID uuid.UUID
+	From       *time.Time
+	To         *time.Time
 }
 
 type GetWorkflowRunAnalyticsHandler struct {
@@ -34,12 +34,16 @@ func (h *GetWorkflowRunAnalyticsHandler) Handle(
 	if q.ProjectID == uuid.Nil {
 		return nil, errors.New("projectId is required")
 	}
+	if q.WorkflowID == uuid.Nil {
+		return nil, errors.New("workflowId is required")
+	}
 	if q.From != nil && q.To != nil && q.From.After(*q.To) {
 		return nil, errors.New("from must be before to")
 	}
 
+	workflowID := q.WorkflowID
 	stats, err := h.readRepo.FindAnalyticsByProject(ctx, q.ProjectID, domainworkflowrun.WorkflowRunAnalyticsFilter{
-		WorkflowID: q.WorkflowID,
+		WorkflowID: &workflowID,
 		From:       q.From,
 		To:         q.To,
 	})
