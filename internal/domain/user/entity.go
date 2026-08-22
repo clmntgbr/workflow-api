@@ -16,6 +16,7 @@ type User struct {
 	Banned               bool
 	Email                string
 	ActiveOrganizationID *uuid.UUID
+	SubscriptionID       *uuid.UUID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 
@@ -84,6 +85,12 @@ func (u *User) MarkDeleted() {
 		ClerkID:   u.ClerkID,
 		Timestamp: time.Now().UTC(),
 	})
+}
+
+func (u *User) AssignSubscription(subscriptionID uuid.UUID) {
+	id := subscriptionID
+	u.SubscriptionID = &id
+	u.UpdatedAt = time.Now().UTC()
 }
 
 func (u *User) SetActiveOrganization(organizationID uuid.UUID) bool {

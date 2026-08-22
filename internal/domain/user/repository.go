@@ -15,6 +15,7 @@ type UserWriteRepository interface {
 	DeleteByClerkID(ctx context.Context, clerkID string) error
 	GetByClerkID(ctx context.Context, clerkID string) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	GetBySubscriptionID(ctx context.Context, subscriptionID uuid.UUID) (*User, error)
 }
 
 type UserReadRepository interface {
@@ -30,6 +31,7 @@ type UserView struct {
 	Email                string
 	Banned               bool
 	ActiveOrganizationID *uuid.UUID
+	SubscriptionID       *uuid.UUID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }

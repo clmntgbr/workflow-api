@@ -53,6 +53,30 @@ func (r *planWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	return planDomainFromModel(&model), nil
 }
 
+func (r *planWriteRepository) GetBySlug(ctx context.Context, slug string) (*domainplan.Plan, error) {
+	var model PlanModel
+	err := DBWithContext(ctx, r.db).First(&model, "slug = ?", slug).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return planDomainFromModel(&model), nil
+}
+
+func (r *planWriteRepository) GetByStripePriceID(ctx context.Context, stripePriceID string) (*domainplan.Plan, error) {
+	var model PlanModel
+	err := DBWithContext(ctx, r.db).Where("stripe_price_id = ?", stripePriceID).First(&model).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return planDomainFromModel(&model), nil
+}
+
 func isPlanUniqueViolation(err error) bool {
 	if err == nil {
 		return false

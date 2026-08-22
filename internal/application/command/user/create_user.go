@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	domainorganization "go-api/internal/domain/organization"
+	domainplan "go-api/internal/domain/plan"
 	"go-api/internal/domain/port"
+	domainsubscription "go-api/internal/domain/subscription"
 	domainuser "go-api/internal/domain/user"
 )
 
@@ -20,20 +22,26 @@ type CreateUserCommand struct {
 }
 
 type CreateUserHandler struct {
-	userRepo domainuser.UserWriteRepository
-	orgRepo  domainorganization.OrganizationWriteRepository
-	outbox   port.OutboxRepository
+	userRepo         domainuser.UserWriteRepository
+	orgRepo          domainorganization.OrganizationWriteRepository
+	planRepo         domainplan.PlanWriteRepository
+	subscriptionRepo domainsubscription.SubscriptionWriteRepository
+	outbox           port.OutboxRepository
 }
 
 func NewCreateUserHandler(
 	userRepo domainuser.UserWriteRepository,
 	orgRepo domainorganization.OrganizationWriteRepository,
+	planRepo domainplan.PlanWriteRepository,
+	subscriptionRepo domainsubscription.SubscriptionWriteRepository,
 	outbox port.OutboxRepository,
 ) *CreateUserHandler {
 	return &CreateUserHandler{
-		userRepo: userRepo,
-		orgRepo:  orgRepo,
-		outbox:   outbox,
+		userRepo:         userRepo,
+		orgRepo:          orgRepo,
+		planRepo:         planRepo,
+		subscriptionRepo: subscriptionRepo,
+		outbox:           outbox,
 	}
 }
 
@@ -51,12 +59,27 @@ func (h *CreateUserHandler) Handle(ctx context.Context, cmd CreateUserCommand) (
 			return err
 		}
 
+		freePlan, err := h.planRepo.GetBySlug(txCtx, domainplan.FreePlanSlug)
+		if err != nil {
+			return err
+		}
+		if freePlan == nil {
+			return errors.New("free plan not found")
+		}
+
+		sub := domainsubscription.NewFreeSubscription(freePlan.ID)
+		if err := h.subscriptionRepo.Save(txCtx, sub); err != nil {
+			return err
+		}
+
 		u.SetActiveOrganization(org.ID)
+		u.AssignSubscription(sub.ID)
 		if err := h.userRepo.Update(txCtx, u); err != nil {
 			return err
 		}
 
 		events := append(u.PullEvents(), org.PullEvents()...)
+		events = append(events, sub.PullEvents()...)
 		return h.outbox.StoreEvents(txCtx, events)
 	})
 	if err != nil {

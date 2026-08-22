@@ -2,6 +2,8 @@ package plan
 
 import "fmt"
 
+const FreePlanSlug = "free"
+
 type BillingInterval string
 
 const (

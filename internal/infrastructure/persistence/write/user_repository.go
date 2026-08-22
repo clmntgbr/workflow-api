@@ -63,3 +63,20 @@ func (r *userWriteRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	}
 	return userDomainFromModel(&model), nil
 }
+
+func (r *userWriteRepository) GetBySubscriptionID(
+	ctx context.Context,
+	subscriptionID uuid.UUID,
+) (*domainuser.User, error) {
+	var model UserModel
+	err := DBWithContext(ctx, r.db).
+		Where("subscription_id = ?", subscriptionID).
+		First(&model).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return userDomainFromModel(&model), nil
+}

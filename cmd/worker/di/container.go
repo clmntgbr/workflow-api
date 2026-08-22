@@ -6,9 +6,11 @@ import (
 	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
+	eventinvoice "go-api/internal/application/event/invoice"
 	eventorganization "go-api/internal/application/event/organization"
 	eventstep "go-api/internal/application/event/step"
 	eventsteprun "go-api/internal/application/event/steprun"
+	eventsubscription "go-api/internal/application/event/subscription"
 	eventuser "go-api/internal/application/event/user"
 	eventvariable "go-api/internal/application/event/variable"
 	eventworkflow "go-api/internal/application/event/workflow"
@@ -16,9 +18,11 @@ import (
 	"go-api/internal/application/registry"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
+	domaininvoice "go-api/internal/domain/invoice"
 	domainorganization "go-api/internal/domain/organization"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
+	domainsubscription "go-api/internal/domain/subscription"
 	domainuser "go-api/internal/domain/user"
 	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -332,6 +336,28 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_variable_updated_realtime",
 		publishVariableRealtime.OnUpdated,
+	))
+
+	reg.Register(domainsubscription.EventTypeSubscriptionCreated, dedup.With(
+		dedupRepo,
+		"subscription_created",
+		eventsubscription.NewSubscriptionCreatedHandler().Handle,
+	))
+	reg.Register(domainsubscription.EventTypeSubscriptionUpdated, dedup.With(
+		dedupRepo,
+		"subscription_updated",
+		eventsubscription.NewSubscriptionUpdatedHandler().Handle,
+	))
+
+	reg.Register(domaininvoice.EventTypeInvoiceCreated, dedup.With(
+		dedupRepo,
+		"invoice_created",
+		eventinvoice.NewInvoiceCreatedHandler().Handle,
+	))
+	reg.Register(domaininvoice.EventTypeInvoiceUpdated, dedup.With(
+		dedupRepo,
+		"invoice_updated",
+		eventinvoice.NewInvoiceUpdatedHandler().Handle,
 	))
 
 	reg.Register(domainworkflowrun.EventTypeWorkflowRunStarted, dedup.With(

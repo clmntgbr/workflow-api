@@ -25,6 +25,8 @@ func Models() []any {
 		&write.VariableModel{},
 		&write.QuotaModel{},
 		&write.PlanModel{},
+		&write.SubscriptionModel{},
+		&write.InvoiceModel{},
 		&outbox.OutboxEvent{},
 		&processed.ProcessedEvent{},
 	}

@@ -42,6 +42,11 @@ type Config struct {
 	SchedulerBatchSize         int
 	SchedulerConcurrency       int
 	SchedulerMaxBatchesPerTick int
+	StripeSecretKey            string
+	RedirectSuccessURL         string
+	RedirectCancelURL          string
+	RedirectPortalURL          string
+	StripeWebhookSecret        string
 }
 
 func Load() *Config {
@@ -81,6 +86,11 @@ func Load() *Config {
 		SchedulerBatchSize:         getEnvIntOrDefault("SCHEDULER_BATCH_SIZE", 100),
 		SchedulerConcurrency:       getEnvIntOrDefault("SCHEDULER_CONCURRENCY", 32),
 		SchedulerMaxBatchesPerTick: getEnvIntOrDefault("SCHEDULER_MAX_BATCHES_PER_TICK", 100),
+		StripeSecretKey:            getEnvOrDefault("STRIPE_SECRET_KEY", ""),
+		RedirectSuccessURL:         getEnvOrDefault("REDIRECT_SUCCESS_URL", "http://localhost:3000/subscription/success"),
+		RedirectCancelURL:          getEnvOrDefault("REDIRECT_CANCEL_URL", "http://localhost:3000/subscription/failed"),
+		RedirectPortalURL:          getEnvOrDefault("REDIRECT_PORTAL_URL", "http://localhost:3000/subscription"),
+		StripeWebhookSecret:        getEnvOrDefault("STRIPE_WEBHOOK_SECRET", ""),
 	}
 }
 

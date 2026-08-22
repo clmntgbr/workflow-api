@@ -14,9 +14,12 @@ type PlanWriteRepository interface {
 	Save(ctx context.Context, plan *Plan) error
 	Update(ctx context.Context, plan *Plan) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Plan, error)
+	GetBySlug(ctx context.Context, slug string) (*Plan, error)
+	GetByStripePriceID(ctx context.Context, stripePriceID string) (*Plan, error)
 }
 
 type PlanReadRepository interface {
+	FindByID(ctx context.Context, id uuid.UUID) (*PlanView, error)
 	FindActive(ctx context.Context) ([]PlanView, error)
 	FindAll(ctx context.Context) ([]PlanView, error)
 }

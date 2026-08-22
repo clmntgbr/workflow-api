@@ -16,6 +16,11 @@ func setupRoutes(app *fiber.App, container *di.Container) {
 func setupWebhooks(app *fiber.App, container *di.Container) {
 	webhooks := app.Group("/webhooks")
 	webhooks.Post("/clerk", container.UserWebhookMiddleware.Protected(), container.UserWebhookHandler.Execute)
+	webhooks.Post(
+		"/stripe",
+		container.BillingWebhookMiddleware.Protected(),
+		container.BillingWebhookHandler.Execute,
+	)
 }
 
 func setupHealthChecks(app *fiber.App) {
@@ -27,6 +32,9 @@ func setupHealthChecks(app *fiber.App) {
 func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	api := app.Group("/api")
 
+	setupPlanRoutes(api, container)
+	setupSubscriptionRoutes(api, container)
+	setupInvoiceRoutes(api, container)
 	setupUserRoutes(api, container)
 	setupOrganizationRoutes(api, container)
 	setupWorkflowRoutes(api, container)
@@ -35,7 +43,6 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupConnectionRoutes(api, container)
 	setupVariableRoutes(api, container)
 	setupWorkflowRunRoutes(api, container)
-	setupPlanRoutes(api, container)
 	setupRealtimeRoutes(api, container)
 }
 
@@ -119,6 +126,20 @@ func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 
 func setupPlanRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/plans", container.PlanHandler.List)
+}
+
+func setupSubscriptionRoutes(api fiber.Router, container *di.Container) {
+	auth := container.AuthenticateMiddleware.Protected()
+	api.Get("/subscription", auth, container.SubscriptionHandler.GetSubscription)
+	api.Get("/quota", auth, container.SubscriptionHandler.GetQuota)
+	api.Post("/subscriptions", auth, container.SubscriptionHandler.CreateSubscription)
+	api.Post("/subscriptions/preview", auth, container.SubscriptionHandler.PreviewSubscription)
+	api.Get("/subscriptions/portal", auth, container.SubscriptionHandler.CreateBillingPortal)
+}
+
+func setupInvoiceRoutes(api fiber.Router, container *di.Container) {
+	auth := container.AuthenticateMiddleware.Protected()
+	api.Get("/invoices", auth, container.InvoiceHandler.GetInvoices)
 }
 
 func setupRealtimeRoutes(api fiber.Router, container *di.Container) {
