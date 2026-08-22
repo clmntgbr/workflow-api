@@ -79,6 +79,7 @@ func (h *StartWorkflowRunHandler) Handle(
 				workflow,
 				cmd.ScheduleAlreadyAdvanced,
 				domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+				false,
 			); err != nil {
 				return nil, errors.New("failed to start workflow run")
 			}
@@ -92,16 +93,31 @@ func (h *StartWorkflowRunHandler) Handle(
 		cmd.TriggeredByUserID,
 		1,
 	); err != nil {
-		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule && isQuotaExceeded(err) {
-			if skipErr := h.recordScheduledSkip(
-				ctx,
-				workflow,
-				cmd.ScheduleAlreadyAdvanced,
-				domainworkflowrun.ScheduledSkipReasonQuotaExceeded,
-			); skipErr != nil {
-				return nil, errors.New("failed to start workflow run")
+		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
+			switch {
+			case errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded):
+				if skipErr := h.recordScheduledSkip(
+					ctx,
+					workflow,
+					cmd.ScheduleAlreadyAdvanced,
+					domainworkflowrun.ScheduledSkipReasonQuotaExceeded,
+					true,
+				); skipErr != nil {
+					return nil, errors.New("failed to start workflow run")
+				}
+				return nil, err
+			case errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded):
+				if skipErr := h.recordScheduledSkip(
+					ctx,
+					workflow,
+					cmd.ScheduleAlreadyAdvanced,
+					domainworkflowrun.ScheduledSkipReasonQuotaExceeded,
+					false,
+				); skipErr != nil {
+					return nil, errors.New("failed to start workflow run")
+				}
+				return nil, err
 			}
-			return nil, err
 		}
 		return nil, err
 	}
@@ -139,6 +155,7 @@ func (h *StartWorkflowRunHandler) Handle(
 					workflow,
 					cmd.ScheduleAlreadyAdvanced,
 					domainworkflowrun.ScheduledSkipReasonAlreadyInProgress,
+					false,
 				); skipErr != nil {
 					return nil, errors.New("failed to start workflow run")
 				}
@@ -151,16 +168,12 @@ func (h *StartWorkflowRunHandler) Handle(
 	return run, nil
 }
 
-func isQuotaExceeded(err error) bool {
-	return errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded) ||
-		errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded)
-}
-
 func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	ctx context.Context,
 	workflow *domainworkflow.Workflow,
 	scheduleAlreadyAdvanced bool,
 	reason string,
+	deactivate bool,
 ) error {
 	now := time.Now().UTC()
 	skipped := domainworkflowrun.WorkflowRunScheduledSkipped{
@@ -171,13 +184,24 @@ func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	}
 
 	return h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if !scheduleAlreadyAdvanced {
+		events := []event.DomainEvent{skipped}
+
+		if deactivate {
+			if err := workflow.Deactivate(); err != nil {
+				return err
+			}
+			events = append(events, workflow.PullEvents()...)
+			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
+				return err
+			}
+		} else if !scheduleAlreadyAdvanced {
 			workflow.AdvanceAfterScheduledStart(now)
 			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
 				return err
 			}
 		}
-		return h.outbox.StoreEvents(txCtx, []event.DomainEvent{skipped})
+
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 }
 
