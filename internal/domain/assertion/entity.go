@@ -11,7 +11,6 @@ import (
 
 type Assertion struct {
 	ID            uuid.UUID
-	Name          string
 	Description   string
 	Source        AssertionSource
 	Path          string
@@ -26,7 +25,6 @@ type Assertion struct {
 }
 
 type NewAssertionParams struct {
-	Name          string
 	Description   string
 	Source        AssertionSource
 	Path          string
@@ -38,9 +36,6 @@ type NewAssertionParams struct {
 }
 
 func NewAssertion(p NewAssertionParams) (*Assertion, error) {
-	if err := ValidateIdentity(p.Name); err != nil {
-		return nil, err
-	}
 	if err := ValidateShape(p.Source, p.Path, p.Operator, p.ExpectedValue); err != nil {
 		return nil, err
 	}
@@ -48,7 +43,6 @@ func NewAssertion(p NewAssertionParams) (*Assertion, error) {
 	now := time.Now().UTC()
 	a := &Assertion{
 		ID:            uuid.New(),
-		Name:          strings.TrimSpace(p.Name),
 		Description:   strings.TrimSpace(p.Description),
 		Source:        p.Source,
 		Path:          normalizePath(p.Source, p.Path),
@@ -65,7 +59,6 @@ func NewAssertion(p NewAssertionParams) (*Assertion, error) {
 		WorkflowID:    a.WorkflowID.String(),
 		StepID:        a.StepID.String(),
 		ProjectID:     p.ProjectID.String(),
-		Name:          a.Name,
 		Description:   a.Description,
 		Source:        string(a.Source),
 		Path:          a.Path,
@@ -77,7 +70,6 @@ func NewAssertion(p NewAssertionParams) (*Assertion, error) {
 }
 
 type UpdateAssertionParams struct {
-	Name          string
 	Description   string
 	Source        AssertionSource
 	Path          string
@@ -87,14 +79,10 @@ type UpdateAssertionParams struct {
 }
 
 func (a *Assertion) Update(p UpdateAssertionParams) error {
-	if err := ValidateIdentity(p.Name); err != nil {
-		return err
-	}
 	if err := ValidateShape(p.Source, p.Path, p.Operator, p.ExpectedValue); err != nil {
 		return err
 	}
 
-	a.Name = strings.TrimSpace(p.Name)
 	a.Description = strings.TrimSpace(p.Description)
 	a.Source = p.Source
 	a.Path = normalizePath(p.Source, p.Path)
@@ -107,7 +95,6 @@ func (a *Assertion) Update(p UpdateAssertionParams) error {
 		WorkflowID:    a.WorkflowID.String(),
 		StepID:        a.StepID.String(),
 		ProjectID:     p.ProjectID.String(),
-		Name:          a.Name,
 		Description:   a.Description,
 		Source:        string(a.Source),
 		Path:          a.Path,

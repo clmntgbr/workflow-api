@@ -15,7 +15,6 @@ type UpdateAssertionCommand struct {
 	ID            uuid.UUID
 	WorkflowID    uuid.UUID
 	ProjectID     uuid.UUID
-	Name          string
 	Description   string
 	Source        domainassertion.AssertionSource
 	Path          string
@@ -48,7 +47,6 @@ func (h *UpdateAssertionHandler) Handle(
 	}
 
 	if err := assertion.Update(domainassertion.UpdateAssertionParams{
-		Name:          strings.TrimSpace(cmd.Name),
 		Description:   strings.TrimSpace(cmd.Description),
 		Source:        cmd.Source,
 		Path:          cmd.Path,

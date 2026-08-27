@@ -13,7 +13,6 @@ import (
 
 type assertionRow struct {
 	ID            uuid.UUID
-	Name          string
 	Description   string
 	Source        string
 	Path          *string
@@ -100,7 +99,6 @@ func toAssertionView(row assertionRow) domainassertion.AssertionView {
 	}
 	return domainassertion.AssertionView{
 		ID:            row.ID,
-		Name:          row.Name,
 		Description:   row.Description,
 		Source:        domainassertion.AssertionSource(row.Source),
 		Path:          path,

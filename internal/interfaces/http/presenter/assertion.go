@@ -8,7 +8,6 @@ import (
 
 type AssertionResponse struct {
 	ID            string    `json:"id"`
-	Name          string    `json:"name"`
 	Description   string    `json:"description"`
 	Source        string    `json:"source"`
 	Path          string    `json:"path,omitempty"`
@@ -23,7 +22,6 @@ type AssertionResponse struct {
 func NewAssertionResponseFromEntity(a domainassertion.Assertion) AssertionResponse {
 	return NewAssertionResponseFromView(domainassertion.AssertionView{
 		ID:            a.ID,
-		Name:          a.Name,
 		Description:   a.Description,
 		Source:        a.Source,
 		Path:          a.Path,
@@ -44,7 +42,6 @@ func NewAssertionResponseFromView(view domainassertion.AssertionView) AssertionR
 	}
 	return AssertionResponse{
 		ID:            view.ID.String(),
-		Name:          view.Name,
 		Description:   view.Description,
 		Source:        string(view.Source),
 		Path:          view.Path,
@@ -67,7 +64,6 @@ func NewAssertionListResponseFromViews(views []domainassertion.AssertionView) []
 
 type AssertionResultResponse struct {
 	AssertionID string `json:"assertionId"`
-	Name        string `json:"name"`
 	Passed      bool   `json:"passed"`
 	ActualValue any    `json:"actualValue"`
 	Message     string `json:"message,omitempty"`
@@ -81,7 +77,6 @@ func NewAssertionResultListResponse(results []domainassertion.Result) []Assertio
 	for _, r := range results {
 		items = append(items, AssertionResultResponse{
 			AssertionID: r.AssertionID,
-			Name:        r.Name,
 			Passed:      r.Passed,
 			ActualValue: r.ActualValue,
 			Message:     r.Message,

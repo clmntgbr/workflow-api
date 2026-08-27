@@ -13,7 +13,6 @@ import (
 // Snapshot is the frozen assertion config copied onto a StepRun at creation.
 type Snapshot struct {
 	AssertionID   string            `json:"assertionId"`
-	Name          string            `json:"name"`
 	Source        AssertionSource   `json:"source"`
 	Path          string            `json:"path,omitempty"`
 	Operator      AssertionOperator `json:"operator"`
@@ -23,7 +22,6 @@ type Snapshot struct {
 // Result is one evaluated assertion outcome stored on StepRun.assertionsResult.
 type Result struct {
 	AssertionID string `json:"assertionId"`
-	Name        string `json:"name"`
 	Passed      bool   `json:"passed"`
 	ActualValue any    `json:"actualValue"`
 	Message     string `json:"message,omitempty"`
@@ -60,10 +58,10 @@ func FailureSummary(results []Result) string {
 			continue
 		}
 		if r.Message != "" {
-			failed = append(failed, fmt.Sprintf("%s: %s", r.Name, r.Message))
+			failed = append(failed, fmt.Sprintf("%s: %s", r.AssertionID, r.Message))
 			continue
 		}
-		failed = append(failed, r.Name)
+		failed = append(failed, r.AssertionID)
 	}
 	if len(failed) == 0 {
 		return "assertion failed"
@@ -76,7 +74,6 @@ func Evaluate(snap Snapshot, response ResponseInput) Result {
 	passed, message := applyOperator(snap.Operator, snap.ExpectedValue, actual, snap.Path, resolveErr)
 	return Result{
 		AssertionID: snap.AssertionID,
-		Name:        snap.Name,
 		Passed:      passed,
 		ActualValue: actual,
 		Message:     message,

@@ -10,7 +10,6 @@ type AssertionCreated struct {
 	WorkflowID    string    `json:"workflowId"`
 	StepID        string    `json:"stepId"`
 	ProjectID     string    `json:"projectId"`
-	Name          string    `json:"name"`
 	Description   string    `json:"description"`
 	Source        string    `json:"source"`
 	Path          string    `json:"path,omitempty"`
@@ -32,7 +31,6 @@ type AssertionUpdated struct {
 	WorkflowID    string    `json:"workflowId"`
 	StepID        string    `json:"stepId"`
 	ProjectID     string    `json:"projectId"`
-	Name          string    `json:"name"`
 	Description   string    `json:"description"`
 	Source        string    `json:"source"`
 	Path          string    `json:"path,omitempty"`

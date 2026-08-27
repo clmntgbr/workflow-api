@@ -1,7 +1,6 @@
 package dto
 
 type CreateAssertionRequest struct {
-	Name          string  `json:"name" validate:"required,min=1,max=255"`
 	Description   string  `json:"description" validate:"omitempty,max=255"`
 	Source        string  `json:"source" validate:"required,oneof=status header body"`
 	Path          string  `json:"path" validate:"omitempty,max=255"`
@@ -10,7 +9,6 @@ type CreateAssertionRequest struct {
 }
 
 type UpdateAssertionRequest struct {
-	Name          string  `json:"name" validate:"required,min=1,max=255"`
 	Description   string  `json:"description" validate:"omitempty,max=255"`
 	Source        string  `json:"source" validate:"required,oneof=status header body"`
 	Path          string  `json:"path" validate:"omitempty,max=255"`

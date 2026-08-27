@@ -89,7 +89,6 @@ func (h *Orchestrator) buildStepRun(
 	for _, a := range assertions {
 		assertionSnapshots = append(assertionSnapshots, domainassertion.Snapshot{
 			AssertionID:   a.ID.String(),
-			Name:          a.Name,
 			Source:        a.Source,
 			Path:          a.Path,
 			Operator:      a.Operator,

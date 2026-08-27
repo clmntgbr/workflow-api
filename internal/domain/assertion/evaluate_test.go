@@ -7,7 +7,6 @@ import (
 func TestEvaluateStatusEquals(t *testing.T) {
 	result := Evaluate(Snapshot{
 		AssertionID:   "1",
-		Name:          "Status 200",
 		Source:        SourceStatus,
 		Operator:      OperatorEquals,
 		ExpectedValue: "200",
@@ -20,7 +19,6 @@ func TestEvaluateStatusEquals(t *testing.T) {
 func TestEvaluateBodyNotNull(t *testing.T) {
 	result := Evaluate(Snapshot{
 		AssertionID: "2",
-		Name:        "ID present",
 		Source:      SourceBody,
 		Path:        "$.id",
 		Operator:    OperatorNotNull,
@@ -31,7 +29,6 @@ func TestEvaluateBodyNotNull(t *testing.T) {
 
 	missing := Evaluate(Snapshot{
 		AssertionID: "2",
-		Name:        "ID present",
 		Source:      SourceBody,
 		Path:        "$.id",
 		Operator:    OperatorNotNull,
@@ -44,7 +41,6 @@ func TestEvaluateBodyNotNull(t *testing.T) {
 func TestEvaluateHeaderContains(t *testing.T) {
 	result := Evaluate(Snapshot{
 		AssertionID:   "3",
-		Name:          "Content-Type JSON",
 		Source:        SourceHeader,
 		Path:          "Content-Type",
 		Operator:      OperatorContains,

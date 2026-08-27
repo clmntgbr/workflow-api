@@ -10,7 +10,6 @@ import (
 
 type AssertionModel struct {
 	ID            uuid.UUID `gorm:"column:id;primaryKey"`
-	Name          string    `gorm:"column:name"`
 	Description   string    `gorm:"column:description"`
 	Source        string    `gorm:"column:source"`
 	Path          *string   `gorm:"column:path"`
@@ -37,7 +36,6 @@ func assertionModelFromDomain(a *domainassertion.Assertion) *AssertionModel {
 	}
 	return &AssertionModel{
 		ID:            a.ID,
-		Name:          a.Name,
 		Description:   a.Description,
 		Source:        string(a.Source),
 		Path:          path,
@@ -61,7 +59,6 @@ func assertionDomainFromModel(m *AssertionModel) *domainassertion.Assertion {
 	}
 	return &domainassertion.Assertion{
 		ID:            m.ID,
-		Name:          m.Name,
 		Description:   m.Description,
 		Source:        domainassertion.AssertionSource(m.Source),
 		Path:          path,

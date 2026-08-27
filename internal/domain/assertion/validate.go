@@ -6,13 +6,6 @@ import (
 	"strings"
 )
 
-func ValidateIdentity(name string) error {
-	if strings.TrimSpace(name) == "" {
-		return ErrNameRequired
-	}
-	return nil
-}
-
 func ValidateShape(source AssertionSource, path string, operator AssertionOperator, expectedValue string) error {
 	if !source.Valid() {
 		return ErrInvalidSource

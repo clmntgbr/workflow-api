@@ -24,7 +24,6 @@ type AssertionReadRepository interface {
 
 type AssertionView struct {
 	ID            uuid.UUID
-	Name          string
 	Description   string
 	Source        AssertionSource
 	Path          string

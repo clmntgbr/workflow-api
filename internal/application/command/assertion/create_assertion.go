@@ -16,7 +16,6 @@ type CreateAssertionCommand struct {
 	WorkflowID    uuid.UUID
 	ProjectID     uuid.UUID
 	StepID        uuid.UUID
-	Name          string
 	Description   string
 	Source        domainassertion.AssertionSource
 	Path          string
@@ -58,7 +57,6 @@ func (h *CreateAssertionHandler) Handle(
 	}
 
 	assertion, err := domainassertion.NewAssertion(domainassertion.NewAssertionParams{
-		Name:          strings.TrimSpace(cmd.Name),
 		Description:   strings.TrimSpace(cmd.Description),
 		Source:        cmd.Source,
 		Path:          cmd.Path,
