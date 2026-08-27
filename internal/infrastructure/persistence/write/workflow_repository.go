@@ -60,13 +60,15 @@ func (r *workflowWriteRepository) ClaimDueForExecution(
 		limit = 100
 	}
 
+	nowMinute := now.UTC().Truncate(time.Minute)
+
 	var claimed []*domainworkflow.Workflow
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var models []WorkflowModel
 		err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
 			Where("status = ?", domainworkflow.StatusActive).
-			Where("next_run_at IS NOT NULL AND next_run_at <= ?", now).
+			Where("next_run_at IS NOT NULL AND date_trunc('minute', next_run_at) <= ?", nowMinute).
 			Where(
 				"EXISTS (SELECT 1 FROM steps WHERE steps.workflow_id = workflows.id AND steps.status <> ?)",
 				domainstep.StatusDeleted,
@@ -84,7 +86,7 @@ func (r *workflowWriteRepository) ClaimDueForExecution(
 		claimed = make([]*domainworkflow.Workflow, 0, len(models))
 		for i := range models {
 			workflow := workflowDomainFromModel(&models[i])
-			workflow.AdvanceAfterScheduledStart(now)
+			workflow.AdvanceAfterScheduledStart(nowMinute)
 			if err := tx.Save(workflowModelFromDomain(workflow)).Error; err != nil {
 				return err
 			}

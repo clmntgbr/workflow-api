@@ -43,15 +43,16 @@ func (w *Workflow) validateScheduleInterval() error {
 }
 
 func (w *Workflow) RecalculateNextRunAt(now time.Time) {
+	now = truncateToMinute(now)
 	switch w.ScheduleType {
 	case ScheduleTypeNone:
 		w.NextRunAt = nil
 	case ScheduleTypeRecurring:
-		next := addInterval(now.In(w.scheduleLocation()), w.ScheduleIntervalValue, w.ScheduleIntervalUnit)
+		next := truncateToMinute(addInterval(now.In(w.scheduleLocation()), w.ScheduleIntervalValue, w.ScheduleIntervalUnit))
 		w.NextRunAt = &next
 	case ScheduleTypeOnce:
-		if w.ScheduleAt != nil && w.ScheduleAt.After(now) {
-			at := w.ScheduleAt.UTC()
+		if w.ScheduleAt != nil && !truncateToMinute(w.ScheduleAt.UTC()).Before(now) {
+			at := truncateToMinute(w.ScheduleAt.UTC())
 			w.NextRunAt = &at
 		} else {
 			w.NextRunAt = nil
@@ -62,15 +63,16 @@ func (w *Workflow) RecalculateNextRunAt(now time.Time) {
 }
 
 func (w *Workflow) AdvanceAfterScheduledStart(now time.Time) {
+	now = truncateToMinute(now)
 	switch w.ScheduleType {
 	case ScheduleTypeRecurring:
 		base := now
 		if w.NextRunAt != nil {
-			base = *w.NextRunAt
+			base = truncateToMinute(*w.NextRunAt)
 		}
-		next := addInterval(base.In(w.scheduleLocation()), w.ScheduleIntervalValue, w.ScheduleIntervalUnit)
+		next := truncateToMinute(addInterval(base.In(w.scheduleLocation()), w.ScheduleIntervalValue, w.ScheduleIntervalUnit))
 		for !next.After(now) {
-			next = addInterval(next, w.ScheduleIntervalValue, w.ScheduleIntervalUnit)
+			next = truncateToMinute(addInterval(next, w.ScheduleIntervalValue, w.ScheduleIntervalUnit))
 		}
 		w.NextRunAt = &next
 		w.UpdatedAt = now
@@ -80,6 +82,10 @@ func (w *Workflow) AdvanceAfterScheduledStart(now time.Time) {
 		w.NextRunAt = nil
 		w.UpdatedAt = now
 	}
+}
+
+func truncateToMinute(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Minute)
 }
 
 func (w *Workflow) scheduleLocation() *time.Location {

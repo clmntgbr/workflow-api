@@ -108,11 +108,12 @@ func (r *workflowReadRepository) FindByProjectID(
 }
 
 func (r *workflowReadRepository) GetWorkflowsForExecution(ctx context.Context) ([]domainworkflow.WorkflowView, error) {
+	nowMinute := time.Now().UTC().Truncate(time.Minute)
 	var rows []workflowRow
 	err := r.db.WithContext(ctx).
 		Model(&workflowRow{}).
 		Where("status = ?", domainworkflow.StatusActive).
-		Where("next_run_at IS NOT NULL AND next_run_at <= ?", time.Now().UTC()).
+		Where("next_run_at IS NOT NULL AND date_trunc('minute', next_run_at) <= ?", nowMinute).
 		Where("EXISTS (SELECT 1 FROM steps WHERE steps.workflow_id = workflows.id AND steps.status <> ?)", domainstep.StatusDeleted).
 		Order("next_run_at ASC").
 		Find(&rows).Error
