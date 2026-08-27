@@ -1,7 +1,3 @@
-# Production-oriented compose (API + worker + executor + scheduler).
-# Expects managed/external Postgres and RabbitMQ via .env.
-# For local infra: use compose.dev.yaml
-
 services:
   api:
     build:

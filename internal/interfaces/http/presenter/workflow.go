@@ -20,6 +20,7 @@ type WorkflowDetailResponse struct {
 	ScheduleIntervalUnit  *string    `json:"scheduleIntervalUnit"`
 	ScheduleAt            *time.Time `json:"scheduleAt"`
 	ScheduleTimezone      string     `json:"scheduleTimezone"`
+	NextRunAt             *time.Time `json:"nextRunAt"`
 	NotificationsEnabled  bool       `json:"notificationsEnabled"`
 	NotifyOnSuccess       bool       `json:"notifyOnSuccess"`
 	NotifyOnFailure       bool       `json:"notifyOnFailure"`
@@ -51,6 +52,7 @@ func NewWorkflowDetailResponseFromView(view domainworkflow.WorkflowView) Workflo
 		view.ScheduleIntervalUnit,
 		view.ScheduleAt,
 		view.ScheduleTimezone,
+		view.NextRunAt,
 		view.NotificationsEnabled,
 		view.NotifyOnSuccess,
 		view.NotifyOnFailure,
@@ -71,6 +73,7 @@ func NewWorkflowDetailResponseFromEntity(w domainworkflow.Workflow) WorkflowDeta
 		w.ScheduleIntervalUnit,
 		w.ScheduleAt,
 		w.ScheduleTimezone,
+		w.NextRunAt,
 		w.NotificationsEnabled,
 		w.NotifyOnSuccess,
 		w.NotifyOnFailure,
@@ -85,6 +88,7 @@ func workflowDetailResponse(
 	scheduleIntervalUnit domainworkflow.ScheduleUnit,
 	scheduleAt *time.Time,
 	scheduleTimezone string,
+	nextRunAt *time.Time,
 	notificationsEnabled bool,
 	notifyOnSuccess bool,
 	notifyOnFailure bool,
@@ -103,6 +107,7 @@ func workflowDetailResponse(
 		ScheduleIntervalUnit:  optionalNonEmptyString(string(scheduleIntervalUnit)),
 		ScheduleAt:            scheduleAt,
 		ScheduleTimezone:      scheduleTimezone,
+		NextRunAt:             nextRunAt,
 		NotificationsEnabled:  notificationsEnabled,
 		NotifyOnSuccess:       notifyOnSuccess,
 		NotifyOnFailure:       notifyOnFailure,
