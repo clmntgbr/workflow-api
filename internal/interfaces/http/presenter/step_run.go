@@ -23,9 +23,9 @@ type StepRunResponse struct {
 	Status           string                    `json:"status"`
 	Attempt          int                       `json:"attempt"`
 	ResponseSnapshot *StepRunResponseSnapshot  `json:"responseSnapshot"`
-	AssertionsResult []AssertionResultResponse `json:"assertionsResult,omitempty"`
-	Insights         []InsightResponse         `json:"insights,omitempty"`
-	Step             *StepDetailResponse       `json:"step,omitempty"`
+	AssertionsResult []AssertionResultResponse `json:"assertionsResult"`
+	Insights         []InsightResponse         `json:"insights"`
+	Step             *StepDetailResponse       `json:"step"`
 	StartedAt        *time.Time                `json:"startedAt"`
 	FinishedAt       *time.Time                `json:"finishedAt"`
 	Error            *string                   `json:"error"`
@@ -52,11 +52,14 @@ func NewStepRunResponseFromViewWithStep(
 		Status:           string(view.Status),
 		Attempt:          view.Attempt,
 		ResponseSnapshot: stepRunResponseSnapshot(view.ResponseSnapshot),
-		AssertionsResult: NewAssertionResultListResponse(view.AssertionsResult),
-		Insights:         NewInsightListResponseFromViews(insights),
-		StartedAt:        view.StartedAt,
-		FinishedAt:       view.FinishedAt,
-		Error:            optionalNonEmptyString(view.Error),
+		AssertionsResult: NewAssertionResultListResponse(
+			view.AssertionsResult,
+			view.Assertions,
+		),
+		Insights:   NewInsightListResponseFromViews(insights),
+		StartedAt:  view.StartedAt,
+		FinishedAt: view.FinishedAt,
+		Error:      optionalNonEmptyString(view.Error),
 	}
 	if step != nil {
 		detail := NewStepDetailResponseFromView(*step)

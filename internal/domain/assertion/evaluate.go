@@ -13,6 +13,7 @@ import (
 // Snapshot is the frozen assertion config copied onto a StepRun at creation.
 type Snapshot struct {
 	AssertionID   string            `json:"assertionId"`
+	Description   string            `json:"description,omitempty"`
 	Source        AssertionSource   `json:"source"`
 	Path          string            `json:"path,omitempty"`
 	Operator      AssertionOperator `json:"operator"`

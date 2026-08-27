@@ -9,10 +9,10 @@ import (
 type SubscriptionResponse struct {
 	ID                   string        `json:"id"`
 	Status               string        `json:"status"`
-	StripeCustomerID     string        `json:"stripeCustomerId"`
-	StripeSubscriptionID string        `json:"stripeSubscriptionId"`
+	StripeCustomerID     *string       `json:"stripeCustomerId"`
+	StripeSubscriptionID *string       `json:"stripeSubscriptionId"`
 	StartDate            time.Time     `json:"startDate"`
-	EndDate              time.Time     `json:"endDate"`
+	EndDate              *time.Time    `json:"endDate"`
 	CancelAtPeriodEnd    bool          `json:"cancelAtPeriodEnd"`
 	QuotaPeriodStart     time.Time     `json:"quotaPeriodStart"`
 	Plan                 *PlanResponse `json:"plan"`
@@ -30,10 +30,10 @@ func NewSubscriptionResponse(view *domainsubscription.SubscriptionView) Subscrip
 	return SubscriptionResponse{
 		ID:                   view.ID.String(),
 		Status:               string(view.Status),
-		StripeCustomerID:     view.StripeCustomerID,
-		StripeSubscriptionID: view.StripeSubscriptionID,
+		StripeCustomerID:     optionalNonEmptyString(view.StripeCustomerID),
+		StripeSubscriptionID: optionalNonEmptyString(view.StripeSubscriptionID),
 		StartDate:            view.StartDate,
-		EndDate:              view.EndDate,
+		EndDate:              optionalTime(view.EndDate),
 		CancelAtPeriodEnd:    view.CancelAtPeriodEnd,
 		QuotaPeriodStart:     view.QuotaPeriodStart,
 		Plan:                 plan,

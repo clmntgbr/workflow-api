@@ -32,7 +32,7 @@ type StepDetailResponse struct {
 	RetryOnFailure bool              `json:"retryOnFailure"`
 	RetryCount     int               `json:"retryCount"`
 	RetryDelay     int               `json:"retryDelay"`
-	Index          string            `json:"index"`
+	Index          *string           `json:"index"`
 	ExecutionOrder int               `json:"executionOrder"`
 	TreeIndex      int               `json:"treeIndex"`
 	Status         string            `json:"status"`
@@ -152,7 +152,7 @@ func stepDetailResponse(
 		RetryOnFailure:   retryOnFailure,
 		RetryCount:       retryCount,
 		RetryDelay:       retryDelay,
-		Index:            index,
+		Index:            optionalNonEmptyString(index),
 		ExecutionOrder:   executionOrder,
 		TreeIndex:        treeIndex,
 		Status:           status,
