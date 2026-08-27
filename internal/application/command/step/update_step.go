@@ -14,7 +14,7 @@ import (
 type UpdateStepCommand struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
+	ProjectID      uuid.UUID
 	Name           string
 	Description    string
 	URL            string

@@ -3,6 +3,7 @@ package di
 import (
 	"log"
 
+	eventassertion "go-api/internal/application/event/assertion"
 	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
@@ -16,6 +17,7 @@ import (
 	eventworkflow "go-api/internal/application/event/workflow"
 	eventworkflowrun "go-api/internal/application/event/workflowrun"
 	"go-api/internal/application/registry"
+	domainassertion "go-api/internal/domain/assertion"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domaininvoice "go-api/internal/domain/invoice"
@@ -81,12 +83,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
+	assertionReadRepo := read.NewAssertionReadRepository(db)
 	orchestrator := eventworkflowrun.NewOrchestrator(
 		workflowRunWriteRepo,
 		stepRunWriteRepo,
 		stepReadRepo,
 		connReadRepo,
 		variableReadRepo,
+		assertionReadRepo,
 		outboxRepo,
 	)
 	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
@@ -97,6 +101,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishAssertionRealtime := eventassertion.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	reg := registry.NewHandlerRegistry()
@@ -336,6 +341,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_variable_updated_realtime",
 		publishVariableRealtime.OnUpdated,
+	))
+
+	reg.Register(domainassertion.EventTypeAssertionCreated, dedup.With(
+		dedupRepo,
+		"assertion_created",
+		eventassertion.NewAssertionCreatedHandler().Handle,
+	))
+	reg.Register(domainassertion.EventTypeAssertionCreated, dedup.With(
+		dedupRepo,
+		"publish_assertion_created_realtime",
+		publishAssertionRealtime.OnCreated,
+	))
+	reg.Register(domainassertion.EventTypeAssertionUpdated, dedup.With(
+		dedupRepo,
+		"assertion_updated",
+		eventassertion.NewAssertionUpdatedHandler().Handle,
+	))
+	reg.Register(domainassertion.EventTypeAssertionUpdated, dedup.With(
+		dedupRepo,
+		"publish_assertion_updated_realtime",
+		publishAssertionRealtime.OnUpdated,
 	))
 
 	reg.Register(domainsubscription.EventTypeSubscriptionCreated, dedup.With(

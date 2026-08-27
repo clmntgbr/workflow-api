@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
@@ -21,7 +22,7 @@ type stepRunRow struct {
 	StepID             uuid.UUID
 	WorkflowID         uuid.UUID
 	EndpointID         uuid.UUID
-	ProjectID     uuid.UUID
+	ProjectID          uuid.UUID
 	Name               string
 	Description        string
 	URL                string
@@ -29,10 +30,10 @@ type stepRunRow struct {
 	Headers            dbtype.JSONB
 	QueryParams        dbtype.JSONB
 	Body               dbtype.JSONB
-	Timeout            int          `gorm:"column:timeout_ms"`
+	Timeout            int `gorm:"column:timeout_ms"`
 	RetryOnFailure     bool
 	RetryCount         int
-	RetryDelay         int          `gorm:"column:retry_delay_ms"`
+	RetryDelay         int `gorm:"column:retry_delay_ms"`
 	StepIndex          string
 	ExecutionOrder     int
 	TreeIndex          int
@@ -41,8 +42,10 @@ type stepRunRow struct {
 	Status             string
 	Attempt            int
 	VariableExtracts   dbtype.JSONB `gorm:"column:variable_extracts"`
+	Assertions         dbtype.JSONB `gorm:"column:assertions"`
 	ResponseSnapshot   dbtype.JSONB
 	ExtractedVariables dbtype.JSONB `gorm:"column:extracted_variables"`
+	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	Error              string
@@ -57,8 +60,8 @@ var stepRunSelectColumns = []string{
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
-	"status", "attempt", "variable_extracts", "response_snapshot", "extracted_variables",
-	"started_at", "finished_at", "error", "created_at", "updated_at",
+	"status", "attempt", "variable_extracts", "assertions", "response_snapshot", "extracted_variables",
+	"assertions_result", "started_at", "finished_at", "error", "created_at", "updated_at",
 }
 
 type stepRunReadRepository struct {
@@ -229,9 +232,23 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		}
 	}
 
+	assertions := []domainassertion.Snapshot{}
+	if len(row.Assertions) > 0 {
+		if err := json.Unmarshal(row.Assertions, &assertions); err != nil {
+			return nil, err
+		}
+	}
+
 	extracted := map[string]any{}
 	if len(row.ExtractedVariables) > 0 {
 		if err := json.Unmarshal(row.ExtractedVariables, &extracted); err != nil {
+			return nil, err
+		}
+	}
+
+	assertionsResult := []domainassertion.Result{}
+	if len(row.AssertionsResult) > 0 {
+		if err := json.Unmarshal(row.AssertionsResult, &assertionsResult); err != nil {
 			return nil, err
 		}
 	}
@@ -242,7 +259,7 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		StepID:         row.StepID,
 		WorkflowID:     row.WorkflowID,
 		EndpointID:     row.EndpointID,
-		ProjectID: row.ProjectID,
+		ProjectID:      row.ProjectID,
 		Name:           row.Name,
 		Description:    row.Description,
 		URL:            row.URL,
@@ -264,8 +281,10 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		Status:             domainsteprun.Status(row.Status),
 		Attempt:            row.Attempt,
 		VariableExtracts:   extracts,
+		Assertions:         assertions,
 		ResponseSnapshot:   response,
 		ExtractedVariables: extracted,
+		AssertionsResult:   assertionsResult,
 		StartedAt:          row.StartedAt,
 		FinishedAt:         row.FinishedAt,
 		Error:              row.Error,

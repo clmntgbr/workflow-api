@@ -42,6 +42,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupStepRoutes(api, container)
 	setupConnectionRoutes(api, container)
 	setupVariableRoutes(api, container)
+	setupAssertionRoutes(api, container)
 	setupWorkflowRunRoutes(api, container)
 	setupRealtimeRoutes(api, container)
 }
@@ -110,6 +111,16 @@ func setupVariableRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/workflows/:workflowId/variables/:id", container.VariableHandler.GetByID)
 	api.Put("/workflows/:workflowId/variables/:id", container.VariableHandler.Update)
 	api.Delete("/workflows/:workflowId/variables/:id", container.VariableHandler.Delete)
+}
+
+func setupAssertionRoutes(api fiber.Router, container *di.Container) {
+	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Post("/workflows/:workflowId/steps/:stepId/assertions", container.AssertionHandler.Create)
+	api.Get("/workflows/:workflowId/steps/:stepId/assertions", container.AssertionHandler.ListByStep)
+	api.Get("/workflows/:workflowId/steps/:stepId/assertion-paths", container.AssertionHandler.SearchPaths)
+	api.Get("/workflows/:workflowId/assertions/:id", container.AssertionHandler.GetByID)
+	api.Put("/workflows/:workflowId/assertions/:id", container.AssertionHandler.Update)
+	api.Delete("/workflows/:workflowId/assertions/:id", container.AssertionHandler.Delete)
 }
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {

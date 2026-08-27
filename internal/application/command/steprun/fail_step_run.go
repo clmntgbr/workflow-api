@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
 	domainsteprun "go-api/internal/domain/steprun"
 
@@ -11,9 +12,10 @@ import (
 )
 
 type FailStepRunCommand struct {
-	StepRunID uuid.UUID
-	Error     string
-	Response  *domainsteprun.ResponseSnapshot
+	StepRunID        uuid.UUID
+	Error            string
+	Response         *domainsteprun.ResponseSnapshot
+	AssertionsResult []domainassertion.Result
 }
 
 type FailStepRunHandler struct {
@@ -47,7 +49,7 @@ func (h *FailStepRunHandler) Handle(ctx context.Context, cmd FailStepRunCommand)
 		return run, nil
 	}
 
-	if err := run.MarkFailed(cmd.Error, cmd.Response); err != nil {
+	if err := run.MarkFailed(cmd.Error, cmd.Response, cmd.AssertionsResult); err != nil {
 		return nil, err
 	}
 

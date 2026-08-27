@@ -15,19 +15,20 @@ type StepRunResponseSnapshot struct {
 }
 
 type StepRunResponse struct {
-	ID               string                   `json:"id"`
-	Name             string                   `json:"name"`
-	URL              string                   `json:"url"`
-	Method           string                   `json:"method"`
-	ExecutionOrder   int                      `json:"executionOrder"`
-	Status           string                   `json:"status"`
-	Attempt          int                      `json:"attempt"`
-	ResponseSnapshot *StepRunResponseSnapshot `json:"responseSnapshot"`
-	Insights         []InsightResponse        `json:"insights,omitempty"`
-	Step             *StepDetailResponse      `json:"step,omitempty"`
-	StartedAt        *time.Time               `json:"startedAt"`
-	FinishedAt       *time.Time               `json:"finishedAt"`
-	Error            *string                  `json:"error"`
+	ID               string                    `json:"id"`
+	Name             string                    `json:"name"`
+	URL              string                    `json:"url"`
+	Method           string                    `json:"method"`
+	ExecutionOrder   int                       `json:"executionOrder"`
+	Status           string                    `json:"status"`
+	Attempt          int                       `json:"attempt"`
+	ResponseSnapshot *StepRunResponseSnapshot  `json:"responseSnapshot"`
+	AssertionsResult []AssertionResultResponse `json:"assertionsResult,omitempty"`
+	Insights         []InsightResponse         `json:"insights,omitempty"`
+	Step             *StepDetailResponse       `json:"step,omitempty"`
+	StartedAt        *time.Time                `json:"startedAt"`
+	FinishedAt       *time.Time                `json:"finishedAt"`
+	Error            *string                   `json:"error"`
 }
 
 func NewStepRunResponseFromView(
@@ -51,6 +52,7 @@ func NewStepRunResponseFromViewWithStep(
 		Status:           string(view.Status),
 		Attempt:          view.Attempt,
 		ResponseSnapshot: stepRunResponseSnapshot(view.ResponseSnapshot),
+		AssertionsResult: NewAssertionResultListResponse(view.AssertionsResult),
 		Insights:         NewInsightListResponseFromViews(insights),
 		StartedAt:        view.StartedAt,
 		FinishedAt:       view.FinishedAt,

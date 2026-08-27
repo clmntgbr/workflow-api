@@ -12,10 +12,10 @@ import (
 )
 
 type UpdateStepPositionCommand struct {
-	ID             uuid.UUID
-	ProjectID uuid.UUID
-	WorkflowID     uuid.UUID
-	Position       domainstep.Position
+	ID         uuid.UUID
+	ProjectID  uuid.UUID
+	WorkflowID uuid.UUID
+	Position   domainstep.Position
 }
 
 type UpdateStepPositionHandler struct {

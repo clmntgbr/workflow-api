@@ -20,6 +20,7 @@ const (
 	EntityStep         = "step"
 	EntityConnection   = "connection"
 	EntityVariable     = "variable"
+	EntityAssertion    = "assertion"
 	EntityWorkflowRun  = "workflowRun"
 	EntityStepRun      = "stepRun"
 )

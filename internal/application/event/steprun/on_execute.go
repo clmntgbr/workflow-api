@@ -11,6 +11,7 @@ import (
 	insightcmd "go-api/internal/application/command/insight"
 	stepruncmd "go-api/internal/application/command/steprun"
 	"go-api/internal/application/messaging"
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainvariable "go-api/internal/domain/variable"
@@ -170,6 +171,22 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 			}
 		}
 
+		var assertionResults []domainassertion.Result
+		if execErr == nil && snapshot != nil {
+			assertionResults = domainassertion.EvaluateAll(run.Assertions, domainassertion.ResponseInput{
+				Status:  snapshot.Status,
+				Headers: snapshot.Headers,
+				Body:    snapshot.Body,
+			})
+			if domainassertion.AnyFailed(assertionResults) {
+				execErr = errors.New(domainassertion.FailureSummary(assertionResults))
+				errMsg = execErr.Error()
+				errType = "assertion_failed"
+			}
+		} else {
+			assertionResults = []domainassertion.Result{}
+		}
+
 		if err := h.saveInsight(ctx, run, timing, queueTime, statusCode, hasStatus, errMsg, errType); err != nil {
 			return messaging.Retryable(err)
 		}
@@ -180,6 +197,7 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 				StepRunID:          stepRunID,
 				Response:           *snapshot,
 				ExtractedVariables: extracted,
+				AssertionsResult:   assertionResults,
 			})
 			if err != nil {
 				return messaging.Retryable(err)
@@ -195,9 +213,10 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 
 		if !run.CanRetry() {
 			_, err = h.fail.Handle(ctx, stepruncmd.FailStepRunCommand{
-				StepRunID: stepRunID,
-				Error:     errMsg,
-				Response:  snapshot,
+				StepRunID:        stepRunID,
+				Error:            errMsg,
+				Response:         snapshot,
+				AssertionsResult: assertionResults,
 			})
 			if err != nil {
 				return messaging.Retryable(err)
@@ -212,9 +231,10 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 		}
 
 		run, err = h.increment.Handle(ctx, stepruncmd.IncrementStepRunAttemptCommand{
-			StepRunID: stepRunID,
-			Response:  snapshot,
-			Error:     errMsg,
+			StepRunID:        stepRunID,
+			Response:         snapshot,
+			Error:            errMsg,
+			AssertionsResult: assertionResults,
 		})
 		if err != nil {
 			return messaging.Retryable(err)

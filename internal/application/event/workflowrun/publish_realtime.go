@@ -7,8 +7,8 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
+	domainproject "go-api/internal/domain/project"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
@@ -29,7 +29,7 @@ func NewPublishRealtimeHandler(
 	return &PublishRealtimeHandler{
 		realtime:     realtimePublisher,
 		workflowRepo: workflowRepo,
-		projectRepo: projectRepo,
+		projectRepo:  projectRepo,
 	}
 }
 

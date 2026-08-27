@@ -15,11 +15,11 @@ import (
 )
 
 type CreateStepCommand struct {
-	UserID         uuid.UUID
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
-	Position       domainstep.Position
+	UserID     uuid.UUID
+	WorkflowID uuid.UUID
+	EndpointID uuid.UUID
+	ProjectID  uuid.UUID
+	Position   domainstep.Position
 }
 
 type CreateStepHandler struct {
@@ -133,10 +133,10 @@ func (h *CreateStepHandler) Handle(
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 
 	s := domainstep.NewStep(domainstep.NewStepParams{
-		ID:             now.ID,
-		WorkflowID:     cmd.WorkflowID,
-		EndpointID:     cmd.EndpointID,
-		ProjectID: cmd.ProjectID,
+		ID:         now.ID,
+		WorkflowID: cmd.WorkflowID,
+		EndpointID: cmd.EndpointID,
+		ProjectID:  cmd.ProjectID,
 		Endpoint: domainstep.EndpointSnapshot{
 			ID:             endpoint.ID,
 			Name:           endpoint.Name,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
@@ -18,7 +19,7 @@ type StepRunModel struct {
 	StepID             uuid.UUID    `gorm:"column:step_id"`
 	WorkflowID         uuid.UUID    `gorm:"column:workflow_id"`
 	EndpointID         uuid.UUID    `gorm:"column:endpoint_id"`
-	ProjectID     uuid.UUID    `gorm:"column:project_id"`
+	ProjectID          uuid.UUID    `gorm:"column:project_id"`
 	Name               string       `gorm:"column:name"`
 	Description        string       `gorm:"column:description"`
 	URL                string       `gorm:"column:url"`
@@ -38,8 +39,10 @@ type StepRunModel struct {
 	Status             string       `gorm:"column:status"`
 	Attempt            int          `gorm:"column:attempt"`
 	VariableExtracts   dbtype.JSONB `gorm:"column:variable_extracts"`
+	Assertions         dbtype.JSONB `gorm:"column:assertions"`
 	ResponseSnapshot   dbtype.JSONB `gorm:"column:response_snapshot"`
 	ExtractedVariables dbtype.JSONB `gorm:"column:extracted_variables"`
+	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
 	StartedAt          *time.Time   `gorm:"column:started_at"`
 	FinishedAt         *time.Time   `gorm:"column:finished_at"`
 	Error              string       `gorm:"column:error"`
@@ -97,11 +100,29 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		return nil, err
 	}
 
+	assertions := s.Assertions
+	if assertions == nil {
+		assertions = []domainassertion.Snapshot{}
+	}
+	assertionsRaw, err := json.Marshal(assertions)
+	if err != nil {
+		return nil, err
+	}
+
 	extracted := s.ExtractedVariables
 	if extracted == nil {
 		extracted = map[string]any{}
 	}
 	extractedRaw, err := json.Marshal(extracted)
+	if err != nil {
+		return nil, err
+	}
+
+	assertionsResult := s.AssertionsResult
+	if assertionsResult == nil {
+		assertionsResult = []domainassertion.Result{}
+	}
+	assertionsResultRaw, err := json.Marshal(assertionsResult)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +133,7 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		StepID:             s.StepID,
 		WorkflowID:         s.WorkflowID,
 		EndpointID:         s.EndpointID,
-		ProjectID:     s.ProjectID,
+		ProjectID:          s.ProjectID,
 		Name:               s.Name,
 		Description:        s.Description,
 		URL:                s.URL,
@@ -132,8 +153,10 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		Status:             string(s.Status),
 		Attempt:            s.Attempt,
 		VariableExtracts:   dbtype.JSONB(extractsRaw),
+		Assertions:         dbtype.JSONB(assertionsRaw),
 		ResponseSnapshot:   responseRaw,
 		ExtractedVariables: dbtype.JSONB(extractedRaw),
+		AssertionsResult:   dbtype.JSONB(assertionsResultRaw),
 		StartedAt:          s.StartedAt,
 		FinishedAt:         s.FinishedAt,
 		Error:              s.Error,
@@ -180,9 +203,23 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		}
 	}
 
+	assertions := []domainassertion.Snapshot{}
+	if len(m.Assertions) > 0 {
+		if err := json.Unmarshal(m.Assertions, &assertions); err != nil {
+			return nil, err
+		}
+	}
+
 	extracted := map[string]any{}
 	if len(m.ExtractedVariables) > 0 {
 		if err := json.Unmarshal(m.ExtractedVariables, &extracted); err != nil {
+			return nil, err
+		}
+	}
+
+	assertionsResult := []domainassertion.Result{}
+	if len(m.AssertionsResult) > 0 {
+		if err := json.Unmarshal(m.AssertionsResult, &assertionsResult); err != nil {
 			return nil, err
 		}
 	}
@@ -193,7 +230,7 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		StepID:         m.StepID,
 		WorkflowID:     m.WorkflowID,
 		EndpointID:     m.EndpointID,
-		ProjectID: m.ProjectID,
+		ProjectID:      m.ProjectID,
 		Name:           m.Name,
 		Description:    m.Description,
 		URL:            m.URL,
@@ -215,8 +252,10 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		Status:             domainsteprun.Status(m.Status),
 		Attempt:            m.Attempt,
 		VariableExtracts:   extracts,
+		Assertions:         assertions,
 		ResponseSnapshot:   response,
 		ExtractedVariables: extracted,
+		AssertionsResult:   assertionsResult,
 		StartedAt:          m.StartedAt,
 		FinishedAt:         m.FinishedAt,
 		Error:              m.Error,

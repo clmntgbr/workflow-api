@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
 
@@ -27,32 +28,34 @@ type StepRunReadRepository interface {
 }
 
 type StepRunView struct {
-	ID               uuid.UUID
-	WorkflowRunID    uuid.UUID
-	StepID           uuid.UUID
-	WorkflowID       uuid.UUID
-	EndpointID       uuid.UUID
-	ProjectID   uuid.UUID
-	Name             string
-	Description      string
-	URL              string
-	Method           string
-	Headers          map[string]string
-	Query            httpquery.Params
-	Body             map[string]any
-	Timeout          int
-	RetryOnFailure   bool
-	RetryCount       int
-	RetryDelay       int
-	Index            string
-	ExecutionOrder   int
-	TreeIndex        int
-	Position         domainstep.Position
+	ID                 uuid.UUID
+	WorkflowRunID      uuid.UUID
+	StepID             uuid.UUID
+	WorkflowID         uuid.UUID
+	EndpointID         uuid.UUID
+	ProjectID          uuid.UUID
+	Name               string
+	Description        string
+	URL                string
+	Method             string
+	Headers            map[string]string
+	Query              httpquery.Params
+	Body               map[string]any
+	Timeout            int
+	RetryOnFailure     bool
+	RetryCount         int
+	RetryDelay         int
+	Index              string
+	ExecutionOrder     int
+	TreeIndex          int
+	Position           domainstep.Position
 	Status             Status
 	Attempt            int
 	VariableExtracts   []VariableExtract
+	Assertions         []domainassertion.Snapshot
 	ResponseSnapshot   *ResponseSnapshot
 	ExtractedVariables map[string]any
+	AssertionsResult   []domainassertion.Result
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	Error              string

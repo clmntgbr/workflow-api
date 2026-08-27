@@ -223,7 +223,6 @@ func (h *Orchestrator) advanceAfterStep(
 	return nil
 }
 
-
 func (h *Orchestrator) skipBranch(
 	ctx context.Context,
 	run *domainworkflowrun.WorkflowRun,
@@ -250,7 +249,7 @@ func (h *Orchestrator) skipBranch(
 			StepID:         current.ID,
 			WorkflowID:     current.WorkflowID,
 			EndpointID:     current.EndpointID,
-			ProjectID: current.ProjectID,
+			ProjectID:      current.ProjectID,
 			Name:           current.Name,
 			Description:    current.Description,
 			URL:            current.URL,

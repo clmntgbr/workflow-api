@@ -3,6 +3,7 @@ package steprun
 import (
 	"time"
 
+	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/httpquery"
 	domainstep "go-api/internal/domain/step"
@@ -17,7 +18,7 @@ type StepRun struct {
 
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
+	ProjectID      uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -38,8 +39,10 @@ type StepRun struct {
 	Attempt int
 
 	VariableExtracts   []VariableExtract
+	Assertions         []domainassertion.Snapshot
 	ResponseSnapshot   *ResponseSnapshot
 	ExtractedVariables map[string]any
+	AssertionsResult   []domainassertion.Result
 
 	StartedAt  *time.Time
 	FinishedAt *time.Time
@@ -57,15 +60,15 @@ type VariableExtract struct {
 }
 
 type NewStepRunParams struct {
-	WorkflowRunID  uuid.UUID
-	StepID         uuid.UUID
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
-	Name           string
-	Description    string
-	URL            string
-	Method         string
+	WorkflowRunID    uuid.UUID
+	StepID           uuid.UUID
+	WorkflowID       uuid.UUID
+	EndpointID       uuid.UUID
+	ProjectID        uuid.UUID
+	Name             string
+	Description      string
+	URL              string
+	Method           string
 	Headers          map[string]string
 	Query            httpquery.Params
 	Body             map[string]any
@@ -78,26 +81,27 @@ type NewStepRunParams struct {
 	TreeIndex        int
 	Position         domainstep.Position
 	VariableExtracts []VariableExtract
+	Assertions       []domainassertion.Snapshot
 }
 
 func NewStepRun(p NewStepRunParams) *StepRun {
 	now := time.Now().UTC()
 	return &StepRun{
-		ID:             uuid.New(),
-		WorkflowRunID:  p.WorkflowRunID,
-		StepID:         p.StepID,
-		WorkflowID:     p.WorkflowID,
-		EndpointID:     p.EndpointID,
-		ProjectID: p.ProjectID,
-		Name:           p.Name,
-		Description:    p.Description,
-		URL:            p.URL,
-		Method:         p.Method,
-		Headers:        normalizeStringMap(p.Headers),
-		Query:          httpquery.Clone(p.Query),
-		Body:           normalizeAnyMap(p.Body),
-		Timeout:        p.Timeout,
-		RetryOnFailure: p.RetryOnFailure,
+		ID:                 uuid.New(),
+		WorkflowRunID:      p.WorkflowRunID,
+		StepID:             p.StepID,
+		WorkflowID:         p.WorkflowID,
+		EndpointID:         p.EndpointID,
+		ProjectID:          p.ProjectID,
+		Name:               p.Name,
+		Description:        p.Description,
+		URL:                p.URL,
+		Method:             p.Method,
+		Headers:            normalizeStringMap(p.Headers),
+		Query:              httpquery.Clone(p.Query),
+		Body:               normalizeAnyMap(p.Body),
+		Timeout:            p.Timeout,
+		RetryOnFailure:     p.RetryOnFailure,
 		RetryCount:         p.RetryCount,
 		RetryDelay:         p.RetryDelay,
 		Index:              p.Index,
@@ -105,7 +109,9 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 		TreeIndex:          p.TreeIndex,
 		Position:           p.Position,
 		VariableExtracts:   append([]VariableExtract(nil), p.VariableExtracts...),
+		Assertions:         append([]domainassertion.Snapshot(nil), p.Assertions...),
 		ExtractedVariables: map[string]any{},
+		AssertionsResult:   []domainassertion.Result{},
 		Status:             StatusPending,
 		Attempt:            0,
 		CreatedAt:          now,
@@ -155,7 +161,11 @@ func (s *StepRun) CanRetry() bool {
 	return s.RetryOnFailure && s.Attempt < s.RetryCount
 }
 
-func (s *StepRun) MarkSucceeded(response ResponseSnapshot, extracted map[string]any) error {
+func (s *StepRun) MarkSucceeded(
+	response ResponseSnapshot,
+	extracted map[string]any,
+	assertionsResult []domainassertion.Result,
+) error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
 	}
@@ -171,6 +181,10 @@ func (s *StepRun) MarkSucceeded(response ResponseSnapshot, extracted map[string]
 		extracted = map[string]any{}
 	}
 	s.ExtractedVariables = extracted
+	if assertionsResult == nil {
+		assertionsResult = []domainassertion.Result{}
+	}
+	s.AssertionsResult = assertionsResult
 	s.Error = ""
 	s.FinishedAt = &now
 	s.UpdatedAt = now
@@ -178,7 +192,11 @@ func (s *StepRun) MarkSucceeded(response ResponseSnapshot, extracted map[string]
 	return nil
 }
 
-func (s *StepRun) MarkFailed(errMsg string, response *ResponseSnapshot) error {
+func (s *StepRun) MarkFailed(
+	errMsg string,
+	response *ResponseSnapshot,
+	assertionsResult []domainassertion.Result,
+) error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
 	}
@@ -193,6 +211,11 @@ func (s *StepRun) MarkFailed(errMsg string, response *ResponseSnapshot) error {
 	if response != nil {
 		normalized := response.Normalized()
 		s.ResponseSnapshot = &normalized
+	}
+	if assertionsResult == nil {
+		s.AssertionsResult = []domainassertion.Result{}
+	} else {
+		s.AssertionsResult = assertionsResult
 	}
 	s.Status = StatusFailed
 	s.Error = errMsg
@@ -250,7 +273,7 @@ func (s *StepRun) startedEvent(at time.Time) StepRunStarted {
 		StepID:         s.StepID.String(),
 		WorkflowID:     s.WorkflowID.String(),
 		EndpointID:     s.EndpointID.String(),
-		ProjectID: s.ProjectID.String(),
+		ProjectID:      s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -278,7 +301,7 @@ func (s *StepRun) succeededEvent(at time.Time) StepRunSucceeded {
 		StepRunID:          s.ID.String(),
 		WorkflowRunID:      s.WorkflowRunID.String(),
 		StepID:             s.StepID.String(),
-		ProjectID:     s.ProjectID.String(),
+		ProjectID:          s.ProjectID.String(),
 		Status:             string(s.Status),
 		Attempt:            s.Attempt,
 		ResponseSnapshot:   s.ResponseSnapshot,
@@ -293,7 +316,7 @@ func (s *StepRun) failedEvent(at time.Time) StepRunFailed {
 		StepRunID:        s.ID.String(),
 		WorkflowRunID:    s.WorkflowRunID.String(),
 		StepID:           s.StepID.String(),
-		ProjectID:   s.ProjectID.String(),
+		ProjectID:        s.ProjectID.String(),
 		Status:           string(s.Status),
 		Attempt:          s.Attempt,
 		ResponseSnapshot: s.ResponseSnapshot,
