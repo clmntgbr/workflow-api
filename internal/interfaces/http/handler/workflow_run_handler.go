@@ -165,8 +165,8 @@ func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
 	}
 
 	run, err := h.cancelHandler.Handle(c.Context(), workflowruncmd.CancelWorkflowRunCommand{
-		WorkflowID:     workflowID,
-		ProjectID: orgID,
+		WorkflowID: workflowID,
+		ProjectID:  orgID,
 	})
 	if err != nil {
 		if errors.Is(err, domainworkflowrun.ErrWorkflowNotFound) {
@@ -315,13 +315,8 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 		)
 	}
 
-	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
-	}
-
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
-		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID, insightsByStepRunID),
+		presenter.NewWorkflowRunListWithStepRunsFromViews(views, stepRunsByWorkflowRunID),
 		int(total),
 		query,
 	))

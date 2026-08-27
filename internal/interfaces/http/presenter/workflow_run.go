@@ -12,20 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
+// WorkflowRunListResponse is the slim payload for GET /runs collection.
 type WorkflowRunListResponse struct {
-	ID          string     `json:"id"`
-	Status      string     `json:"status"`
-	TriggeredBy string     `json:"triggeredBy"`
-	StartedAt   *time.Time `json:"startedAt"`
-	FinishedAt  *time.Time `json:"finishedAt"`
-	Error       *string    `json:"error"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	ID         string                          `json:"id"`
+	Status     string                          `json:"status"`
+	StartedAt  *time.Time                      `json:"startedAt"`
+	FinishedAt *time.Time                      `json:"finishedAt"`
+	CreatedAt  time.Time                       `json:"createdAt"`
+	StepRuns   []StepRunCollectionItemResponse `json:"stepRuns"`
+}
+
+type StepRunCollectionItemResponse struct {
+	Status string `json:"status"`
 }
 
 type WorkflowRunDetailResponse struct {
-	WorkflowRunListResponse
-	Workflow *WorkflowDetailResponse `json:"workflow,omitempty"`
-	StepRuns []StepRunResponse       `json:"stepRuns,omitempty"`
+	ID          string                  `json:"id"`
+	Status      string                  `json:"status"`
+	TriggeredBy string                  `json:"triggeredBy"`
+	StartedAt   *time.Time              `json:"startedAt"`
+	FinishedAt  *time.Time              `json:"finishedAt"`
+	Error       *string                 `json:"error"`
+	CreatedAt   time.Time               `json:"createdAt"`
+	Workflow    *WorkflowDetailResponse `json:"workflow,omitempty"`
+	StepRuns    []StepRunResponse       `json:"stepRuns,omitempty"`
 }
 
 type WorkflowRunAnalyticsResponse struct {
@@ -43,16 +53,43 @@ type WorkflowRunAnalyticsResponse struct {
 	LastRunAt         *time.Time `json:"lastRunAt"`
 }
 
-func NewWorkflowRunListResponseFromView(view domainworkflowrun.WorkflowRunView) WorkflowRunListResponse {
+func NewWorkflowRunListResponseFromView(
+	view domainworkflowrun.WorkflowRunView,
+	stepRuns []domainsteprun.StepRunView,
+) WorkflowRunListResponse {
 	return WorkflowRunListResponse{
-		ID:          view.ID.String(),
-		Status:      string(view.Status),
-		TriggeredBy: string(view.TriggeredBy),
-		StartedAt:   view.StartedAt,
-		FinishedAt:  view.FinishedAt,
-		Error:       optionalNonEmptyString(view.Error),
-		CreatedAt:   view.CreatedAt,
+		ID:         view.ID.String(),
+		Status:     string(view.Status),
+		StartedAt:  view.StartedAt,
+		FinishedAt: view.FinishedAt,
+		CreatedAt:  view.CreatedAt,
+		StepRuns:   NewStepRunCollectionItemsFromViews(stepRuns),
 	}
+}
+
+func NewStepRunCollectionItemsFromViews(views []domainsteprun.StepRunView) []StepRunCollectionItemResponse {
+	if len(views) == 0 {
+		return []StepRunCollectionItemResponse{}
+	}
+	items := make([]StepRunCollectionItemResponse, 0, len(views))
+	for _, view := range views {
+		items = append(items, StepRunCollectionItemResponse{Status: string(view.Status)})
+	}
+	return items
+}
+
+func NewWorkflowRunListWithStepRunsFromViews(
+	views []domainworkflowrun.WorkflowRunView,
+	stepRunsByWorkflowRunID map[uuid.UUID][]domainsteprun.StepRunView,
+) []WorkflowRunListResponse {
+	items := make([]WorkflowRunListResponse, 0, len(views))
+	for _, view := range views {
+		items = append(items, NewWorkflowRunListResponseFromView(
+			view,
+			stepRunsByWorkflowRunID[view.ID],
+		))
+	}
+	return items
 }
 
 func NewWorkflowRunDetailResponseFromEntity(
@@ -60,15 +97,13 @@ func NewWorkflowRunDetailResponseFromEntity(
 	_ uuid.UUID,
 ) WorkflowRunDetailResponse {
 	return WorkflowRunDetailResponse{
-		WorkflowRunListResponse: WorkflowRunListResponse{
-			ID:          run.ID.String(),
-			Status:      string(run.Status),
-			TriggeredBy: string(run.TriggeredBy),
-			StartedAt:   run.StartedAt,
-			FinishedAt:  run.FinishedAt,
-			Error:       optionalNonEmptyString(run.Error),
-			CreatedAt:   run.CreatedAt,
-		},
+		ID:          run.ID.String(),
+		Status:      string(run.Status),
+		TriggeredBy: string(run.TriggeredBy),
+		StartedAt:   run.StartedAt,
+		FinishedAt:  run.FinishedAt,
+		Error:       optionalNonEmptyString(run.Error),
+		CreatedAt:   run.CreatedAt,
 	}
 }
 
@@ -88,7 +123,13 @@ func NewWorkflowRunDetailResponseFromViewWithRelations(
 	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
 ) WorkflowRunDetailResponse {
 	resp := WorkflowRunDetailResponse{
-		WorkflowRunListResponse: NewWorkflowRunListResponseFromView(view),
+		ID:          view.ID.String(),
+		Status:      string(view.Status),
+		TriggeredBy: string(view.TriggeredBy),
+		StartedAt:   view.StartedAt,
+		FinishedAt:  view.FinishedAt,
+		Error:       optionalNonEmptyString(view.Error),
+		CreatedAt:   view.CreatedAt,
 		StepRuns: NewStepRunListResponseFromViewsWithSteps(
 			stepRuns,
 			stepsByID,
@@ -100,22 +141,6 @@ func NewWorkflowRunDetailResponseFromViewWithRelations(
 		resp.Workflow = &detail
 	}
 	return resp
-}
-
-func NewWorkflowRunListWithStepRunsFromViews(
-	views []domainworkflowrun.WorkflowRunView,
-	stepRunsByWorkflowRunID map[uuid.UUID][]domainsteprun.StepRunView,
-	insightsByStepRunID map[uuid.UUID][]domaininsight.InsightView,
-) []WorkflowRunDetailResponse {
-	items := make([]WorkflowRunDetailResponse, 0, len(views))
-	for _, view := range views {
-		items = append(items, NewWorkflowRunDetailResponseFromView(
-			view,
-			stepRunsByWorkflowRunID[view.ID],
-			insightsByStepRunID,
-		))
-	}
-	return items
 }
 
 func NewWorkflowRunAnalyticsResponse(
