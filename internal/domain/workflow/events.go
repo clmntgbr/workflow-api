@@ -1,6 +1,10 @@
 package workflow
 
-import "time"
+import (
+	"time"
+
+	"go-api/internal/domain/event"
+)
 
 const (
 	EventTypeWorkflowCreated = "workflow.created.v1"
@@ -8,7 +12,13 @@ const (
 	EventTypeWorkflowDeleted = "workflow.deleted.v1"
 )
 
+const (
+	WorkflowUpdateReasonActivated   = "activated"
+	WorkflowUpdateReasonDeactivated = "deactivated"
+)
+
 type WorkflowCreated struct {
+	event.PerformedBy
 	ID                    string     `json:"eventId"`
 	WorkflowID            string     `json:"workflowId"`
 	ProjectID        string     `json:"projectId"`
@@ -35,6 +45,7 @@ func (e WorkflowCreated) AggregateID() string   { return e.WorkflowID }
 func (e WorkflowCreated) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowUpdated struct {
+	event.PerformedBy
 	ID                    string     `json:"eventId"`
 	WorkflowID            string     `json:"workflowId"`
 	ProjectID        string     `json:"projectId"`
@@ -52,6 +63,7 @@ type WorkflowUpdated struct {
 	NotifyOnSuccess       bool       `json:"notifyOnSuccess"`
 	NotifyOnFailure       bool       `json:"notifyOnFailure"`
 	NotifyOnCancel        bool       `json:"notifyOnCancel"`
+	UpdateReason          string     `json:"updateReason,omitempty"`
 	Timestamp             time.Time  `json:"timestamp"`
 }
 
@@ -61,6 +73,7 @@ func (e WorkflowUpdated) AggregateID() string   { return e.WorkflowID }
 func (e WorkflowUpdated) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowDeleted struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	WorkflowID     string    `json:"workflowId"`
 	ProjectID string    `json:"projectId"`

@@ -81,6 +81,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
 	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
 	stepReadRepo := read.NewStepReadRepository(db)
+	userReadRepo := read.NewUserReadRepository(db)
 	connReadRepo := read.NewConnectionReadRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
@@ -107,7 +108,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	activityLogWriteRepo := write.NewActivityLogWriteRepository(db)
-	recordActivityLog := eventactivitylog.NewRecordHandler(activityLogWriteRepo, workflowReadRepo, workflowRunReadRepo)
+	recordActivityLog := eventactivitylog.NewRecordHandler(activityLogWriteRepo, workflowReadRepo, workflowRunReadRepo, stepReadRepo, userReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(

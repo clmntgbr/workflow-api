@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/application/messaging"
 	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
 
@@ -13,6 +14,7 @@ import (
 
 type UpdateAssertionCommand struct {
 	ID            uuid.UUID
+	UserID        uuid.UUID
 	WorkflowID    uuid.UUID
 	ProjectID     uuid.UUID
 	Description   string
@@ -61,7 +63,7 @@ func (h *UpdateAssertionHandler) Handle(
 		if err := h.assertionRepo.Update(txCtx, assertion); err != nil {
 			return errors.New("failed to update assertion")
 		}
-		return h.outbox.StoreEvents(txCtx, assertion.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(assertion.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, err

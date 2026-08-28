@@ -73,6 +73,11 @@ func expectedValueFromRequest(v *string) string {
 }
 
 func (h *AssertionHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	projectID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -104,6 +109,7 @@ func (h *AssertionHandler) Create(c fiber.Ctx) error {
 	}
 
 	assertion, err := h.createHandler.Handle(c.Context(), assertioncmd.CreateAssertionCommand{
+		UserID:        user.ID,
 		WorkflowID:    workflowID,
 		ProjectID:     projectID,
 		StepID:        stepID,
@@ -224,6 +230,11 @@ func (h *AssertionHandler) GetByID(c fiber.Ctx) error {
 }
 
 func (h *AssertionHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	projectID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -256,6 +267,7 @@ func (h *AssertionHandler) Update(c fiber.Ctx) error {
 
 	assertion, err := h.updateHandler.Handle(c.Context(), assertioncmd.UpdateAssertionCommand{
 		ID:            id,
+		UserID:        user.ID,
 		WorkflowID:    workflowID,
 		ProjectID:     projectID,
 		Description:   req.Description,
@@ -274,6 +286,11 @@ func (h *AssertionHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *AssertionHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	projectID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -292,7 +309,9 @@ func (h *AssertionHandler) Delete(c fiber.Ctx) error {
 
 	if err := h.deleteHandler.Handle(c.Context(), assertioncmd.DeleteAssertionCommand{
 		ID:         id,
+		UserID:     user.ID,
 		WorkflowID: workflowID,
+		ProjectID:  projectID,
 	}); err != nil {
 		if errors.Is(err, domainassertion.ErrNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Assertion not found"})

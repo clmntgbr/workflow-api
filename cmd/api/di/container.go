@@ -172,7 +172,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, variableReadRepo, stepWriteRepo, outboxRepo)
 	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo, outboxRepo)
-	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo, stepReadRepo)
+	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo, stepReadRepo, outboxRepo)
 	getVariableByIDHandler := queryvariable.NewGetVariableByIDHandler(variableReadRepo)
 	listVariablesByWorkflowHandler := queryvariable.NewListVariablesByWorkflowHandler(variableReadRepo)
 	listAvailableVariablesHandler := queryvariable.NewListAvailableVariablesHandler(variableReadRepo, connReadRepo)
@@ -180,7 +180,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createAssertionHandler := assertioncmd.NewCreateAssertionHandler(assertionWriteRepo, stepWriteRepo, outboxRepo)
 	updateAssertionHandler := assertioncmd.NewUpdateAssertionHandler(assertionWriteRepo, outboxRepo)
-	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo)
+	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo, outboxRepo)
 	getAssertionByIDHandler := queryassertion.NewGetAssertionByIDHandler(assertionReadRepo)
 	listAssertionsByStepHandler := queryassertion.NewListAssertionsByStepHandler(assertionReadRepo)
 	listActivityLogsByWorkflowHandler := queryactivitylog.NewListByWorkflowHandler(activityLogReadRepo)

@@ -6,6 +6,7 @@ import (
 
 	domainassertion "go-api/internal/domain/assertion"
 	domainconnection "go-api/internal/domain/connection"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -16,6 +17,7 @@ import (
 
 type DeleteStepCommand struct {
 	ID         uuid.UUID
+	UserID     uuid.UUID
 	WorkflowID uuid.UUID
 	ProjectID  uuid.UUID
 }
@@ -140,6 +142,6 @@ func (h *DeleteStepHandler) Handle(ctx context.Context, cmd DeleteStepCommand) e
 		if err := h.stepRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, events)
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(events, cmd.UserID))
 	})
 }

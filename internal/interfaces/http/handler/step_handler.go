@@ -187,6 +187,11 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -230,6 +235,7 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 
 	s, err := h.updateHandler.Handle(c.Context(), stepcmd.UpdateStepCommand{
 		ID:             id,
+		UserID:         user.ID,
 		WorkflowID:     workflowID,
 		ProjectID: orgID,
 		Name:           req.Name,
@@ -255,6 +261,11 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -279,9 +290,10 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 	}
 
 	s, err := h.updatePositionHandler.Handle(c.Context(), stepcmd.UpdateStepPositionCommand{
-		ID:             id,
-		ProjectID: orgID,
-		WorkflowID:     workflowID,
+		ID:         id,
+		UserID:     user.ID,
+		ProjectID:  orgID,
+		WorkflowID: workflowID,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,
@@ -300,6 +312,11 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -316,9 +333,10 @@ func (h *StepHandler) Delete(c fiber.Ctx) error {
 	}
 
 	if err := h.deleteHandler.Handle(c.Context(), stepcmd.DeleteStepCommand{
-		ID:             id,
-		WorkflowID:     workflowID,
-		ProjectID: orgID,
+		ID:         id,
+		UserID:     user.ID,
+		WorkflowID: workflowID,
+		ProjectID:  orgID,
 	}); err != nil {
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})

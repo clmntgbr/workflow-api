@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	cmdquota "go-api/internal/application/command/quota"
+	"go-api/internal/application/messaging"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
@@ -85,7 +86,7 @@ func (h *CreateEndpointHandler) Handle(
 		if err := h.repo.Save(txCtx, e); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, e.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(e.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to create endpoint")

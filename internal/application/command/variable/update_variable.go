@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainvariable "go-api/internal/domain/variable"
 
@@ -13,6 +14,7 @@ import (
 
 type UpdateVariableCommand struct {
 	ID             uuid.UUID
+	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
 	ProjectID uuid.UUID
 	Name           string
@@ -73,7 +75,7 @@ func (h *UpdateVariableHandler) Handle(ctx context.Context, cmd UpdateVariableCo
 			}
 			return errors.New("failed to update variable")
 		}
-		return h.outbox.StoreEvents(txCtx, variable.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(variable.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, err

@@ -2,7 +2,6 @@ package activitylog
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	domainactivitylog "go-api/internal/domain/activitylog"
@@ -18,7 +17,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func Project(eventType string, payload []byte) (*domainactivitylog.Entry, error) {
+func Project(eventType string, payload []byte) (*projectedLog, error) {
 	switch eventType {
 	case domainworkflow.EventTypeWorkflowCreated:
 		return projectWorkflowCreated(payload)
@@ -30,6 +29,8 @@ func Project(eventType string, payload []byte) (*domainactivitylog.Entry, error)
 		return projectStepCreated(payload)
 	case domainstep.EventTypeStepUpdated:
 		return projectStepUpdated(payload)
+	case domainstep.EventTypeStepPositionUpdated:
+		return projectStepPositionUpdated(payload)
 	case domainstep.EventTypeStepDeleted:
 		return projectStepDeleted(payload)
 	case domainconnection.EventTypeConnectionCreated:
@@ -40,10 +41,14 @@ func Project(eventType string, payload []byte) (*domainactivitylog.Entry, error)
 		return projectVariableCreated(payload)
 	case domainvariable.EventTypeVariableUpdated:
 		return projectVariableUpdated(payload)
+	case domainvariable.EventTypeVariableDeleted:
+		return projectVariableDeleted(payload)
 	case domainassertion.EventTypeAssertionCreated:
 		return projectAssertionCreated(payload)
 	case domainassertion.EventTypeAssertionUpdated:
 		return projectAssertionUpdated(payload)
+	case domainassertion.EventTypeAssertionDeleted:
+		return projectAssertionDeleted(payload)
 	case domainendpoint.EventTypeEndpointCreated:
 		return projectEndpointCreated(payload)
 	case domainendpoint.EventTypeEndpointUpdated:
@@ -73,7 +78,7 @@ func Project(eventType string, payload []byte) (*domainactivitylog.Entry, error)
 	}
 }
 
-func projectWorkflowCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowCreated(payload []byte) (*projectedLog, error) {
 	var evt domainworkflow.WorkflowCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -82,22 +87,21 @@ func projectWorkflowCreated(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionWorkflowCreated,
 		subjectType:     domainactivitylog.SubjectWorkflow,
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("Workflow %q created", evt.Name),
-		payload:         structPayload(evt),
+		hints: messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectWorkflowUpdated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowUpdated(payload []byte) (*projectedLog, error) {
 	var evt domainworkflow.WorkflowUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -106,22 +110,28 @@ func projectWorkflowUpdated(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	action := domainactivitylog.ActionWorkflowUpdated
+	switch evt.UpdateReason {
+	case domainworkflow.WorkflowUpdateReasonActivated:
+		action = domainactivitylog.ActionWorkflowActivated
+	case domainworkflow.WorkflowUpdateReasonDeactivated:
+		action = domainactivitylog.ActionWorkflowDeactivated
+	}
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
-		action:          domainactivitylog.ActionWorkflowUpdated,
+		action:          action,
 		subjectType:     domainactivitylog.SubjectWorkflow,
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("Workflow %q updated", evt.Name),
-		payload:         structPayload(evt),
+		hints: messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectWorkflowDeleted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowDeleted(payload []byte) (*projectedLog, error) {
 	var evt domainworkflow.WorkflowDeleted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -130,22 +140,20 @@ func projectWorkflowDeleted(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionWorkflowDeleted,
 		subjectType:     domainactivitylog.SubjectWorkflow,
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelWarning,
-		message:         "Workflow deleted",
-		payload:         structPayload(evt),
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectStepCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepCreated(payload []byte) (*projectedLog, error) {
 	var evt domainstep.StepCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -154,7 +162,7 @@ func projectStepCreated(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionStepCreated,
 		subjectType:     domainactivitylog.SubjectStep,
@@ -162,15 +170,14 @@ func projectStepCreated(payload []byte) (*domainactivitylog.Entry, error) {
 		workflowID:      &workflowID,
 		stepID:          &stepID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("Step %q created", evt.Name),
-		payload:         structPayload(evt),
+		hints: messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectStepUpdated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepUpdated(payload []byte) (*projectedLog, error) {
 	var evt domainstep.StepUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -179,7 +186,7 @@ func projectStepUpdated(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionStepUpdated,
 		subjectType:     domainactivitylog.SubjectStep,
@@ -187,15 +194,42 @@ func projectStepUpdated(payload []byte) (*domainactivitylog.Entry, error) {
 		workflowID:      &workflowID,
 		stepID:          &stepID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("Step %q updated", evt.Name),
-		payload:         structPayload(evt),
+		hints: messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectStepDeleted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepPositionUpdated(payload []byte) (*projectedLog, error) {
+	var evt domainstep.StepPositionUpdated
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return nil, err
+	}
+	projectID, workflowID, stepID, eventID, err := parseStepScope(evt.ProjectID, evt.WorkflowID, evt.StepID, evt.ID)
+	if err != nil {
+		return nil, err
+	}
+	return finalizeEntry(newEntryParams{
+		projectID:       projectID,
+		action:          domainactivitylog.ActionStepPositionUpdated,
+		subjectType:     domainactivitylog.SubjectStep,
+		subjectID:       stepID,
+		workflowID:      &workflowID,
+		stepID:          &stepID,
+		level:           domainactivitylog.LevelInfo,
+		hints: messageHints{
+			StepName: evt.Name,
+			PositionX: evt.Position.X,
+			PositionY: evt.Position.Y,
+		},
+		sourceEventID:   eventID,
+		sourceEventType: evt.EventType(),
+		occurredAt:      evt.Timestamp,
+	})
+}
+
+func projectStepDeleted(payload []byte) (*projectedLog, error) {
 	var evt domainstep.StepDeleted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -204,7 +238,7 @@ func projectStepDeleted(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionStepDeleted,
 		subjectType:     domainactivitylog.SubjectStep,
@@ -212,15 +246,13 @@ func projectStepDeleted(payload []byte) (*domainactivitylog.Entry, error) {
 		workflowID:      &workflowID,
 		stepID:          &stepID,
 		level:           domainactivitylog.LevelWarning,
-		message:         "Step deleted",
-		payload:         structPayload(evt),
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectConnectionCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectConnectionCreated(payload []byte) (*projectedLog, error) {
 	var evt domainconnection.ConnectionCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -241,22 +273,26 @@ func projectConnectionCreated(payload []byte) (*domainactivitylog.Entry, error) 
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	sourceStepID, _ := uuid.Parse(evt.SourceStepID)
+	targetStepID, _ := uuid.Parse(evt.TargetStepID)
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionConnectionCreated,
 		subjectType:     domainactivitylog.SubjectConnection,
 		subjectID:       connectionID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelInfo,
-		message:         "Connection created",
-		payload:         structPayload(evt),
+		hints: messageHints{
+			SourceStepID: sourceStepID,
+			TargetStepID: targetStepID,
+		},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectConnectionDeleted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectConnectionDeleted(payload []byte) (*projectedLog, error) {
 	var evt domainconnection.ConnectionDeleted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -277,43 +313,56 @@ func projectConnectionDeleted(payload []byte) (*domainactivitylog.Entry, error) 
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionConnectionDeleted,
 		subjectType:     domainactivitylog.SubjectConnection,
 		subjectID:       connectionID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelWarning,
-		message:         "Connection deleted",
-		payload:         structPayload(evt),
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectVariableCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectVariableCreated(payload []byte) (*projectedLog, error) {
 	var evt domainvariable.VariableCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectVariable(evt.ProjectID, evt.WorkflowID, evt.StepID, evt.VariableID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionVariableCreated, fmt.Sprintf("Variable %q created", evt.Key), evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionVariableCreated,
+		evt.Timestamp,
+		messageHints{VariableKey: evt.Key, VariableKind: evt.Kind})
 }
 
-func projectVariableUpdated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectVariableUpdated(payload []byte) (*projectedLog, error) {
 	var evt domainvariable.VariableUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectVariable(evt.ProjectID, evt.WorkflowID, evt.StepID, evt.VariableID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionVariableUpdated, fmt.Sprintf("Variable %q updated", evt.Key), evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionVariableUpdated,
+		evt.Timestamp,
+		messageHints{VariableKey: evt.Key, VariableKind: evt.Kind})
+}
+
+func projectVariableDeleted(payload []byte) (*projectedLog, error) {
+	var evt domainvariable.VariableDeleted
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return nil, err
+	}
+	return projectVariable(evt.ProjectID, evt.WorkflowID, evt.StepID, evt.VariableID, evt.ID, evt.EventType(),
+		domainactivitylog.ActionVariableDeleted,
+		evt.Timestamp,
+		messageHints{VariableKey: evt.Key, VariableKind: evt.Kind})
 }
 
 func projectVariable(
-	projectIDRaw, workflowIDRaw, stepIDRaw, variableIDRaw, eventIDRaw, eventType, action, message string,
-	occurredAt time.Time, payload map[string]any,
-) (*domainactivitylog.Entry, error) {
+	projectIDRaw, workflowIDRaw, stepIDRaw, variableIDRaw, eventIDRaw, eventType, action string,
+	occurredAt time.Time, hints messageHints,
+) (*projectedLog, error) {
 	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return nil, err
@@ -338,48 +387,80 @@ func projectVariable(
 		}
 		stepID = &parsed
 	}
-	return newEntry(newEntryParams{
+	level := domainactivitylog.LevelInfo
+	if action == domainactivitylog.ActionVariableDeleted {
+		level = domainactivitylog.LevelWarning
+	}
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          action,
 		subjectType:     domainactivitylog.SubjectVariable,
 		subjectID:       variableID,
 		workflowID:      &workflowID,
 		stepID:          stepID,
-		level:           domainactivitylog.LevelInfo,
-		message:         message,
-		payload:         payload,
+		level:           level,
+		hints:           hints,
 		sourceEventID:   eventID,
 		sourceEventType: eventType,
 		occurredAt:      occurredAt,
-	}), nil
+	})
 }
 
-func projectAssertionCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectAssertionCreated(payload []byte) (*projectedLog, error) {
 	var evt domainassertion.AssertionCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectAssertionFromFields(
 		evt.ProjectID, evt.WorkflowID, evt.StepID, evt.AssertionID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionAssertionCreated, "Assertion created", evt.Timestamp, structPayload(evt),
+		domainactivitylog.ActionAssertionCreated,
+		evt.Timestamp,
+		messageHints{
+			AssertionSource:   evt.Source,
+			AssertionOperator: evt.Operator,
+			ExpectedValue:     evt.ExpectedValue,
+		},
 	)
 }
 
-func projectAssertionUpdated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectAssertionUpdated(payload []byte) (*projectedLog, error) {
 	var evt domainassertion.AssertionUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectAssertionFromFields(
 		evt.ProjectID, evt.WorkflowID, evt.StepID, evt.AssertionID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionAssertionUpdated, "Assertion updated", evt.Timestamp, structPayload(evt),
+		domainactivitylog.ActionAssertionUpdated,
+		evt.Timestamp,
+		messageHints{
+			AssertionSource:   evt.Source,
+			AssertionOperator: evt.Operator,
+			ExpectedValue:     evt.ExpectedValue,
+		},
+	)
+}
+
+func projectAssertionDeleted(payload []byte) (*projectedLog, error) {
+	var evt domainassertion.AssertionDeleted
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return nil, err
+	}
+	return projectAssertionFromFields(
+		evt.ProjectID, evt.WorkflowID, evt.StepID, evt.AssertionID, evt.ID, evt.EventType(),
+		domainactivitylog.ActionAssertionDeleted,
+		evt.Timestamp,
+		messageHints{
+			AssertionSource:   evt.Source,
+			AssertionOperator: evt.Operator,
+			ExpectedValue:     evt.ExpectedValue,
+		},
 	)
 }
 
 func projectAssertionFromFields(
-	projectIDRaw, workflowIDRaw, stepIDRaw, assertionIDRaw, eventIDRaw, eventType, action, message string,
-	occurredAt time.Time, payload map[string]any,
-) (*domainactivitylog.Entry, error) {
+	projectIDRaw, workflowIDRaw, stepIDRaw, assertionIDRaw, eventIDRaw, eventType, action string,
+	occurredAt time.Time, hints messageHints,
+) (*projectedLog, error) {
 	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return nil, err
@@ -400,50 +481,59 @@ func projectAssertionFromFields(
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	level := domainactivitylog.LevelInfo
+	if action == domainactivitylog.ActionAssertionDeleted {
+		level = domainactivitylog.LevelWarning
+	}
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          action,
 		subjectType:     domainactivitylog.SubjectAssertion,
 		subjectID:       assertionID,
 		workflowID:      &workflowID,
 		stepID:          &stepID,
-		level:           domainactivitylog.LevelInfo,
-		message:         message,
-		payload:         payload,
+		level:           level,
+		hints:           hints,
 		sourceEventID:   eventID,
 		sourceEventType: eventType,
 		occurredAt:      occurredAt,
-	}), nil
+	})
 }
 
-func projectEndpointCreated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectEndpointCreated(payload []byte) (*projectedLog, error) {
 	var evt domainendpoint.EndpointCreated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectEndpoint(evt.ProjectID, evt.EndpointID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionEndpointCreated, fmt.Sprintf("Endpoint %q created", evt.Name), evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionEndpointCreated,
+		evt.Timestamp,
+		messageHints{EndpointName: evt.Name, Method: evt.Method, URL: evt.URL})
 }
 
-func projectEndpointUpdated(payload []byte) (*domainactivitylog.Entry, error) {
+func projectEndpointUpdated(payload []byte) (*projectedLog, error) {
 	var evt domainendpoint.EndpointUpdated
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectEndpoint(evt.ProjectID, evt.EndpointID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionEndpointUpdated, fmt.Sprintf("Endpoint %q updated", evt.Name), evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionEndpointUpdated,
+		evt.Timestamp,
+		messageHints{EndpointName: evt.Name, Method: evt.Method, URL: evt.URL})
 }
 
-func projectEndpointDeleted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectEndpointDeleted(payload []byte) (*projectedLog, error) {
 	var evt domainendpoint.EndpointDeleted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
 	return projectEndpoint(evt.ProjectID, evt.EndpointID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionEndpointDeleted, "Endpoint deleted", evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionEndpointDeleted,
+		evt.Timestamp,
+		messageHints{})
 }
 
-func projectEndpointImported(payload []byte) (*domainactivitylog.Entry, error) {
+func projectEndpointImported(payload []byte) (*projectedLog, error) {
 	var evt domainendpoint.EndpointImported
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -456,24 +546,23 @@ func projectEndpointImported(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          domainactivitylog.ActionEndpointImported,
 		subjectType:     domainactivitylog.SubjectEndpoint,
 		subjectID:       projectID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("%d endpoints imported", evt.Count),
-		payload:         structPayload(evt),
+		hints:           messageHints{ImportCount: evt.Count},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
 func projectEndpoint(
-	projectIDRaw, endpointIDRaw, eventIDRaw, eventType, action, message string,
-	occurredAt time.Time, payload map[string]any,
-) (*domainactivitylog.Entry, error) {
+	projectIDRaw, endpointIDRaw, eventIDRaw, eventType, action string,
+	occurredAt time.Time, hints messageHints,
+) (*projectedLog, error) {
 	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return nil, err
@@ -486,21 +575,20 @@ func projectEndpoint(
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          action,
 		subjectType:     domainactivitylog.SubjectEndpoint,
 		subjectID:       endpointID,
 		level:           domainactivitylog.LevelInfo,
-		message:         message,
-		payload:         payload,
+		hints:           hints,
 		sourceEventID:   eventID,
 		sourceEventType: eventType,
 		occurredAt:      occurredAt,
-	}), nil
+	})
 }
 
-func projectWorkflowRunStarted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowRunStarted(payload []byte) (*projectedLog, error) {
 	var evt domainworkflowrun.WorkflowRunStarted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -518,7 +606,7 @@ func projectWorkflowRunStarted(payload []byte) (*domainactivitylog.Entry, error)
 		return nil, err
 	}
 	actorType, actorUserID := actorFromTriggeredBy(evt.TriggeredBy, evt.TriggeredByUserID)
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		action:          domainactivitylog.ActionWorkflowRunStarted,
 		subjectType:     domainactivitylog.SubjectWorkflowRun,
 		subjectID:       workflowRunID,
@@ -527,15 +615,14 @@ func projectWorkflowRunStarted(payload []byte) (*domainactivitylog.Entry, error)
 		actorType:       actorType,
 		actorUserID:     actorUserID,
 		level:           domainactivitylog.LevelInfo,
-		message:         fmt.Sprintf("Workflow run started (%s)", evt.TriggeredBy),
-		payload:         structPayload(evt),
+		hints:           messageHints{TriggeredBy: evt.TriggeredBy},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectWorkflowRunFinished(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowRunFinished(payload []byte) (*projectedLog, error) {
 	var evt domainworkflowrun.WorkflowRunFinished
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -553,31 +640,30 @@ func projectWorkflowRunFinished(payload []byte) (*domainactivitylog.Entry, error
 		return nil, err
 	}
 	level := domainactivitylog.LevelInfo
-	message := fmt.Sprintf("Workflow run finished (%s)", evt.FinishType)
 	if evt.FinishType == domainworkflowrun.FinishTypeFailed {
 		level = domainactivitylog.LevelError
-		message = "Workflow run failed"
 	}
 	if evt.FinishType == domainworkflowrun.FinishTypeCancelled {
 		level = domainactivitylog.LevelWarning
-		message = "Workflow run cancelled"
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		action:          domainactivitylog.ActionWorkflowRunFinished,
 		subjectType:     domainactivitylog.SubjectWorkflowRun,
 		subjectID:       workflowRunID,
 		workflowID:      &workflowID,
 		workflowRunID:   &workflowRunID,
 		level:           level,
-		message:         message,
-		payload:         structPayload(evt),
+		hints: messageHints{
+			FinishType: string(evt.FinishType),
+			Error:      evt.Error,
+		},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectWorkflowRunCancelled(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowRunCancelled(payload []byte) (*projectedLog, error) {
 	var evt domainworkflowrun.WorkflowRunCancelled
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -594,22 +680,20 @@ func projectWorkflowRunCancelled(payload []byte) (*domainactivitylog.Entry, erro
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		action:          domainactivitylog.ActionWorkflowRunCancelled,
 		subjectType:     domainactivitylog.SubjectWorkflowRun,
 		subjectID:       workflowRunID,
 		workflowID:      &workflowID,
 		workflowRunID:   &workflowRunID,
 		level:           domainactivitylog.LevelWarning,
-		message:         "Workflow run cancelled",
-		payload:         structPayload(evt),
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectWorkflowRunScheduledSkipped(payload []byte) (*domainactivitylog.Entry, error) {
+func projectWorkflowRunScheduledSkipped(payload []byte) (*projectedLog, error) {
 	var evt domainworkflowrun.WorkflowRunScheduledSkipped
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -622,21 +706,20 @@ func projectWorkflowRunScheduledSkipped(payload []byte) (*domainactivitylog.Entr
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		action:          domainactivitylog.ActionWorkflowRunScheduledSkip,
 		subjectType:     domainactivitylog.SubjectWorkflow,
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelWarning,
-		message:         fmt.Sprintf("Scheduled run skipped (%s)", evt.Reason),
-		payload:         structPayload(evt),
+		hints:           messageHints{SkipReason: evt.Reason},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectStepRunQueued(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepRunQueued(payload []byte) (*projectedLog, error) {
 	var evt domainsteprun.StepRunQueued
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
@@ -657,7 +740,7 @@ func projectStepRunQueued(payload []byte) (*domainactivitylog.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		action:          domainactivitylog.ActionStepRunQueued,
 		subjectType:     domainactivitylog.SubjectStepRun,
 		subjectID:       stepRunID,
@@ -665,57 +748,66 @@ func projectStepRunQueued(payload []byte) (*domainactivitylog.Entry, error) {
 		stepID:          &stepID,
 		stepRunID:       &stepRunID,
 		level:           domainactivitylog.LevelInfo,
-		message:         "Step run queued",
-		payload:         structPayload(evt),
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
-	}), nil
+	})
 }
 
-func projectStepRunStarted(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepRunStarted(payload []byte) (*projectedLog, error) {
 	var evt domainsteprun.StepRunStarted
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
+	maxAttempts := evt.RetryCount
+	if !evt.RetryOnFailure || maxAttempts <= 0 {
+		maxAttempts = 0
+	}
 	return projectStepRunFromFields(
 		evt.ProjectID, evt.WorkflowID, evt.WorkflowRunID, evt.StepID, evt.StepRunID, evt.ID, evt.EventType(),
 		domainactivitylog.ActionStepRunStarted,
-		fmt.Sprintf("Step %q started (attempt %d)", evt.Name, evt.Attempt),
-		domainactivitylog.LevelInfo, evt.Timestamp, structPayload(evt),
+		domainactivitylog.LevelInfo,
+		evt.Timestamp,
+		messageHints{
+			StepName:    evt.Name,
+			Method:      evt.Method,
+			URL:         evt.URL,
+			Attempt:     evt.Attempt,
+			MaxAttempts: maxAttempts,
+		},
 	)
 }
 
-func projectStepRunSucceeded(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepRunSucceeded(payload []byte) (*projectedLog, error) {
 	var evt domainsteprun.StepRunSucceeded
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
-	message := fmt.Sprintf("Step run succeeded (attempt %d)", evt.Attempt)
+	hints := messageHints{Attempt: evt.Attempt}
 	if evt.ResponseSnapshot != nil {
-		message = fmt.Sprintf("Step run succeeded — HTTP %d (attempt %d)", evt.ResponseSnapshot.Status, evt.Attempt)
+		hints.StatusCode = evt.ResponseSnapshot.Status
 	}
 	return projectStepRunFromEvent(evt.ProjectID, evt.WorkflowRunID, evt.StepID, evt.StepRunID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionStepRunSucceeded, message, domainactivitylog.LevelInfo, evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionStepRunSucceeded, domainactivitylog.LevelInfo, evt.Timestamp, hints)
 }
 
-func projectStepRunFailed(payload []byte) (*domainactivitylog.Entry, error) {
+func projectStepRunFailed(payload []byte) (*projectedLog, error) {
 	var evt domainsteprun.StepRunFailed
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, err
 	}
-	message := "Step run failed"
-	if evt.Error != "" {
-		message = fmt.Sprintf("Step run failed — %s", evt.Error)
+	hints := messageHints{Attempt: evt.Attempt, Error: evt.Error}
+	if evt.ResponseSnapshot != nil {
+		hints.StatusCode = evt.ResponseSnapshot.Status
 	}
 	return projectStepRunFromEvent(evt.ProjectID, evt.WorkflowRunID, evt.StepID, evt.StepRunID, evt.ID, evt.EventType(),
-		domainactivitylog.ActionStepRunFailed, message, domainactivitylog.LevelError, evt.Timestamp, structPayload(evt))
+		domainactivitylog.ActionStepRunFailed, domainactivitylog.LevelError, evt.Timestamp, hints)
 }
 
 func projectStepRunFromEvent(
-	projectIDRaw, workflowRunIDRaw, stepIDRaw, stepRunIDRaw, eventIDRaw, eventType, action, message, level string,
-	occurredAt time.Time, payload map[string]any,
-) (*domainactivitylog.Entry, error) {
+	projectIDRaw, workflowRunIDRaw, stepIDRaw, stepRunIDRaw, eventIDRaw, eventType, action, level string,
+	occurredAt time.Time, hints messageHints,
+) (*projectedLog, error) {
 	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return nil, err
@@ -736,7 +828,7 @@ func projectStepRunFromEvent(
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          action,
 		subjectType:     domainactivitylog.SubjectStepRun,
@@ -745,18 +837,17 @@ func projectStepRunFromEvent(
 		stepID:          &stepID,
 		stepRunID:       &stepRunID,
 		level:           level,
-		message:         message,
-		payload:         payload,
+		hints:           hints,
 		sourceEventID:   eventID,
 		sourceEventType: eventType,
 		occurredAt:      occurredAt,
-	}), nil
+	})
 }
 
 func projectStepRunFromFields(
-	projectIDRaw, workflowIDRaw, workflowRunIDRaw, stepIDRaw, stepRunIDRaw, eventIDRaw, eventType, action, message, level string,
-	occurredAt time.Time, payload map[string]any,
-) (*domainactivitylog.Entry, error) {
+	projectIDRaw, workflowIDRaw, workflowRunIDRaw, stepIDRaw, stepRunIDRaw, eventIDRaw, eventType, action, level string,
+	occurredAt time.Time, hints messageHints,
+) (*projectedLog, error) {
 	projectID, err := uuid.Parse(projectIDRaw)
 	if err != nil {
 		return nil, err
@@ -781,7 +872,7 @@ func projectStepRunFromFields(
 	if err != nil {
 		return nil, err
 	}
-	return newEntry(newEntryParams{
+	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
 		action:          action,
 		subjectType:     domainactivitylog.SubjectStepRun,
@@ -791,12 +882,11 @@ func projectStepRunFromFields(
 		stepID:          &stepID,
 		stepRunID:       &stepRunID,
 		level:           level,
-		message:         message,
-		payload:         payload,
+		hints:           hints,
 		sourceEventID:   eventID,
 		sourceEventType: eventType,
 		occurredAt:      occurredAt,
-	}), nil
+	})
 }
 
 type newEntryParams struct {
@@ -811,33 +901,33 @@ type newEntryParams struct {
 	actorType       string
 	actorUserID     *uuid.UUID
 	level           string
-	message         string
-	payload         map[string]any
+	hints           messageHints
 	sourceEventID   uuid.UUID
 	sourceEventType string
 	occurredAt      time.Time
 }
 
-func newEntry(p newEntryParams) *domainactivitylog.Entry {
-	return &domainactivitylog.Entry{
-		ID:              uuid.New(),
-		ProjectID:       p.projectID,
-		Action:          p.action,
-		SubjectType:     p.subjectType,
-		SubjectID:       p.subjectID,
-		WorkflowID:      p.workflowID,
-		WorkflowRunID:   p.workflowRunID,
-		StepID:          p.stepID,
-		StepRunID:       p.stepRunID,
-		ActorType:       p.actorType,
-		ActorUserID:     p.actorUserID,
-		Level:           p.level,
-		Message:         p.message,
-		Payload:         p.payload,
-		SourceEventID:   p.sourceEventID,
-		SourceEventType: p.sourceEventType,
-		OccurredAt:      p.occurredAt,
-	}
+func finalizeEntry(p newEntryParams) (*projectedLog, error) {
+	return &projectedLog{
+		entry: &domainactivitylog.Entry{
+			ID:              uuid.New(),
+			ProjectID:       p.projectID,
+			Action:          p.action,
+			SubjectType:     p.subjectType,
+			SubjectID:       p.subjectID,
+			WorkflowID:      p.workflowID,
+			WorkflowRunID:   p.workflowRunID,
+			StepID:          p.stepID,
+			StepRunID:       p.stepRunID,
+			ActorType:       p.actorType,
+			ActorUserID:     p.actorUserID,
+			Level:           p.level,
+			SourceEventID:   p.sourceEventID,
+			SourceEventType: p.sourceEventType,
+			OccurredAt:      p.occurredAt,
+		},
+		hints: p.hints,
+	}, nil
 }
 
 func parseWorkflowScope(projectIDRaw, workflowIDRaw, eventIDRaw string) (uuid.UUID, uuid.UUID, uuid.UUID, error) {
@@ -866,18 +956,6 @@ func parseStepScope(projectIDRaw, workflowIDRaw, stepIDRaw, eventIDRaw string) (
 		return uuid.Nil, uuid.Nil, uuid.Nil, uuid.Nil, err
 	}
 	return projectID, workflowID, stepID, eventID, nil
-}
-
-func structPayload(v any) map[string]any {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return map[string]any{}
-	}
-	var out map[string]any
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return map[string]any{}
-	}
-	return out
 }
 
 func actorFromTriggeredBy(triggeredBy string, userID *string) (string, *uuid.UUID) {

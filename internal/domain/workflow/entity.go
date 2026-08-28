@@ -153,7 +153,7 @@ func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) error {
 		return err
 	}
 	w.RecalculateNextRunAt(w.UpdatedAt)
-	w.recordEvent(w.updatedEvent(w.UpdatedAt))
+	w.recordEvent(w.updatedEvent(w.UpdatedAt, ""))
 	return nil
 }
 
@@ -168,7 +168,7 @@ func (w *Workflow) Activate() error {
 	w.Status = StatusActive
 	w.UpdatedAt = now
 	w.RecalculateNextRunAt(now)
-	w.recordEvent(w.updatedEvent(now))
+	w.recordEvent(w.updatedEvent(now, WorkflowUpdateReasonActivated))
 	return nil
 }
 
@@ -183,7 +183,7 @@ func (w *Workflow) Deactivate() error {
 	w.Status = StatusInactive
 	w.NextRunAt = nil
 	w.UpdatedAt = now
-	w.recordEvent(w.updatedEvent(now))
+	w.recordEvent(w.updatedEvent(now, WorkflowUpdateReasonDeactivated))
 	return nil
 }
 
@@ -223,7 +223,7 @@ func (w *Workflow) createdEvent(at time.Time) WorkflowCreated {
 	}
 }
 
-func (w *Workflow) updatedEvent(at time.Time) WorkflowUpdated {
+func (w *Workflow) updatedEvent(at time.Time, reason string) WorkflowUpdated {
 	return WorkflowUpdated{
 		ID:                    uuid.New().String(),
 		WorkflowID:            w.ID.String(),
@@ -242,6 +242,7 @@ func (w *Workflow) updatedEvent(at time.Time) WorkflowUpdated {
 		NotifyOnSuccess:       w.NotifyOnSuccess,
 		NotifyOnFailure:       w.NotifyOnFailure,
 		NotifyOnCancel:        w.NotifyOnCancel,
+		UpdateReason:          reason,
 		Timestamp:             at,
 	}
 }

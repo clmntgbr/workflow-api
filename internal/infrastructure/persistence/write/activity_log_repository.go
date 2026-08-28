@@ -34,10 +34,7 @@ func (r *activityLogWriteRepository) Save(ctx context.Context, entry *domainacti
 		entry.Level = domainactivitylog.LevelInfo
 	}
 
-	model, err := activityLogModelFromDomain(entry)
-	if err != nil {
-		return err
-	}
+	model := activityLogModelFromDomain(entry)
 
 	return DBWithContext(ctx, r.db).
 		Clauses(clause.OnConflict{

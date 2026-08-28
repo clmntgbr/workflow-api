@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/domain/port"
+	"go-api/internal/application/messaging"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
 
@@ -12,7 +14,9 @@ import (
 
 type DeleteVariableCommand struct {
 	ID         uuid.UUID
+	UserID     uuid.UUID
 	WorkflowID uuid.UUID
+	ProjectID  uuid.UUID
 }
 
 type VariableInUseError struct {
@@ -30,15 +34,18 @@ func (e *VariableInUseError) Unwrap() error {
 type DeleteVariableHandler struct {
 	variableRepo domainvariable.VariableWriteRepository
 	stepReadRepo domainstep.StepReadRepository
+	outbox       port.OutboxRepository
 }
 
 func NewDeleteVariableHandler(
 	variableRepo domainvariable.VariableWriteRepository,
 	stepReadRepo domainstep.StepReadRepository,
+	outbox port.OutboxRepository,
 ) *DeleteVariableHandler {
 	return &DeleteVariableHandler{
 		variableRepo: variableRepo,
 		stepReadRepo: stepReadRepo,
+		outbox:       outbox,
 	}
 }
 
@@ -69,10 +76,13 @@ func (h *DeleteVariableHandler) Handle(ctx context.Context, cmd DeleteVariableCo
 		return &VariableInUseError{Steps: usedBy}
 	}
 
-	if err := h.variableRepo.Delete(ctx, cmd.ID); err != nil {
-		return errors.New("failed to delete variable")
-	}
-	return nil
+	variable.MarkDeleted(cmd.ProjectID)
+	return h.variableRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.variableRepo.Delete(txCtx, cmd.ID); err != nil {
+			return errors.New("failed to delete variable")
+		}
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(variable.PullEvents(), cmd.UserID))
+	})
 }
 
 func referencesVariable(step domainstep.StepView, key string) bool {

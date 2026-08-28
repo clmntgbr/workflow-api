@@ -5,6 +5,8 @@ import (
 
 	"go-api/internal/application/messaging"
 	domainactivitylog "go-api/internal/domain/activitylog"
+	domainstep "go-api/internal/domain/step"
+	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
@@ -15,36 +17,47 @@ type RecordHandler struct {
 	repo            domainactivitylog.WriteRepository
 	workflowRead    domainworkflow.WorkflowReadRepository
 	workflowRunRead domainworkflowrun.WorkflowRunReadRepository
+	stepRead        domainstep.StepReadRepository
+	userRead        domainuser.UserReadRepository
 }
 
 func NewRecordHandler(
 	repo domainactivitylog.WriteRepository,
 	workflowRead domainworkflow.WorkflowReadRepository,
 	workflowRunRead domainworkflowrun.WorkflowRunReadRepository,
+	stepRead domainstep.StepReadRepository,
+	userRead domainuser.UserReadRepository,
 ) *RecordHandler {
 	return &RecordHandler{
 		repo:            repo,
 		workflowRead:    workflowRead,
 		workflowRunRead: workflowRunRead,
+		stepRead:        stepRead,
+		userRead:        userRead,
 	}
 }
 
 func (h *RecordHandler) ForEventType(eventType string) func(context.Context, []byte) error {
 	return func(ctx context.Context, payload []byte) error {
-		entry, err := Project(eventType, payload)
+		projected, err := Project(eventType, payload)
 		if err != nil {
 			return messaging.NonRetryable(err)
 		}
-		if entry == nil {
+		if projected == nil {
 			return nil
 		}
-		if err := h.enrichProjectID(ctx, entry); err != nil {
+		if err := h.enrichProjectID(ctx, projected.entry); err != nil {
 			return messaging.Retryable(err)
 		}
-		if entry.ProjectID == uuid.Nil {
+		if projected.entry.ProjectID == uuid.Nil {
 			return messaging.NonRetryable(errMissingProjectID)
 		}
-		if err := h.repo.Save(ctx, entry); err != nil {
+		applyPerformedByFromPayload(projected.entry, payload)
+		if err := h.enrichHints(ctx, projected.entry, &projected.hints); err != nil {
+			return messaging.Retryable(err)
+		}
+		projected.entry.Message = BuildMessage(projected.entry.Action, projected.hints)
+		if err := h.repo.Save(ctx, projected.entry); err != nil {
 			return messaging.Retryable(err)
 		}
 		return nil

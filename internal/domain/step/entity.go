@@ -138,7 +138,7 @@ func (s *Step) ApplyPositionUpdate(index string, position Position) {
 	s.ExecutionOrder = CalculateExecutionOrder(index)
 	s.Position = position
 	s.UpdatedAt = time.Now().UTC()
-	s.recordUpdatedEvent()
+	s.recordPositionUpdatedEvent()
 }
 
 type UpdateStepConfigParams struct {
@@ -198,6 +198,21 @@ func (s *Step) recordUpdatedEvent() {
 		RetryOnFailure: s.RetryOnFailure,
 		RetryCount:     s.RetryCount,
 		RetryDelay:     s.RetryDelay,
+		Index:          s.Index,
+		ExecutionOrder: s.ExecutionOrder,
+		TreeIndex:      s.TreeIndex,
+		Position:       s.Position,
+		Timestamp:      s.UpdatedAt,
+	})
+}
+
+func (s *Step) recordPositionUpdatedEvent() {
+	s.recordEvent(StepPositionUpdated{
+		ID:             uuid.New().String(),
+		StepID:         s.ID.String(),
+		WorkflowID:     s.WorkflowID.String(),
+		ProjectID:      s.ProjectID.String(),
+		Name:           s.Name,
 		Index:          s.Index,
 		ExecutionOrder: s.ExecutionOrder,
 		TreeIndex:      s.TreeIndex,

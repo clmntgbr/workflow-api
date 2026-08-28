@@ -6,6 +6,7 @@ import (
 	"time"
 
 	cmdquota "go-api/internal/application/command/quota"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -84,7 +85,7 @@ func (h *CreateWorkflowHandler) Handle(
 		if err := h.repo.Save(txCtx, w); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, w.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(w.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to create workflow")

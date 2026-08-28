@@ -14,6 +14,7 @@ import (
 	"go-api/internal/domain/port"
 
 	cmdquota "go-api/internal/application/command/quota"
+	"go-api/internal/application/messaging"
 
 	"github.com/google/uuid"
 )
@@ -142,7 +143,7 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 			Count:          len(created),
 			Timestamp:      time.Now().UTC(),
 		})
-		return h.outbox.StoreEvents(txCtx, events)
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(events, cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to import endpoints")

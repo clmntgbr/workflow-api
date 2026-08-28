@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"go-api/internal/domain/event"
 	"time"
 
 	"go-api/internal/domain/httpquery"
@@ -13,6 +14,7 @@ const (
 )
 
 type EndpointCreated struct {
+	event.PerformedBy
 	ID             string            `json:"eventId"`
 	EndpointID     string            `json:"endpointId"`
 	ProjectID string            `json:"projectId"`
@@ -37,6 +39,7 @@ func (e EndpointCreated) AggregateID() string   { return e.EndpointID }
 func (e EndpointCreated) OccurredAt() time.Time { return e.Timestamp }
 
 type EndpointUpdated struct {
+	event.PerformedBy
 	ID             string            `json:"eventId"`
 	EndpointID     string            `json:"endpointId"`
 	ProjectID string            `json:"projectId"`
@@ -61,6 +64,7 @@ func (e EndpointUpdated) AggregateID() string   { return e.EndpointID }
 func (e EndpointUpdated) OccurredAt() time.Time { return e.Timestamp }
 
 type EndpointImported struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	ProjectID string    `json:"projectId"`
 	Count          int       `json:"count"`
@@ -75,6 +79,7 @@ func (e EndpointImported) OccurredAt() time.Time { return e.Timestamp }
 const EventTypeEndpointDeleted = "endpoint.deleted.v1"
 
 type EndpointDeleted struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	EndpointID     string    `json:"endpointId"`
 	ProjectID string    `json:"projectId"`

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
@@ -13,6 +14,7 @@ import (
 )
 
 type CreateVariableCommand struct {
+	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
 	ProjectID uuid.UUID
 	StepID         *uuid.UUID
@@ -119,7 +121,7 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 			}
 			return errors.New("failed to create variable")
 		}
-		return h.outbox.StoreEvents(txCtx, variable.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(variable.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, err

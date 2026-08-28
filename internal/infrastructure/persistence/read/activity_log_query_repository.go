@@ -2,12 +2,10 @@ package read
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"go-api/internal/domain/paginate"
 	domainactivitylog "go-api/internal/domain/activitylog"
-	"go-api/internal/infrastructure/persistence/dbtype"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -27,7 +25,6 @@ type activityLogRow struct {
 	ActorUserID     *uuid.UUID
 	Level           string
 	Message         string
-	Payload         dbtype.JSONB
 	SourceEventID   uuid.UUID
 	SourceEventType string
 	OccurredAt      time.Time
@@ -90,13 +87,6 @@ func (r *activityLogReadRepository) FindByWorkflowID(
 }
 
 func toActivityLogView(row activityLogRow) (domainactivitylog.View, error) {
-	payload := map[string]any{}
-	if len(row.Payload) > 0 {
-		if err := json.Unmarshal(row.Payload, &payload); err != nil {
-			return domainactivitylog.View{}, err
-		}
-	}
-
 	return domainactivitylog.View{
 		ID:              row.ID,
 		ProjectID:       row.ProjectID,
@@ -111,7 +101,6 @@ func toActivityLogView(row activityLogRow) (domainactivitylog.View, error) {
 		ActorUserID:     row.ActorUserID,
 		Level:           row.Level,
 		Message:         row.Message,
-		Payload:         payload,
 		SourceEventID:   row.SourceEventID,
 		SourceEventType: row.SourceEventType,
 		OccurredAt:      row.OccurredAt,

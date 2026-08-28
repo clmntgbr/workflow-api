@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"go-api/internal/application/messaging"
 	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -13,6 +14,7 @@ import (
 )
 
 type CreateAssertionCommand struct {
+	UserID        uuid.UUID
 	WorkflowID    uuid.UUID
 	ProjectID     uuid.UUID
 	StepID        uuid.UUID
@@ -74,7 +76,7 @@ func (h *CreateAssertionHandler) Handle(
 		if err := h.assertionRepo.Save(txCtx, assertion); err != nil {
 			return errors.New("failed to create assertion")
 		}
-		return h.outbox.StoreEvents(txCtx, assertion.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(assertion.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, err

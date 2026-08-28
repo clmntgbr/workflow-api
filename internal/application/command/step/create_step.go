@@ -6,6 +6,7 @@ import (
 	cmdquota "go-api/internal/application/command/quota"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -167,7 +168,7 @@ func (h *CreateStepHandler) Handle(
 		if err := h.stepRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, s.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(s.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to create step")

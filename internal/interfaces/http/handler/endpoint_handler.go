@@ -213,6 +213,11 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 }
 
 func (h *EndpointHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -272,6 +277,7 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 
 	err = h.updateHandler.Handle(c.Context(), endpointcmd.UpdateEndpointCommand{
 		ID:             id,
+		UserID:         user.ID,
 		Name:           req.Name,
 		Description:    req.Description,
 		URL:            req.URL,
@@ -375,6 +381,11 @@ func (h *EndpointHandler) ListByProject(c fiber.Ctx) error {
 }
 
 func (h *EndpointHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -386,7 +397,8 @@ func (h *EndpointHandler) Delete(c fiber.Ctx) error {
 	}
 
 	if err := h.deleteHandler.Handle(c.Context(), endpointcmd.DeleteEndpointCommand{
-		ID:             id,
+		ID:        id,
+		UserID:    user.ID,
 		ProjectID: orgID,
 	}); err != nil {
 		if err.Error() == "endpoint not found" {

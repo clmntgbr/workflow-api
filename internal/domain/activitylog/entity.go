@@ -20,7 +20,6 @@ type Entry struct {
 	ActorUserID     *uuid.UUID
 	Level           string
 	Message         string
-	Payload         map[string]any
 	SourceEventID   uuid.UUID
 	SourceEventType string
 	OccurredAt      time.Time
@@ -41,7 +40,6 @@ type View struct {
 	ActorUserID     *uuid.UUID
 	Level           string
 	Message         string
-	Payload         map[string]any
 	SourceEventID   uuid.UUID
 	SourceEventType string
 	OccurredAt      time.Time

@@ -20,10 +20,9 @@ type ActivityLogResponse struct {
 	ActorType       *string        `json:"actorType"`
 	ActorUserID     *string        `json:"actorUserId"`
 	Level           string         `json:"level"`
-	Message         *string        `json:"message"`
-	Payload         map[string]any `json:"payload"`
-	SourceEventID   string         `json:"sourceEventId"`
-	SourceEventType string         `json:"sourceEventType"`
+	Message         string  `json:"message"`
+	SourceEventID   string  `json:"sourceEventId"`
+	SourceEventType string  `json:"sourceEventType"`
 	OccurredAt      time.Time      `json:"occurredAt"`
 	CreatedAt       time.Time      `json:"createdAt"`
 }
@@ -42,8 +41,7 @@ func NewActivityLogResponse(view domainactivitylog.View) ActivityLogResponse {
 		ActorType:       optionalNonEmptyString(view.ActorType),
 		ActorUserID:     optionalUUIDString(view.ActorUserID),
 		Level:           view.Level,
-		Message:         optionalNonEmptyString(view.Message),
-		Payload:         view.Payload,
+		Message:         view.Message,
 		SourceEventID:   view.SourceEventID.String(),
 		SourceEventType: view.SourceEventType,
 		OccurredAt:      view.OccurredAt,

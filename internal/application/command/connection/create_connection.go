@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -12,7 +13,8 @@ import (
 )
 
 type CreateConnectionCommand struct {
-	WorkflowID     uuid.UUID
+	UserID       uuid.UUID
+	WorkflowID   uuid.UUID
 	ProjectID uuid.UUID
 	SourceStepID   uuid.UUID
 	TargetStepID   uuid.UUID
@@ -125,7 +127,7 @@ func (h *CreateConnectionHandler) Handle(
 		if err := h.stepWriteRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, conn.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(conn.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to create connection")

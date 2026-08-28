@@ -105,6 +105,21 @@ func (a *Assertion) Update(p UpdateAssertionParams) error {
 	return nil
 }
 
+func (a *Assertion) MarkDeleted(projectID uuid.UUID) {
+	a.UpdatedAt = time.Now().UTC()
+	a.recordEvent(AssertionDeleted{
+		ID:            uuid.New().String(),
+		AssertionID:   a.ID.String(),
+		WorkflowID:    a.WorkflowID.String(),
+		StepID:        a.StepID.String(),
+		ProjectID:     projectID.String(),
+		Source:        string(a.Source),
+		Operator:      string(a.Operator),
+		ExpectedValue: a.ExpectedValue,
+		Timestamp:     a.UpdatedAt,
+	})
+}
+
 func (a *Assertion) PullEvents() []event.DomainEvent {
 	events := a.events
 	a.events = nil

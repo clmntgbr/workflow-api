@@ -1,6 +1,10 @@
 package workflowrun
 
-import "time"
+import (
+	"time"
+
+	"go-api/internal/domain/event"
+)
 
 const (
 	EventTypeWorkflowRunStarted          = "workflowRun.started.v1"
@@ -62,6 +66,7 @@ func (e WorkflowRunFailed) AggregateID() string   { return e.WorkflowRunID }
 func (e WorkflowRunFailed) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowRunCancelled struct {
+	event.PerformedBy
 	ID            string    `json:"eventId"`
 	WorkflowRunID string    `json:"workflowRunId"`
 	WorkflowID    string    `json:"workflowId"`

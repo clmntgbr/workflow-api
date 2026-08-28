@@ -13,7 +13,6 @@ CREATE TABLE activity_logs (
     actor_user_id       UUID REFERENCES users(id) ON DELETE SET NULL,
     level               TEXT NOT NULL DEFAULT 'info',
     message             TEXT NOT NULL DEFAULT '',
-    payload             JSONB NOT NULL DEFAULT '{}',
     source_event_id     UUID NOT NULL UNIQUE,
     source_event_type   TEXT NOT NULL,
     occurred_at         TIMESTAMPTZ NOT NULL,

@@ -35,6 +35,11 @@ func NewConnectionHandler(
 }
 
 func (h *ConnectionHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -63,8 +68,9 @@ func (h *ConnectionHandler) Create(c fiber.Ctx) error {
 	}
 
 	conn, err := h.createHandler.Handle(c.Context(), conncmd.CreateConnectionCommand{
-		WorkflowID:     workflowID,
-		ProjectID: orgID,
+		UserID:       user.ID,
+		WorkflowID:   workflowID,
+		ProjectID:    orgID,
 		SourceStepID:   sourceStepID,
 		TargetStepID:   targetStepID,
 	})
@@ -83,6 +89,11 @@ func (h *ConnectionHandler) Create(c fiber.Ctx) error {
 }
 
 func (h *ConnectionHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -99,9 +110,10 @@ func (h *ConnectionHandler) Delete(c fiber.Ctx) error {
 	}
 
 	if err := h.deleteHandler.Handle(c.Context(), conncmd.DeleteConnectionCommand{
-		ID:             id,
-		WorkflowID:     workflowID,
-		ProjectID: orgID,
+		ID:         id,
+		UserID:     user.ID,
+		WorkflowID: workflowID,
+		ProjectID:  orgID,
 	}); err != nil {
 		if err.Error() == "connection not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Connection not found"})

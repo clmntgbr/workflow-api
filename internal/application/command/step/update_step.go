@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -13,6 +14,7 @@ import (
 
 type UpdateStepCommand struct {
 	ID             uuid.UUID
+	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
 	ProjectID      uuid.UUID
 	Name           string
@@ -86,7 +88,7 @@ func (h *UpdateStepHandler) Handle(
 		if err := h.stepRepo.Update(txCtx, s); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, s.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(s.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to update step")
