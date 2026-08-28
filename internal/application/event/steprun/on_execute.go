@@ -96,8 +96,7 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 	}
 
 	if run.StepType == domainstep.TypeDelay {
-		delay := time.Duration(run.DelayDurationSeconds) * time.Second
-		if err := sleep(ctx, delay); err != nil {
+		if err := sleepUntil(ctx, run.ResumeAt, time.Duration(run.DelayDurationSeconds)*time.Second); err != nil {
 			return messaging.Retryable(err)
 		}
 		_, err = h.succeed.Handle(ctx, stepruncmd.SucceedStepRunCommand{
@@ -112,7 +111,7 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 			}
 			return messaging.Retryable(err)
 		}
-		log.Printf("executor succeeded delay stepRunId=%s duration=%s", stepRunID, delay)
+		log.Printf("executor succeeded delay stepRunId=%s resumeAt=%s", stepRunID, run.ResumeAt)
 		return nil
 	}
 
@@ -347,6 +346,13 @@ func sleep(ctx context.Context, d time.Duration) error {
 	case <-timer.C:
 		return nil
 	}
+}
+
+func sleepUntil(ctx context.Context, deadline *time.Time, fallback time.Duration) error {
+	if deadline != nil {
+		return sleep(ctx, time.Until(*deadline))
+	}
+	return sleep(ctx, fallback)
 }
 
 type invalidExecuteJobError struct{}
