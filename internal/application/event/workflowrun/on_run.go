@@ -71,6 +71,9 @@ func (h *Orchestrator) OnStarted(ctx context.Context, payload []byte) error {
 
 		created := make([]*domainsteprun.StepRun, 0)
 		for _, step := range rootSteps(steps, connections) {
+			if isOrphanDelay(step, connections) {
+				continue
+			}
 			if _, ok := existingByStep[step.ID]; ok {
 				continue
 			}
@@ -186,6 +189,9 @@ func (h *Orchestrator) advanceAfterStep(
 			}
 			target, ok := stepsByID[targetID]
 			if !ok {
+				continue
+			}
+			if isOrphanDelay(target, connections) {
 				continue
 			}
 
