@@ -199,7 +199,7 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/:id`, members, activate |
 | Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id`, activate/deactivate |
 | Endpoints | `GET/POST /api/endpoints`, import OpenAPI, `GET/PUT/DELETE /api/endpoints/:id` |
-| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http` and `delay` |
+| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http` and `delay`; `lastRunStatus` reflects the **active run** when one is in progress, otherwise the latest completed run per step |
 | Connections | nested under `/api/workflows/:workflowId/connections` |
 | Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
 | Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |

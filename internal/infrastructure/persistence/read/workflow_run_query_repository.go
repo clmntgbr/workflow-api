@@ -112,6 +112,35 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	return views, total, nil
 }
 
+func (r *workflowRunReadRepository) FindInProgressByWorkflowID(
+	ctx context.Context,
+	workflowID uuid.UUID,
+) (*domainworkflowrun.WorkflowRunView, error) {
+	var row workflowRunRow
+	err := r.db.WithContext(ctx).
+		Table("workflow_runs").
+		Select(
+			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, "+
+				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, "+
+				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, "+
+				"workflow_runs.created_at, workflow_runs.updated_at",
+		).
+		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
+		Where("workflow_runs.workflow_id = ? AND workflow_runs.status IN ?", workflowID, []string{
+			string(domainworkflowrun.StatusPending),
+			string(domainworkflowrun.StatusRunning),
+		}).
+		Order("workflow_runs.created_at ASC").
+		Take(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toWorkflowRunView(row)
+}
+
 func (r *workflowRunReadRepository) FindAnalyticsByProject(
 	ctx context.Context,
 	projectID uuid.UUID,

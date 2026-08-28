@@ -217,7 +217,8 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 	}
 
 	statuses, err := h.latestStepRunStatusHandler.Handle(c.Context(), querysteprun.GetLatestStepRunStatusesByStepIDsQuery{
-		StepIDs: stepIDs,
+		WorkflowID: workflowID,
+		StepIDs:    stepIDs,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to load step run statuses"})

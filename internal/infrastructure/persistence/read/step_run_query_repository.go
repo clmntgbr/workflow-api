@@ -198,6 +198,37 @@ func (r *stepRunReadRepository) FindLatestStatusByStepIDs(
 	return out, nil
 }
 
+func (r *stepRunReadRepository) FindStatusByWorkflowRunIDAndStepIDs(
+	ctx context.Context,
+	workflowRunID uuid.UUID,
+	stepIDs []uuid.UUID,
+) (map[uuid.UUID]domainsteprun.Status, error) {
+	out := make(map[uuid.UUID]domainsteprun.Status)
+	if workflowRunID == uuid.Nil || len(stepIDs) == 0 {
+		return out, nil
+	}
+
+	type statusRow struct {
+		StepID uuid.UUID
+		Status string
+	}
+
+	var rows []statusRow
+	err := r.db.WithContext(ctx).
+		Table("step_runs").
+		Select("step_id", "status").
+		Where("workflow_run_id = ? AND step_id IN ?", workflowRunID, stepIDs).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		out[row.StepID] = domainsteprun.Status(row.Status)
+	}
+	return out, nil
+}
+
 func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 	headers := map[string]string{}
 	if len(row.Headers) > 0 {

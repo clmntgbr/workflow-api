@@ -26,6 +26,11 @@ type StepRunReadRepository interface {
 	FindByWorkflowRunIDs(ctx context.Context, workflowRunIDs []uuid.UUID) ([]StepRunView, error)
 	FindLatestCompletedByStepID(ctx context.Context, stepID uuid.UUID) (*StepRunView, error)
 	FindLatestStatusByStepIDs(ctx context.Context, stepIDs []uuid.UUID) (map[uuid.UUID]Status, error)
+	FindStatusByWorkflowRunIDAndStepIDs(
+		ctx context.Context,
+		workflowRunID uuid.UUID,
+		stepIDs []uuid.UUID,
+	) (map[uuid.UUID]Status, error)
 }
 
 type StepRunView struct {

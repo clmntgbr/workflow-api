@@ -25,6 +25,7 @@ type WorkflowRunReadRepository interface {
 		workflowID uuid.UUID,
 		query paginate.PaginateQuery,
 	) ([]WorkflowRunView, int64, error)
+	FindInProgressByWorkflowID(ctx context.Context, workflowID uuid.UUID) (*WorkflowRunView, error)
 	FindAnalyticsByProject(
 		ctx context.Context,
 		projectID uuid.UUID,
