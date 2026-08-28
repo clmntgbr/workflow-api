@@ -182,6 +182,8 @@ func (h *Orchestrator) buildDelayStepRun(
 
 	deadline := time.Now().UTC().Add(time.Duration(step.DelayDurationSeconds) * time.Second)
 	stepRun.ResumeAt = &deadline
+	startedAt := time.Now().UTC()
+	stepRun.StartedAt = &startedAt
 
 	if step.DelayDurationSeconds > h.maxSyncDelaySeconds {
 		if err := stepRun.MarkWaiting(deadline); err != nil {

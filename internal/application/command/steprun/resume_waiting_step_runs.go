@@ -36,6 +36,7 @@ func (h *ResumeDueWaitingStepRunsHandler) Handle(ctx context.Context, now time.T
 			continue
 		}
 
+		processed := false
 		err := h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
 			current, err := h.repo.GetByID(txCtx, run.ID)
 			if err != nil {
@@ -61,12 +62,15 @@ func (h *ResumeDueWaitingStepRunsHandler) Handle(ctx context.Context, now time.T
 			if err := h.repo.Update(txCtx, current); err != nil {
 				return err
 			}
+			processed = true
 			return h.outbox.StoreEvents(txCtx, current.PullEvents())
 		})
 		if err != nil {
 			return resumed, err
 		}
-		resumed++
+		if processed {
+			resumed++
+		}
 	}
 	return resumed, nil
 }

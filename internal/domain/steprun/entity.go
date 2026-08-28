@@ -153,7 +153,9 @@ func (s *StepRun) MarkStarted() error {
 	if s.Attempt == 0 {
 		s.Attempt = 1
 	}
-	s.StartedAt = &now
+	if s.StartedAt == nil {
+		s.StartedAt = &now
+	}
 	s.UpdatedAt = now
 	s.recordEvent(s.startedEvent(now))
 	return nil
@@ -247,6 +249,9 @@ func (s *StepRun) MarkWaiting(resumeAt time.Time) error {
 	now := time.Now().UTC()
 	s.Status = StatusWaiting
 	s.ResumeAt = &resumeAt
+	if s.StartedAt == nil {
+		s.StartedAt = &now
+	}
 	s.UpdatedAt = now
 	return nil
 }

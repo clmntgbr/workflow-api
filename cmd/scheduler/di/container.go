@@ -2,7 +2,6 @@ package di
 
 import (
 	cmdquota "go-api/internal/application/command/quota"
-	stepruncmd "go-api/internal/application/command/steprun"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	querysubscription "go-api/internal/application/query/subscription"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -15,18 +14,16 @@ import (
 )
 
 type Container struct {
-	StartWorkflowRunHandler        *workflowruncmd.StartWorkflowRunHandler
-	ResumeWaitingStepRunsHandler   *stepruncmd.ResumeDueWaitingStepRunsHandler
-	WorkflowWriteRepo              domainworkflow.WorkflowWriteRepository
-	BatchSize                      int
-	Concurrency                    int
-	MaxBatchesPerTick              int
+	StartWorkflowRunHandler *workflowruncmd.StartWorkflowRunHandler
+	WorkflowWriteRepo       domainworkflow.WorkflowWriteRepository
+	BatchSize               int
+	Concurrency             int
+	MaxBatchesPerTick       int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
-	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
@@ -67,11 +64,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		maxBatches = 100
 	}
 
-	resumeWaitingStepRunsHandler := stepruncmd.NewResumeDueWaitingStepRunsHandler(
-		stepRunWriteRepo,
-		outboxRepo,
-	)
-
 	return &Container{
 		StartWorkflowRunHandler: workflowruncmd.NewStartWorkflowRunHandler(
 			workflowWriteRepo,
@@ -80,10 +72,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			outboxRepo,
 			assertCreateAllowedHandler,
 		),
-		ResumeWaitingStepRunsHandler: resumeWaitingStepRunsHandler,
-		WorkflowWriteRepo:            workflowWriteRepo,
-		BatchSize:                    batchSize,
-		Concurrency:                  concurrency,
-		MaxBatchesPerTick:            maxBatches,
+		WorkflowWriteRepo: workflowWriteRepo,
+		BatchSize:         batchSize,
+		Concurrency:       concurrency,
+		MaxBatchesPerTick: maxBatches,
 	}
 }

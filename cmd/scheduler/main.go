@@ -68,7 +68,7 @@ func runScheduler(ctx context.Context, container *di.Container, interval time.Du
 
 func tick(ctx context.Context, container *di.Container) {
 	startedAt := time.Now().UTC()
-	var started, skipped, failed, claimedTotal, resumedWaiting int64
+	var started, skipped, failed, claimedTotal int64
 
 	for batch := 0; batch < container.MaxBatchesPerTick; batch++ {
 		if ctx.Err() != nil {
@@ -96,32 +96,12 @@ func tick(ctx context.Context, container *di.Container) {
 		}
 	}
 
-	for batch := 0; batch < container.MaxBatchesPerTick; batch++ {
-		if ctx.Err() != nil {
-			break
-		}
-		resumed, err := container.ResumeWaitingStepRunsHandler.Handle(
-			ctx,
-			time.Now().UTC(),
-			container.BatchSize,
-		)
-		if err != nil {
-			log.Printf("scheduler: resume waiting step runs failed: %v", err)
-			break
-		}
-		resumedWaiting += int64(resumed)
-		if resumed < container.BatchSize {
-			break
-		}
-	}
-
 	log.Printf(
-		"scheduler: tick done claimed=%d started=%d skipped=%d failed=%d resumedWaiting=%d duration=%s",
+		"scheduler: tick done claimed=%d started=%d skipped=%d failed=%d duration=%s",
 		claimedTotal,
 		started,
 		skipped,
 		failed,
-		resumedWaiting,
 		time.Since(startedAt).Round(time.Millisecond),
 	)
 }

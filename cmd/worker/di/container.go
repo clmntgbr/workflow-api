@@ -2,7 +2,9 @@ package di
 
 import (
 	"log"
+	"time"
 
+	stepruncmd "go-api/internal/application/command/steprun"
 	eventassertion "go-api/internal/application/event/assertion"
 	eventactivitylog "go-api/internal/application/event/activitylog"
 	eventconnection "go-api/internal/application/event/connection"
@@ -43,9 +45,12 @@ import (
 )
 
 type Container struct {
-	Relay    *outbox.Relay
-	Consumer *rabbitmq.Consumer
-	Conn     *rabbitmq.Connection
+	Relay                         *outbox.Relay
+	Consumer                      *rabbitmq.Consumer
+	Conn                          *rabbitmq.Connection
+	ResumeWaitingStepRunsHandler  *stepruncmd.ResumeDueWaitingStepRunsHandler
+	WaitingPollInterval           time.Duration
+	WaitingPollBatchSize          int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -463,9 +468,24 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
 
+	waitingPollBatchSize := env.StepRunWaitingPollBatchSize
+	if waitingPollBatchSize <= 0 {
+		waitingPollBatchSize = 100
+	}
+	waitingPollInterval := env.StepRunWaitingPollInterval
+	if waitingPollInterval <= 0 {
+		waitingPollInterval = 2 * time.Second
+	}
+
 	return &Container{
 		Relay:    relay,
 		Consumer: consumer,
 		Conn:     conn,
+		ResumeWaitingStepRunsHandler: stepruncmd.NewResumeDueWaitingStepRunsHandler(
+			stepRunWriteRepo,
+			outboxRepo,
+		),
+		WaitingPollInterval:  waitingPollInterval,
+		WaitingPollBatchSize: waitingPollBatchSize,
 	}
 }
