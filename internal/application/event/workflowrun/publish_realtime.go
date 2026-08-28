@@ -65,6 +65,14 @@ func (h *PublishRealtimeHandler) OnCancelled(ctx context.Context, payload []byte
 	return h.publishForWorkflow(ctx, evt.WorkflowID, realtime.ActionCancelled, evt)
 }
 
+func (h *PublishRealtimeHandler) OnFinished(ctx context.Context, payload []byte) error {
+	var evt domainworkflowrun.WorkflowRunFinished
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return messaging.NonRetryable(err)
+	}
+	return h.publishForWorkflow(ctx, evt.WorkflowID, realtime.ActionFinished, evt)
+}
+
 func (h *PublishRealtimeHandler) publishForWorkflow(
 	ctx context.Context,
 	workflowIDRaw string,
