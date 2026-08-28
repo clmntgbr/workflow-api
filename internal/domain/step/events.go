@@ -14,9 +14,11 @@ type StepCreated struct {
 	ID             string            `json:"eventId"`
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
-	EndpointID     string            `json:"endpointId"`
-	ProjectID string            `json:"projectId"`
-	Name           string            `json:"name"`
+	EndpointID           string            `json:"endpointId,omitempty"`
+	ProjectID            string            `json:"projectId"`
+	Type                 string            `json:"type"`
+	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
@@ -47,8 +49,10 @@ type StepUpdated struct {
 	ID             string            `json:"eventId"`
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
-	ProjectID string            `json:"projectId"`
-	Name           string            `json:"name"`
+	ProjectID            string            `json:"projectId"`
+	Type                 string            `json:"type"`
+	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`

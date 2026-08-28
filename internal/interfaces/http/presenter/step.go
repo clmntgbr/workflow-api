@@ -13,13 +13,15 @@ type StepPositionResponse struct {
 }
 
 type StepListResponse struct {
-	ID            string               `json:"id"`
-	EndpointID    string               `json:"endpointId"`
-	Name          string               `json:"name"`
-	URL           string               `json:"url"`
-	Method        string               `json:"method"`
-	Position      StepPositionResponse `json:"position"`
-	LastRunStatus *string              `json:"lastRunStatus"`
+	ID                   string               `json:"id"`
+	Type                 string               `json:"type"`
+	EndpointID           *string              `json:"endpointId,omitempty"`
+	DelayDurationSeconds *int                 `json:"delayDurationSeconds,omitempty"`
+	Name                 string               `json:"name"`
+	URL                  string               `json:"url"`
+	Method               string               `json:"method"`
+	Position             StepPositionResponse `json:"position"`
+	LastRunStatus        *string              `json:"lastRunStatus"`
 }
 
 type StepDetailResponse struct {
@@ -40,16 +42,25 @@ type StepDetailResponse struct {
 
 func NewStepListResponseFromView(view domainstep.StepView) StepListResponse {
 	return StepListResponse{
-		ID:         view.ID.String(),
-		EndpointID: view.EndpointID.String(),
-		Name:       view.Name,
-		URL:        view.URL,
-		Method:     view.Method,
+		ID:                   view.ID.String(),
+		Type:                 string(view.Type),
+		EndpointID:           optionalUUIDString(view.EndpointID),
+		DelayDurationSeconds: optionalPositiveInt(view.DelayDurationSeconds),
+		Name:                 view.Name,
+		URL:                  view.URL,
+		Method:               view.Method,
 		Position: StepPositionResponse{
 			X: view.Position.X,
 			Y: view.Position.Y,
 		},
 	}
+}
+
+func optionalPositiveInt(value int) *int {
+	if value <= 0 {
+		return nil
+	}
+	return &value
 }
 
 func NewStepListResponseFromViews(views []domainstep.StepView) []StepListResponse {
@@ -95,11 +106,13 @@ func NewStepDetailResponseFromView(view domainstep.StepView) StepDetailResponse 
 func NewStepDetailResponseFromEntity(s domainstep.Step) StepDetailResponse {
 	return stepDetailResponse(
 		StepListResponse{
-			ID:         s.ID.String(),
-			EndpointID: s.EndpointID.String(),
-			Name:       s.Name,
-			URL:        s.URL,
-			Method:     s.Method,
+			ID:                   s.ID.String(),
+			Type:                 string(s.Type),
+			EndpointID:           optionalUUIDString(s.EndpointID),
+			DelayDurationSeconds: optionalPositiveInt(s.DelayDurationSeconds),
+			Name:                 s.Name,
+			URL:                  s.URL,
+			Method:               s.Method,
 			Position: StepPositionResponse{
 				X: s.Position.X,
 				Y: s.Position.Y,

@@ -13,6 +13,7 @@ import (
 	"go-api/internal/application/messaging"
 	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
+	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainvariable "go-api/internal/domain/variable"
 
@@ -91,6 +92,27 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 		return messaging.Retryable(err)
 	}
 	if run.Status.IsTerminal() {
+		return nil
+	}
+
+	if run.StepType == domainstep.TypeDelay {
+		delay := time.Duration(run.DelayDurationSeconds) * time.Second
+		if err := sleep(ctx, delay); err != nil {
+			return messaging.Retryable(err)
+		}
+		_, err = h.succeed.Handle(ctx, stepruncmd.SucceedStepRunCommand{
+			StepRunID:          stepRunID,
+			Response:           domainsteprun.ResponseSnapshot{},
+			ExtractedVariables: map[string]any{},
+			AssertionsResult:   []domainassertion.Result{},
+		})
+		if err != nil {
+			if errors.Is(err, domainsteprun.ErrNotFound) {
+				return messaging.NonRetryable(err)
+			}
+			return messaging.Retryable(err)
+		}
+		log.Printf("executor succeeded delay stepRunId=%s duration=%s", stepRunID, delay)
 		return nil
 	}
 

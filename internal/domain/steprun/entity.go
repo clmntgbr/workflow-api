@@ -16,10 +16,12 @@ type StepRun struct {
 	WorkflowRunID uuid.UUID
 	StepID        uuid.UUID
 
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID      uuid.UUID
-	Name           string
+	WorkflowID           uuid.UUID
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	StepType             domainstep.Type
+	DelayDurationSeconds int
+	Name                 string
 	Description    string
 	URL            string
 	Method         string
@@ -46,6 +48,7 @@ type StepRun struct {
 
 	StartedAt  *time.Time
 	FinishedAt *time.Time
+	ResumeAt   *time.Time
 	Error      string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -62,10 +65,12 @@ type VariableExtract struct {
 type NewStepRunParams struct {
 	WorkflowRunID    uuid.UUID
 	StepID           uuid.UUID
-	WorkflowID       uuid.UUID
-	EndpointID       uuid.UUID
-	ProjectID        uuid.UUID
-	Name             string
+	WorkflowID           uuid.UUID
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	StepType             domainstep.Type
+	DelayDurationSeconds int
+	Name                 string
 	Description      string
 	URL              string
 	Method           string
@@ -86,14 +91,20 @@ type NewStepRunParams struct {
 
 func NewStepRun(p NewStepRunParams) *StepRun {
 	now := time.Now().UTC()
+	stepType := p.StepType
+	if stepType == "" {
+		stepType = domainstep.TypeHTTP
+	}
 	return &StepRun{
 		ID:                 uuid.New(),
 		WorkflowRunID:      p.WorkflowRunID,
 		StepID:             p.StepID,
-		WorkflowID:         p.WorkflowID,
-		EndpointID:         p.EndpointID,
-		ProjectID:          p.ProjectID,
-		Name:               p.Name,
+		WorkflowID:           p.WorkflowID,
+		EndpointID:           p.EndpointID,
+		ProjectID:            p.ProjectID,
+		StepType:             stepType,
+		DelayDurationSeconds: p.DelayDurationSeconds,
+		Name:                 p.Name,
 		Description:        p.Description,
 		URL:                p.URL,
 		Method:             p.Method,
@@ -133,7 +144,7 @@ func (s *StepRun) MarkStarted() error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
 	}
-	if s.Status != StatusPending {
+	if s.Status != StatusPending && s.Status != StatusWaiting {
 		return ErrInvalidStatusTransition
 	}
 
@@ -225,6 +236,21 @@ func (s *StepRun) MarkFailed(
 	return nil
 }
 
+func (s *StepRun) MarkWaiting(resumeAt time.Time) error {
+	if s.Status.IsTerminal() {
+		return ErrAlreadyTerminal
+	}
+	if s.Status != StatusPending {
+		return ErrInvalidStatusTransition
+	}
+
+	now := time.Now().UTC()
+	s.Status = StatusWaiting
+	s.ResumeAt = &resumeAt
+	s.UpdatedAt = now
+	return nil
+}
+
 func (s *StepRun) MarkSkipped() error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
@@ -244,7 +270,7 @@ func (s *StepRun) MarkCancelled() error {
 	if s.Status.IsTerminal() {
 		return ErrAlreadyTerminal
 	}
-	if s.Status != StatusPending && s.Status != StatusRunning {
+	if s.Status != StatusPending && s.Status != StatusRunning && s.Status != StatusWaiting {
 		return ErrInvalidStatusTransition
 	}
 
@@ -272,7 +298,7 @@ func (s *StepRun) startedEvent(at time.Time) StepRunStarted {
 		WorkflowRunID:  s.WorkflowRunID.String(),
 		StepID:         s.StepID.String(),
 		WorkflowID:     s.WorkflowID.String(),
-		EndpointID:     s.EndpointID.String(),
+		EndpointID:     endpointIDString(s.EndpointID),
 		ProjectID:      s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
@@ -323,4 +349,11 @@ func (s *StepRun) failedEvent(at time.Time) StepRunFailed {
 		Error:            s.Error,
 		Timestamp:        at,
 	}
+}
+
+func endpointIDString(id *uuid.UUID) string {
+	if id == nil {
+		return ""
+	}
+	return id.String()
 }

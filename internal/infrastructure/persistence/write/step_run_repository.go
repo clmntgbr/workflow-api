@@ -3,11 +3,13 @@ package write
 import (
 	"context"
 	"errors"
+	"time"
 
 	domainsteprun "go-api/internal/domain/steprun"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type stepRunWriteRepository struct {
@@ -74,4 +76,46 @@ func (r *stepRunWriteRepository) FindByWorkflowRunID(
 		runs = append(runs, run)
 	}
 	return runs, nil
+}
+
+func (r *stepRunWriteRepository) ClaimDueWaiting(
+	ctx context.Context,
+	now time.Time,
+	limit int,
+) ([]*domainsteprun.StepRun, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	var claimed []*domainsteprun.StepRun
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var models []StepRunModel
+		err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("status = ?", domainsteprun.StatusWaiting).
+			Where("resume_at IS NOT NULL AND resume_at <= ?", now.UTC()).
+			Order("resume_at ASC").
+			Limit(limit).
+			Find(&models).Error
+		if err != nil {
+			return err
+		}
+		if len(models) == 0 {
+			return nil
+		}
+
+		claimed = make([]*domainsteprun.StepRun, 0, len(models))
+		for i := range models {
+			run, err := stepRunDomainFromModel(&models[i])
+			if err != nil {
+				return err
+			}
+			claimed = append(claimed, run)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return claimed, nil
 }

@@ -3,9 +3,10 @@ package step
 import (
 	"context"
 	"errors"
+	"strings"
+
 	cmdquota "go-api/internal/application/command/quota"
 	domainconnection "go-api/internal/domain/connection"
-	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -15,53 +16,48 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateStepCommand struct {
-	UserID     uuid.UUID
-	WorkflowID uuid.UUID
-	EndpointID uuid.UUID
-	ProjectID  uuid.UUID
-	Position   domainstep.Position
+type CreateDelayStepCommand struct {
+	UserID               uuid.UUID
+	WorkflowID           uuid.UUID
+	ProjectID            uuid.UUID
+	Name                 string
+	DelayDurationSeconds int
+	Position             domainstep.Position
 }
 
-type CreateStepHandler struct {
+type CreateDelayStepHandler struct {
 	stepRepo     domainstep.StepWriteRepository
 	stepReadRepo domainstep.StepReadRepository
 	connReadRepo domainconnection.ConnectionReadRepository
-	endpointRepo domainendpoint.EndpointReadRepository
 	workflowRepo domainworkflow.WorkflowReadRepository
 	outbox       port.OutboxRepository
 	assert       *cmdquota.AssertCreateAllowedHandler
 }
 
-func NewCreateStepHandler(
+func NewCreateDelayStepHandler(
 	stepRepo domainstep.StepWriteRepository,
 	stepReadRepo domainstep.StepReadRepository,
 	connReadRepo domainconnection.ConnectionReadRepository,
-	endpointRepo domainendpoint.EndpointReadRepository,
 	workflowRepo domainworkflow.WorkflowReadRepository,
 	outbox port.OutboxRepository,
 	assert *cmdquota.AssertCreateAllowedHandler,
-) *CreateStepHandler {
-	return &CreateStepHandler{
+) *CreateDelayStepHandler {
+	return &CreateDelayStepHandler{
 		stepRepo:     stepRepo,
 		stepReadRepo: stepReadRepo,
 		connReadRepo: connReadRepo,
-		endpointRepo: endpointRepo,
 		workflowRepo: workflowRepo,
 		outbox:       outbox,
 		assert:       assert,
 	}
 }
 
-func (h *CreateStepHandler) Handle(
+func (h *CreateDelayStepHandler) Handle(
 	ctx context.Context,
-	cmd CreateStepCommand,
+	cmd CreateDelayStepCommand,
 ) (*domainstep.Step, error) {
 	if cmd.WorkflowID == uuid.Nil {
 		return nil, errors.New("workflowId is required")
-	}
-	if cmd.EndpointID == uuid.Nil {
-		return nil, errors.New("endpointId is required")
 	}
 	if cmd.ProjectID == uuid.Nil {
 		return nil, errors.New("projectId is required")
@@ -69,6 +65,10 @@ func (h *CreateStepHandler) Handle(
 	if cmd.UserID == uuid.Nil {
 		return nil, errors.New("userId is required")
 	}
+	if cmd.DelayDurationSeconds <= 0 {
+		return nil, domainstep.ErrInvalidStepTypeConfig
+	}
+
 	workflow, err := h.workflowRepo.FindByID(ctx, cmd.WorkflowID)
 	if err != nil {
 		return nil, errors.New("failed to get workflow")
@@ -78,17 +78,6 @@ func (h *CreateStepHandler) Handle(
 	}
 	if workflow.ProjectID != cmd.ProjectID {
 		return nil, errors.New("workflow not found")
-	}
-
-	endpoint, err := h.endpointRepo.FindByID(ctx, cmd.EndpointID)
-	if err != nil {
-		return nil, errors.New("failed to get endpoint")
-	}
-	if endpoint == nil || endpoint.Status == domainendpoint.StatusDeleted {
-		return nil, errors.New("endpoint not found")
-	}
-	if endpoint.ProjectID != cmd.ProjectID {
-		return nil, errors.New("endpoint not found")
 	}
 
 	if err := h.assert.AssertStepCreate(ctx, cmd.UserID, cmd.ProjectID, cmd.WorkflowID); err != nil {
@@ -133,35 +122,22 @@ func (h *CreateStepHandler) Handle(
 	}
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 
-	s := domainstep.NewStep(domainstep.NewStepParams{
-		ID:         now.ID,
-		WorkflowID: cmd.WorkflowID,
-		EndpointID: cmd.EndpointID,
-		ProjectID:  cmd.ProjectID,
-		Endpoint: domainstep.EndpointSnapshot{
-			ID:             endpoint.ID,
-			Name:           endpoint.Name,
-			Description:    endpoint.Description,
-			URL:            endpoint.URL,
-			Method:         string(endpoint.Method),
-			Headers:        endpoint.Headers,
-			Query:          endpoint.Query,
-			Body:           endpoint.Body,
-			Timeout:        endpoint.Timeout,
-			RetryOnFailure: endpoint.RetryOnFailure,
-			RetryCount:     endpoint.RetryCount,
-			RetryDelay:     endpoint.RetryDelay,
-		},
-		Index:          ordering[now.ID].Index,
-		ExecutionOrder: ordering[now.ID].ExecutionOrder,
-		TreeIndex:      treeIndices[now.ID],
-		Position:       cmd.Position,
+	s, err := domainstep.NewDelayStep(domainstep.NewDelayStepParams{
+		ID:                   now.ID,
+		WorkflowID:           cmd.WorkflowID,
+		ProjectID:            cmd.ProjectID,
+		Name:                 strings.TrimSpace(cmd.Name),
+		DelayDurationSeconds: cmd.DelayDurationSeconds,
+		Index:                ordering[now.ID].Index,
+		ExecutionOrder:       ordering[now.ID].ExecutionOrder,
+		TreeIndex:            treeIndices[now.ID],
+		Position:             cmd.Position,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := domainstep.ValidateConfig(s); err != nil {
-			return err
-		}
 		if err := h.stepRepo.Save(txCtx, s); err != nil {
 			return err
 		}

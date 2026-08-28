@@ -77,13 +77,16 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 		if err != nil {
 			return nil, errors.New("failed to get step")
 		}
-		if step == nil || step.Status == domainstep.StatusDeleted {
-			return nil, errors.New("step not found")
-		}
-		if step.WorkflowID != cmd.WorkflowID || step.ProjectID != cmd.ProjectID {
-			return nil, errors.New("step not found")
-		}
-		stepID = cmd.StepID
+	if step == nil || step.Status == domainstep.StatusDeleted {
+		return nil, errors.New("step not found")
+	}
+	if step.WorkflowID != cmd.WorkflowID || step.ProjectID != cmd.ProjectID {
+		return nil, errors.New("step not found")
+	}
+	if step.Type == domainstep.TypeDelay {
+		return nil, domainstep.ErrDelayStepCannotHaveExtras
+	}
+	stepID = cmd.StepID
 		value = nil
 	case domainvariable.KindStatic:
 		stepID = nil

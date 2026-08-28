@@ -152,6 +152,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
 	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
+	updateDelayStepHandler := stepcmd.NewUpdateDelayStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
 		stepReadRepo,
@@ -258,6 +259,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		stepReadRepo,
 		connReadRepo,
 		endpointReadRepo,
+		workflowReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	createDelayStepHandler := stepcmd.NewCreateDelayStepHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
 		workflowReadRepo,
 		outboxRepo,
 		assertCreateAllowedHandler,
@@ -370,7 +379,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		StepHandler: httphandler.NewStepHandler(
 			createStepHandler,
+			createDelayStepHandler,
 			updateStepHandler,
+			updateDelayStepHandler,
 			updateStepPositionHandler,
 			deleteStepHandler,
 			getStepByIDHandler,

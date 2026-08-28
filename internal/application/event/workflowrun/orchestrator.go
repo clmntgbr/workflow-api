@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go-api/internal/application/messaging"
 	domainassertion "go-api/internal/domain/assertion"
@@ -19,13 +20,14 @@ import (
 )
 
 type Orchestrator struct {
-	runRepo       domainworkflowrun.WorkflowRunWriteRepository
-	stepRunRepo   domainsteprun.StepRunWriteRepository
-	stepReadRepo  domainstep.StepReadRepository
-	connReadRepo  domainconnection.ConnectionReadRepository
-	variableRead  domainvariable.VariableReadRepository
-	assertionRead domainassertion.AssertionReadRepository
-	outbox        port.OutboxRepository
+	runRepo              domainworkflowrun.WorkflowRunWriteRepository
+	stepRunRepo          domainsteprun.StepRunWriteRepository
+	stepReadRepo         domainstep.StepReadRepository
+	connReadRepo         domainconnection.ConnectionReadRepository
+	variableRead         domainvariable.VariableReadRepository
+	assertionRead        domainassertion.AssertionReadRepository
+	outbox               port.OutboxRepository
+	maxSyncDelaySeconds  int
 }
 
 func NewOrchestrator(
@@ -36,15 +38,20 @@ func NewOrchestrator(
 	variableRead domainvariable.VariableReadRepository,
 	assertionRead domainassertion.AssertionReadRepository,
 	outbox port.OutboxRepository,
+	maxSyncDelaySeconds int,
 ) *Orchestrator {
+	if maxSyncDelaySeconds <= 0 {
+		maxSyncDelaySeconds = 30
+	}
 	return &Orchestrator{
-		runRepo:       runRepo,
-		stepRunRepo:   stepRunRepo,
-		stepReadRepo:  stepReadRepo,
-		connReadRepo:  connReadRepo,
-		variableRead:  variableRead,
-		assertionRead: assertionRead,
-		outbox:        outbox,
+		runRepo:             runRepo,
+		stepRunRepo:         stepRunRepo,
+		stepReadRepo:        stepReadRepo,
+		connReadRepo:        connReadRepo,
+		variableRead:        variableRead,
+		assertionRead:       assertionRead,
+		outbox:              outbox,
+		maxSyncDelaySeconds: maxSyncDelaySeconds,
 	}
 }
 
@@ -68,6 +75,10 @@ func (h *Orchestrator) buildStepRun(
 	run *domainworkflowrun.WorkflowRun,
 	step domainstep.StepView,
 ) (*domainsteprun.StepRun, error) {
+	if step.Type == domainstep.TypeDelay {
+		return h.buildDelayStepRun(run, step)
+	}
+
 	variables, err := h.variableRead.FindByStepID(ctx, step.ID)
 	if err != nil {
 		return nil, err
@@ -106,12 +117,14 @@ func (h *Orchestrator) buildStepRun(
 	)
 
 	stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
-		WorkflowRunID:    run.ID,
-		StepID:           step.ID,
-		WorkflowID:       step.WorkflowID,
-		EndpointID:       step.EndpointID,
-		ProjectID:        step.ProjectID,
-		Name:             step.Name,
+		WorkflowRunID:        run.ID,
+		StepID:               step.ID,
+		WorkflowID:           step.WorkflowID,
+		EndpointID:           step.EndpointID,
+		ProjectID:            step.ProjectID,
+		StepType:             step.Type,
+		DelayDurationSeconds: step.DelayDurationSeconds,
+		Name:                 step.Name,
 		Description:      step.Description,
 		URL:              step.URL,
 		Method:           step.Method,
@@ -143,6 +156,38 @@ func (h *Orchestrator) buildStepRun(
 	stepRun.Headers = resolvedHeaders
 	stepRun.Query = resolvedQuery
 	stepRun.Body = resolvedBody
+	stepRun.Queue()
+	return stepRun, nil
+}
+
+func (h *Orchestrator) buildDelayStepRun(
+	run *domainworkflowrun.WorkflowRun,
+	step domainstep.StepView,
+) (*domainsteprun.StepRun, error) {
+	stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
+		WorkflowRunID:        run.ID,
+		StepID:               step.ID,
+		WorkflowID:           step.WorkflowID,
+		EndpointID:           nil,
+		ProjectID:            step.ProjectID,
+		StepType:             domainstep.TypeDelay,
+		DelayDurationSeconds: step.DelayDurationSeconds,
+		Name:                 step.Name,
+		Description:          step.Description,
+		Index:                step.Index,
+		ExecutionOrder:       step.ExecutionOrder,
+		TreeIndex:            step.TreeIndex,
+		Position:             step.Position,
+	})
+
+	if step.DelayDurationSeconds > h.maxSyncDelaySeconds {
+		resumeAt := time.Now().UTC().Add(time.Duration(step.DelayDurationSeconds) * time.Second)
+		if err := stepRun.MarkWaiting(resumeAt); err != nil {
+			return nil, err
+		}
+		return stepRun, nil
+	}
+
 	stepRun.Queue()
 	return stepRun, nil
 }

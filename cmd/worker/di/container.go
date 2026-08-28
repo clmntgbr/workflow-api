@@ -95,6 +95,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		variableReadRepo,
 		assertionReadRepo,
 		outboxRepo,
+		env.MaxSyncDelaySeconds,
 	)
 	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)

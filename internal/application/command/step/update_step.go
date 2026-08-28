@@ -69,6 +69,9 @@ func (h *UpdateStepHandler) Handle(
 	if s.ProjectID != cmd.ProjectID || s.WorkflowID != cmd.WorkflowID {
 		return nil, errors.New("step not found")
 	}
+	if s.Type == domainstep.TypeDelay {
+		return nil, errors.New("delay steps cannot be updated as HTTP steps")
+	}
 
 	s.ApplyConfigUpdate(domainstep.UpdateStepConfigParams{
 		Name:           cmd.Name,
@@ -85,6 +88,9 @@ func (h *UpdateStepHandler) Handle(
 	})
 
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := domainstep.ValidateConfig(s); err != nil {
+			return err
+		}
 		if err := h.stepRepo.Update(txCtx, s); err != nil {
 			return err
 		}

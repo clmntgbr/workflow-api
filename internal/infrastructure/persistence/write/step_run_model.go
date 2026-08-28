@@ -14,13 +14,15 @@ import (
 )
 
 type StepRunModel struct {
-	ID                 uuid.UUID    `gorm:"column:id;primaryKey"`
-	WorkflowRunID      uuid.UUID    `gorm:"column:workflow_run_id"`
-	StepID             uuid.UUID    `gorm:"column:step_id"`
-	WorkflowID         uuid.UUID    `gorm:"column:workflow_id"`
-	EndpointID         uuid.UUID    `gorm:"column:endpoint_id"`
-	ProjectID          uuid.UUID    `gorm:"column:project_id"`
-	Name               string       `gorm:"column:name"`
+	ID                   uuid.UUID    `gorm:"column:id;primaryKey"`
+	WorkflowRunID        uuid.UUID    `gorm:"column:workflow_run_id"`
+	StepID               uuid.UUID    `gorm:"column:step_id"`
+	WorkflowID           uuid.UUID    `gorm:"column:workflow_id"`
+	EndpointID           *uuid.UUID   `gorm:"column:endpoint_id"`
+	ProjectID            uuid.UUID    `gorm:"column:project_id"`
+	StepType             string       `gorm:"column:step_type"`
+	DelayDurationSeconds *int         `gorm:"column:delay_duration_seconds"`
+	Name                 string       `gorm:"column:name"`
 	Description        string       `gorm:"column:description"`
 	URL                string       `gorm:"column:url"`
 	Method             string       `gorm:"column:method"`
@@ -45,6 +47,7 @@ type StepRunModel struct {
 	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
 	StartedAt          *time.Time   `gorm:"column:started_at"`
 	FinishedAt         *time.Time   `gorm:"column:finished_at"`
+	ResumeAt           *time.Time   `gorm:"column:resume_at"`
 	Error              string       `gorm:"column:error"`
 	CreatedAt          time.Time    `gorm:"column:created_at"`
 	UpdatedAt          time.Time    `gorm:"column:updated_at"`
@@ -128,13 +131,15 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 	}
 
 	return &StepRunModel{
-		ID:                 s.ID,
-		WorkflowRunID:      s.WorkflowRunID,
-		StepID:             s.StepID,
-		WorkflowID:         s.WorkflowID,
-		EndpointID:         s.EndpointID,
-		ProjectID:          s.ProjectID,
-		Name:               s.Name,
+		ID:                   s.ID,
+		WorkflowRunID:        s.WorkflowRunID,
+		StepID:               s.StepID,
+		WorkflowID:           s.WorkflowID,
+		EndpointID:           s.EndpointID,
+		ProjectID:            s.ProjectID,
+		StepType:             string(s.StepType),
+		DelayDurationSeconds: intPtrOrNil(s.DelayDurationSeconds),
+		Name:                 s.Name,
 		Description:        s.Description,
 		URL:                s.URL,
 		Method:             s.Method,
@@ -159,6 +164,7 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		AssertionsResult:   dbtype.JSONB(assertionsResultRaw),
 		StartedAt:          s.StartedAt,
 		FinishedAt:         s.FinishedAt,
+		ResumeAt:           s.ResumeAt,
 		Error:              s.Error,
 		CreatedAt:          s.CreatedAt,
 		UpdatedAt:          s.UpdatedAt,
@@ -225,13 +231,15 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 	}
 
 	return &domainsteprun.StepRun{
-		ID:             m.ID,
-		WorkflowRunID:  m.WorkflowRunID,
-		StepID:         m.StepID,
-		WorkflowID:     m.WorkflowID,
-		EndpointID:     m.EndpointID,
-		ProjectID:      m.ProjectID,
-		Name:           m.Name,
+		ID:                   m.ID,
+		WorkflowRunID:        m.WorkflowRunID,
+		StepID:               m.StepID,
+		WorkflowID:           m.WorkflowID,
+		EndpointID:           m.EndpointID,
+		ProjectID:            m.ProjectID,
+		StepType:             domainstep.Type(m.StepType),
+		DelayDurationSeconds: intValueOrZero(m.DelayDurationSeconds),
+		Name:                 m.Name,
 		Description:    m.Description,
 		URL:            m.URL,
 		Method:         m.Method,
@@ -258,6 +266,7 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		AssertionsResult:   assertionsResult,
 		StartedAt:          m.StartedAt,
 		FinishedAt:         m.FinishedAt,
+		ResumeAt:           m.ResumeAt,
 		Error:              m.Error,
 		CreatedAt:          m.CreatedAt,
 		UpdatedAt:          m.UpdatedAt,

@@ -245,12 +245,14 @@ func (h *Orchestrator) skipBranch(
 		}
 
 		stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
-			WorkflowRunID:  run.ID,
-			StepID:         current.ID,
-			WorkflowID:     current.WorkflowID,
-			EndpointID:     current.EndpointID,
-			ProjectID:      current.ProjectID,
-			Name:           current.Name,
+			WorkflowRunID:        run.ID,
+			StepID:               current.ID,
+			WorkflowID:           current.WorkflowID,
+			EndpointID:           current.EndpointID,
+			ProjectID:            current.ProjectID,
+			StepType:             current.Type,
+			DelayDurationSeconds: current.DelayDurationSeconds,
+			Name:                 current.Name,
 			Description:    current.Description,
 			URL:            current.URL,
 			Method:         current.Method,

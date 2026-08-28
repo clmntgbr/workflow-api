@@ -17,6 +17,7 @@ type StepRunWriteRepository interface {
 	Update(ctx context.Context, run *StepRun) error
 	GetByID(ctx context.Context, id uuid.UUID) (*StepRun, error)
 	FindByWorkflowRunID(ctx context.Context, workflowRunID uuid.UUID) ([]*StepRun, error)
+	ClaimDueWaiting(ctx context.Context, now time.Time, limit int) ([]*StepRun, error)
 }
 
 type StepRunReadRepository interface {
@@ -32,9 +33,11 @@ type StepRunView struct {
 	WorkflowRunID      uuid.UUID
 	StepID             uuid.UUID
 	WorkflowID         uuid.UUID
-	EndpointID         uuid.UUID
-	ProjectID          uuid.UUID
-	Name               string
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	StepType             domainstep.Type
+	DelayDurationSeconds int
+	Name                 string
 	Description        string
 	URL                string
 	Method             string
@@ -58,6 +61,7 @@ type StepRunView struct {
 	AssertionsResult   []domainassertion.Result
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
+	ResumeAt           *time.Time
 	Error              string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time

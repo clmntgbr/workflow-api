@@ -12,11 +12,13 @@ import (
 )
 
 type StepModel struct {
-	ID             uuid.UUID    `gorm:"column:id;primaryKey"`
-	WorkflowID     uuid.UUID    `gorm:"column:workflow_id"`
-	EndpointID     uuid.UUID    `gorm:"column:endpoint_id"`
-	ProjectID uuid.UUID    `gorm:"column:project_id"`
-	Name           string       `gorm:"column:name"`
+	ID                   uuid.UUID  `gorm:"column:id;primaryKey"`
+	WorkflowID           uuid.UUID  `gorm:"column:workflow_id"`
+	EndpointID           *uuid.UUID `gorm:"column:endpoint_id"`
+	ProjectID            uuid.UUID  `gorm:"column:project_id"`
+	Type                 string     `gorm:"column:type"`
+	DelayDurationSeconds *int       `gorm:"column:delay_duration_seconds"`
+	Name                 string     `gorm:"column:name"`
 	Description    string       `gorm:"column:description"`
 	URL            string       `gorm:"column:url"`
 	Method         string       `gorm:"column:method"`
@@ -69,12 +71,19 @@ func stepModelFromDomain(s *domainstep.Step) (*StepModel, error) {
 		return nil, err
 	}
 
+	stepType := string(s.Type)
+	if stepType == "" {
+		stepType = string(domainstep.TypeHTTP)
+	}
+
 	return &StepModel{
-		ID:             s.ID,
-		WorkflowID:     s.WorkflowID,
-		EndpointID:     s.EndpointID,
-		ProjectID: s.ProjectID,
-		Name:           s.Name,
+		ID:                   s.ID,
+		WorkflowID:           s.WorkflowID,
+		EndpointID:           s.EndpointID,
+		ProjectID:            s.ProjectID,
+		Type:                 stepType,
+		DelayDurationSeconds: intPtrOrNil(s.DelayDurationSeconds),
+		Name:                 s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
 		Method:         s.Method,
@@ -118,12 +127,19 @@ func stepDomainFromModel(m *StepModel) (*domainstep.Step, error) {
 		}
 	}
 
+	stepType := domainstep.Type(m.Type)
+	if stepType == "" {
+		stepType = domainstep.TypeHTTP
+	}
+
 	return &domainstep.Step{
-		ID:             m.ID,
-		WorkflowID:     m.WorkflowID,
-		EndpointID:     m.EndpointID,
-		ProjectID: m.ProjectID,
-		Name:           m.Name,
+		ID:                   m.ID,
+		WorkflowID:           m.WorkflowID,
+		EndpointID:           m.EndpointID,
+		ProjectID:            m.ProjectID,
+		Type:                 stepType,
+		DelayDurationSeconds: intValueOrZero(m.DelayDurationSeconds),
+		Name:                 m.Name,
 		Description:    m.Description,
 		URL:            m.URL,
 		Method:         m.Method,
@@ -145,4 +161,18 @@ func stepDomainFromModel(m *StepModel) (*domainstep.Step, error) {
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}, nil
+}
+
+func intPtrOrNil(value int) *int {
+	if value == 0 {
+		return nil
+	}
+	return &value
+}
+
+func intValueOrZero(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
 }

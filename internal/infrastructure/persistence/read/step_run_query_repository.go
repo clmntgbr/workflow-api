@@ -17,13 +17,15 @@ import (
 )
 
 type stepRunRow struct {
-	ID                 uuid.UUID
-	WorkflowRunID      uuid.UUID
-	StepID             uuid.UUID
-	WorkflowID         uuid.UUID
-	EndpointID         uuid.UUID
-	ProjectID          uuid.UUID
-	Name               string
+	ID                   uuid.UUID
+	WorkflowRunID        uuid.UUID
+	StepID               uuid.UUID
+	WorkflowID           uuid.UUID
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	StepType             string `gorm:"column:step_type"`
+	DelayDurationSeconds *int
+	Name                 string
 	Description        string
 	URL                string
 	Method             string
@@ -48,6 +50,7 @@ type stepRunRow struct {
 	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
+	ResumeAt           *time.Time
 	Error              string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -57,11 +60,12 @@ func (stepRunRow) TableName() string { return "step_runs" }
 
 var stepRunSelectColumns = []string{
 	"id", "workflow_run_id", "step_id", "workflow_id", "endpoint_id", "project_id",
+	"step_type", "delay_duration_seconds",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
 	"status", "attempt", "variable_extracts", "assertions", "response_snapshot", "extracted_variables",
-	"assertions_result", "started_at", "finished_at", "error", "created_at", "updated_at",
+	"assertions_result", "started_at", "finished_at", "resume_at", "error", "created_at", "updated_at",
 }
 
 type stepRunReadRepository struct {
@@ -253,14 +257,21 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		}
 	}
 
+	stepType := domainstep.Type(row.StepType)
+	if stepType == "" {
+		stepType = domainstep.TypeHTTP
+	}
+
 	return &domainsteprun.StepRunView{
-		ID:             row.ID,
-		WorkflowRunID:  row.WorkflowRunID,
-		StepID:         row.StepID,
-		WorkflowID:     row.WorkflowID,
-		EndpointID:     row.EndpointID,
-		ProjectID:      row.ProjectID,
-		Name:           row.Name,
+		ID:                   row.ID,
+		WorkflowRunID:        row.WorkflowRunID,
+		StepID:               row.StepID,
+		WorkflowID:           row.WorkflowID,
+		EndpointID:           row.EndpointID,
+		ProjectID:            row.ProjectID,
+		StepType:             stepType,
+		DelayDurationSeconds: intValueOrZero(row.DelayDurationSeconds),
+		Name:                 row.Name,
 		Description:    row.Description,
 		URL:            row.URL,
 		Method:         row.Method,
@@ -287,6 +298,7 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		AssertionsResult:   assertionsResult,
 		StartedAt:          row.StartedAt,
 		FinishedAt:         row.FinishedAt,
+		ResumeAt:           row.ResumeAt,
 		Error:              row.Error,
 		CreatedAt:          row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,
