@@ -17,6 +17,7 @@ import (
 	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	queryassertion "go-api/internal/application/query/assertion"
+	queryactivitylog "go-api/internal/application/query/activitylog"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryinsight "go-api/internal/application/query/insight"
@@ -58,6 +59,7 @@ type Container struct {
 	WorkflowRunHandler       *httphandler.WorkflowRunHandler
 	VariableHandler          *httphandler.VariableHandler
 	AssertionHandler         *httphandler.AssertionHandler
+	ActivityLogHandler       *httphandler.ActivityLogHandler
 	PlanHandler              *httphandler.PlanHandler
 	SubscriptionHandler      *httphandler.SubscriptionHandler
 	InvoiceHandler           *httphandler.InvoiceHandler
@@ -91,6 +93,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	variableReadRepo := read.NewVariableReadRepository(db)
 	assertionWriteRepo := write.NewAssertionWriteRepository(db)
 	assertionReadRepo := read.NewAssertionReadRepository(db)
+	activityLogReadRepo := read.NewActivityLogReadRepository(db)
 	quotaReadRepo := read.NewQuotaReadRepository(db)
 	planWriteRepo := write.NewPlanWriteRepository(db)
 	planReadRepo := read.NewPlanReadRepository(db, quotaReadRepo)
@@ -180,6 +183,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo)
 	getAssertionByIDHandler := queryassertion.NewGetAssertionByIDHandler(assertionReadRepo)
 	listAssertionsByStepHandler := queryassertion.NewListAssertionsByStepHandler(assertionReadRepo)
+	listActivityLogsByWorkflowHandler := queryactivitylog.NewListByWorkflowHandler(activityLogReadRepo)
 	searchAssertionPathsHandler := queryassertion.NewSearchAssertionPathsHandler(stepRunReadRepo)
 
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
@@ -411,6 +415,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			listAssertionsByStepHandler,
 			searchAssertionPathsHandler,
 			getStepByIDHandler,
+			getWorkflowByIDHandler,
+		),
+		ActivityLogHandler: httphandler.NewActivityLogHandler(
+			listActivityLogsByWorkflowHandler,
 			getWorkflowByIDHandler,
 		),
 		PlanHandler: httphandler.NewPlanHandler(listActivePlansHandler),

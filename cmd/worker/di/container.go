@@ -4,6 +4,7 @@ import (
 	"log"
 
 	eventassertion "go-api/internal/application/event/assertion"
+	eventactivitylog "go-api/internal/application/event/activitylog"
 	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
@@ -78,6 +79,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	realtimePublisher := centrifugo.NewPublisher(env)
 	projectReadRepo := read.NewProjectReadRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
+	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
 	stepReadRepo := read.NewStepReadRepository(db)
 	connReadRepo := read.NewConnectionReadRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
@@ -104,6 +106,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishAssertionRealtime := eventassertion.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	activityLogWriteRepo := write.NewActivityLogWriteRepository(db)
+	recordActivityLog := eventactivitylog.NewRecordHandler(activityLogWriteRepo, workflowReadRepo, workflowRunReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -452,6 +456,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_step_run_failed_realtime",
 		publishStepRunRealtime.OnFailed,
 	))
+
+	eventactivitylog.Register(reg, dedupRepo, recordActivityLog)
 
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
 

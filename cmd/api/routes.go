@@ -43,6 +43,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupConnectionRoutes(api, container)
 	setupVariableRoutes(api, container)
 	setupAssertionRoutes(api, container)
+	setupActivityLogRoutes(api, container)
 	setupWorkflowRunRoutes(api, container)
 	setupRealtimeRoutes(api, container)
 }
@@ -121,6 +122,11 @@ func setupAssertionRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/workflows/:workflowId/assertions/:id", container.AssertionHandler.GetByID)
 	api.Put("/workflows/:workflowId/assertions/:id", container.AssertionHandler.Update)
 	api.Delete("/workflows/:workflowId/assertions/:id", container.AssertionHandler.Delete)
+}
+
+func setupActivityLogRoutes(api fiber.Router, container *di.Container) {
+	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Get("/workflows/:workflowId/activity", container.ActivityLogHandler.ListByWorkflow)
 }
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
