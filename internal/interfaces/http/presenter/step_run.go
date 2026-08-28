@@ -55,6 +55,8 @@ func NewStepRunResponseFromViewWithStep(
 		AssertionsResult: NewAssertionResultListResponse(
 			view.AssertionsResult,
 			view.Assertions,
+			view.StepID,
+			view.WorkflowID,
 		),
 		Insights:   NewInsightListResponseFromViews(insights),
 		StartedAt:  view.StartedAt,

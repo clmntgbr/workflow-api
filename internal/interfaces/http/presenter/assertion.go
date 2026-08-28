@@ -4,6 +4,8 @@ import (
 	"time"
 
 	domainassertion "go-api/internal/domain/assertion"
+
+	"github.com/google/uuid"
 )
 
 type AssertionResponse struct {
@@ -13,6 +15,8 @@ type AssertionResponse struct {
 	Path          *string    `json:"path"`
 	Operator      string     `json:"operator"`
 	ExpectedValue *string    `json:"expectedValue"`
+	StepID        string     `json:"stepId"`
+	WorkflowID    string     `json:"workflowId"`
 	CreatedAt     *time.Time `json:"createdAt"`
 	UpdatedAt     *time.Time `json:"updatedAt"`
 }
@@ -25,6 +29,8 @@ func NewAssertionResponseFromEntity(a domainassertion.Assertion) AssertionRespon
 		Path:          a.Path,
 		Operator:      a.Operator,
 		ExpectedValue: a.ExpectedValue,
+		StepID:        a.StepID,
+		WorkflowID:    a.WorkflowID,
 		CreatedAt:     a.CreatedAt,
 		UpdatedAt:     a.UpdatedAt,
 	})
@@ -38,12 +44,18 @@ func NewAssertionResponseFromView(view domainassertion.AssertionView) AssertionR
 		Path:          optionalNonEmptyString(view.Path),
 		Operator:      string(view.Operator),
 		ExpectedValue: optionalNonEmptyString(view.ExpectedValue),
+		StepID:        view.StepID.String(),
+		WorkflowID:    view.WorkflowID.String(),
 		CreatedAt:     optionalTime(view.CreatedAt),
 		UpdatedAt:     optionalTime(view.UpdatedAt),
 	}
 }
 
-func NewAssertionResponseFromSnapshot(snapshot domainassertion.Snapshot) AssertionResponse {
+func NewAssertionResponseFromSnapshot(
+	snapshot domainassertion.Snapshot,
+	stepID uuid.UUID,
+	workflowID uuid.UUID,
+) AssertionResponse {
 	return AssertionResponse{
 		ID:            snapshot.AssertionID,
 		Description:   optionalNonEmptyString(snapshot.Description),
@@ -51,6 +63,8 @@ func NewAssertionResponseFromSnapshot(snapshot domainassertion.Snapshot) Asserti
 		Path:          optionalNonEmptyString(snapshot.Path),
 		Operator:      string(snapshot.Operator),
 		ExpectedValue: optionalNonEmptyString(snapshot.ExpectedValue),
+		StepID:        stepID.String(),
+		WorkflowID:    workflowID.String(),
 	}
 }
 
@@ -72,6 +86,8 @@ type AssertionResultResponse struct {
 func NewAssertionResultListResponse(
 	results []domainassertion.Result,
 	snapshots []domainassertion.Snapshot,
+	stepID uuid.UUID,
+	workflowID uuid.UUID,
 ) []AssertionResultResponse {
 	if len(results) == 0 {
 		return []AssertionResultResponse{}
@@ -87,10 +103,12 @@ func NewAssertionResultListResponse(
 		snapshot, ok := snapshotsByID[result.AssertionID]
 		var assertion AssertionResponse
 		if ok {
-			assertion = NewAssertionResponseFromSnapshot(snapshot)
+			assertion = NewAssertionResponseFromSnapshot(snapshot, stepID, workflowID)
 		} else {
 			assertion = AssertionResponse{
-				ID: result.AssertionID,
+				ID:         result.AssertionID,
+				StepID:     stepID.String(),
+				WorkflowID: workflowID.String(),
 			}
 		}
 		items = append(items, AssertionResultResponse{
