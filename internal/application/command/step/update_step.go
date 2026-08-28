@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -13,8 +14,9 @@ import (
 
 type UpdateStepCommand struct {
 	ID             uuid.UUID
+	UserID         uuid.UUID
 	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
+	ProjectID      uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -67,6 +69,9 @@ func (h *UpdateStepHandler) Handle(
 	if s.ProjectID != cmd.ProjectID || s.WorkflowID != cmd.WorkflowID {
 		return nil, errors.New("step not found")
 	}
+	if s.Type == domainstep.TypeDelay {
+		return nil, errors.New("delay steps cannot be updated as HTTP steps")
+	}
 
 	s.ApplyConfigUpdate(domainstep.UpdateStepConfigParams{
 		Name:           cmd.Name,
@@ -83,10 +88,13 @@ func (h *UpdateStepHandler) Handle(
 	})
 
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := domainstep.ValidateConfig(s); err != nil {
+			return err
+		}
 		if err := h.stepRepo.Update(txCtx, s); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, s.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(s.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to update step")

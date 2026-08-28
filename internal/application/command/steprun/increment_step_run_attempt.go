@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 
+	domainassertion "go-api/internal/domain/assertion"
 	domainsteprun "go-api/internal/domain/steprun"
 
 	"github.com/google/uuid"
 )
 
 type IncrementStepRunAttemptCommand struct {
-	StepRunID uuid.UUID
-	Response  *domainsteprun.ResponseSnapshot
-	Error     string
+	StepRunID        uuid.UUID
+	Response         *domainsteprun.ResponseSnapshot
+	Error            string
+	AssertionsResult []domainassertion.Result
 }
 
 type IncrementStepRunAttemptHandler struct {
@@ -47,6 +49,11 @@ func (h *IncrementStepRunAttemptHandler) Handle(
 	if cmd.Response != nil {
 		normalized := cmd.Response.Normalized()
 		run.ResponseSnapshot = &normalized
+	}
+	if cmd.AssertionsResult == nil {
+		run.AssertionsResult = []domainassertion.Result{}
+	} else {
+		run.AssertionsResult = cmd.AssertionsResult
 	}
 	run.Error = cmd.Error
 

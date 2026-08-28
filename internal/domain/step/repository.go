@@ -24,11 +24,13 @@ type StepReadRepository interface {
 }
 
 type StepView struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
-	Name           string
+	ID                   uuid.UUID
+	WorkflowID           uuid.UUID
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	Type                 Type
+	DelayDurationSeconds int
+	Name                 string
 	Description    string
 	URL            string
 	Method         string

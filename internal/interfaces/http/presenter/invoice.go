@@ -9,17 +9,17 @@ import (
 type InvoiceResponse struct {
 	ID               string     `json:"id"`
 	SubscriptionID   *string    `json:"subscriptionId"`
-	StripeInvoiceID  string     `json:"stripeInvoiceId"`
-	Number           string     `json:"number"`
-	Status           string     `json:"status"`
-	Currency         string     `json:"currency"`
+	StripeInvoiceID  *string    `json:"stripeInvoiceId"`
+	Number           *string    `json:"number"`
+	Status           *string    `json:"status"`
+	Currency         *string    `json:"currency"`
 	AmountDue        int64      `json:"amountDue"`
 	AmountPaid       int64      `json:"amountPaid"`
 	Total            int64      `json:"total"`
-	HostedInvoiceURL string     `json:"hostedInvoiceUrl"`
-	InvoicePDF       string     `json:"invoicePdf"`
-	BillingReason    string     `json:"billingReason"`
-	Description      string     `json:"description"`
+	HostedInvoiceURL *string    `json:"hostedInvoiceUrl"`
+	InvoicePDF       *string    `json:"invoicePdf"`
+	BillingReason    *string    `json:"billingReason"`
+	Description      *string    `json:"description"`
 	AttemptCount     int64      `json:"attemptCount"`
 	PeriodStart      time.Time  `json:"periodStart"`
 	PeriodEnd        time.Time  `json:"periodEnd"`
@@ -39,17 +39,17 @@ func NewInvoiceResponse(invoice *domaininvoice.InvoiceView) InvoiceResponse {
 	return InvoiceResponse{
 		ID:               invoice.ID.String(),
 		SubscriptionID:   subscriptionID,
-		StripeInvoiceID:  invoice.StripeInvoiceID,
-		Number:           invoice.Number,
-		Status:           invoice.Status,
-		Currency:         invoice.Currency,
+		StripeInvoiceID:  optionalNonEmptyString(invoice.StripeInvoiceID),
+		Number:           optionalNonEmptyString(invoice.Number),
+		Status:           optionalNonEmptyString(invoice.Status),
+		Currency:         optionalNonEmptyString(invoice.Currency),
 		AmountDue:        invoice.AmountDue,
 		AmountPaid:       invoice.AmountPaid,
 		Total:            invoice.Total,
-		HostedInvoiceURL: invoice.HostedInvoiceURL,
-		InvoicePDF:       invoice.InvoicePDF,
-		BillingReason:    invoice.BillingReason,
-		Description:      invoice.Description,
+		HostedInvoiceURL: optionalNonEmptyString(invoice.HostedInvoiceURL),
+		InvoicePDF:       optionalNonEmptyString(invoice.InvoicePDF),
+		BillingReason:    optionalNonEmptyString(invoice.BillingReason),
+		Description:      optionalNonEmptyString(invoice.Description),
 		AttemptCount:     invoice.AttemptCount,
 		PeriodStart:      invoice.PeriodStart,
 		PeriodEnd:        invoice.PeriodEnd,

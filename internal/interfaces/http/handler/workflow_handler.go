@@ -193,6 +193,11 @@ func (h *WorkflowHandler) ListByProject(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -231,6 +236,7 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 
 	err = h.updateHandler.Handle(c.Context(), workflowcmd.UpdateWorkflowCommand{
 		ID:                    id,
+		UserID:                user.ID,
 		Name:                  req.Name,
 		Description:           req.Description,
 		Status:                status,
@@ -267,6 +273,11 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -278,7 +289,8 @@ func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
 	}
 
 	w, err := h.activateHandler.Handle(c.Context(), workflowcmd.ActivateWorkflowCommand{
-		ID:             id,
+		ID:        id,
+		UserID:    user.ID,
 		ProjectID: orgID,
 	})
 	if err != nil {
@@ -295,6 +307,11 @@ func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -306,7 +323,8 @@ func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
 	}
 
 	w, err := h.deactivateHandler.Handle(c.Context(), workflowcmd.DeactivateWorkflowCommand{
-		ID:             id,
+		ID:        id,
+		UserID:    user.ID,
 		ProjectID: orgID,
 	})
 	if err != nil {
@@ -323,6 +341,11 @@ func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
 }
 
 func (h *WorkflowHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -344,7 +367,10 @@ func (h *WorkflowHandler) Delete(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
-	if err := h.deleteHandler.Handle(c.Context(), id); err != nil {
+	if err := h.deleteHandler.Handle(c.Context(), workflowcmd.DeleteWorkflowCommand{
+		ID:     id,
+		UserID: user.ID,
+	}); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to delete workflow"})
 	}
 

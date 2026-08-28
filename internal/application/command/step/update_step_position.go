@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -12,10 +13,11 @@ import (
 )
 
 type UpdateStepPositionCommand struct {
-	ID             uuid.UUID
-	ProjectID uuid.UUID
-	WorkflowID     uuid.UUID
-	Position       domainstep.Position
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	ProjectID  uuid.UUID
+	WorkflowID uuid.UUID
+	Position   domainstep.Position
 }
 
 type UpdateStepPositionHandler struct {
@@ -103,7 +105,7 @@ func (h *UpdateStepPositionHandler) Handle(
 		if err := h.stepRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, s.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(s.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to update step")

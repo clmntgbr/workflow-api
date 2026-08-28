@@ -1,19 +1,45 @@
 # Workflow API
 
-Backend for a visual HTTP workflow builder. Teams define reusable **endpoints**, compose them into **workflows** as a graph of **steps** and **connections**, then collaborate in realtime across organizations.
+Backend for a visual HTTP workflow builder. Teams define reusable **endpoints**, compose them into **workflows** as a graph of **steps** and **connections**, inject **variables**, validate responses with **assertions**, and run workflows manually or on a schedule — with realtime collaboration across **projects**.
 
-This service is the source of truth for that graph: it owns persistence, auth, ordering (`executionOrder` / `treeIndex`), and event fan-out.
+This service is the source of truth for that graph and its execution: persistence, auth, ordering (`executionOrder` / `treeIndex`), orchestration, quotas, billing, and event fan-out.
 
 ## What it does
 
-- **Organizations** — multi-tenant workspaces, members, active organization on the user
-- **Workflows** — named graphs scoped to an organization (soft delete)
-- **Endpoints** — reusable HTTP templates (method, URL, headers, query, body, retries)
-- **Steps** — endpoint snapshot on a canvas; position drives execution order; connections drive branches
-- **Connections** — directed edges between steps (`sourceStepId` → `targetStepId`)
-- **Realtime** — Centrifugo events so the canvas stays in sync across clients
+### Builder
 
-Resources are scoped to the caller’s **active organization**. Shared workflow URLs that belong to another org the user is a member of return `409 WRONG_ORGANIZATION` so the client can switch org.
+- **Projects** — multi-tenant workspaces, members, active project on the user
+- **Workflows** — named graphs scoped to a project (soft delete, activate/deactivate, scheduling)
+- **Endpoints** — reusable HTTP templates (method, URL, headers, query, body, retries) + OpenAPI import
+- **Steps** — nodes on the canvas; two types:
+  - **`http`** — snapshot of an endpoint (default)
+  - **`delay`** — pause between steps (`delayDurationSeconds`), no HTTP call
+- **Connections** — directed edges between steps (`sourceStepId` → `targetStepId`)
+- **Variables** — static values or JSON-path extracts from previous HTTP responses
+- **Assertions** — post-response validation rules per HTTP step (status, headers, body)
+- **Activity logs** — human-readable audit trail per workflow (builder actions + runs)
+
+Canvas position drives execution order; connections drive branches and skip logic. A **delay step with no connections** (orphan on the canvas) is ignored at runtime.
+
+Resources are scoped to the caller’s **active project**. Shared workflow URLs that belong to another project the user is a member of return `409 WRONG_ORGANIZATION` so the client can switch project.
+
+### Execution
+
+- **Workflow runs** — manual (`POST /workflows/:id/start`), API, schedule, webhook
+- **Orchestration** — worker advances the graph after each step run succeeds/fails/skips
+- **HTTP steps** — dedicated **executor** binary consumes `stepRun.queued`, calls the target API, runs assertions, records **insights** (timings)
+- **Delay steps** — two execution paths based on `MAX_SYNC_DELAY_SECONDS` (default `30`):
+  - **Short delay** (`≤` threshold) — executor sleeps until `resumeAt`, then marks success (no HTTP)
+  - **Long delay** (`>` threshold) — step run created in `waiting` with `resumeAt`; worker polls every `STEP_RUN_WAITING_POLL_INTERVAL` (default `2s`) and resumes when due
+- **Cancellation** — `POST /workflows/:id/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
+- **Scheduling** — **scheduler** binary claims due workflows and starts runs
+
+Delay step runs emit the same realtime events as HTTP steps (`stepRun.started`, `stepRun.succeeded`). The API exposes `startedAt`, `finishedAt`, and `resumeAt` on step runs.
+
+### Collaboration & billing
+
+- **Realtime** — Centrifugo events so the canvas and run progress stay in sync
+- **Subscriptions** — Stripe plans, quotas, invoices, billing portal
 
 ## Tech stack
 
@@ -26,27 +52,31 @@ Resources are scoped to the caller’s **active organization**. Shared workflow 
 | Auth | Clerk (JWT / JWKS + Svix webhooks) |
 | Messaging | RabbitMQ (topic exchange, retry + DLQ) |
 | Realtime | Centrifugo |
+| Billing | Stripe |
 | CLI | Cobra |
 | Local | Docker Compose, Air, golangci-lint |
 
-Architecture: **Clean Architecture + CQRS**. HTTP handlers call command/query handlers directly. Domain events go through a **transactional outbox**, then a **worker** publishes to RabbitMQ and dispatches handlers (dedup + Centrifugo).
+Architecture: **Clean Architecture + CQRS**. HTTP handlers call command/query handlers directly. Domain events go through a **transactional outbox**, then a **worker** publishes to RabbitMQ and dispatches handlers (dedup + Centrifugo + activity logs).
+
+Conventions: [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).  
+Product overview (French): [`docs/project-overview.md`](docs/project-overview.md).
 
 ## Layout
 
 ```
 cmd/
-  api/       HTTP server
-  worker/    Outbox relay + RabbitMQ consumer
-  cli/       Goose migrations + schema drift check
+  api/        HTTP server
+  worker/     Outbox relay + RabbitMQ consumer + waiting delay poller
+  executor/   HTTP step run execution
+  scheduler/  Scheduled workflow runs
+  cli/        Goose migrations + schema drift check
 internal/
-  domain/            Aggregates (user, organization, workflow, endpoint, step, connection)
+  domain/            Aggregates (user, project, workflow, endpoint, step, …)
   application/       command / query / event / realtime / registry
-  infrastructure/    persistence, rabbitmq, clerk, centrifugo, config
+  infrastructure/    persistence, rabbitmq, clerk, centrifugo, stripe, config
   interfaces/http/   handlers, DTOs, presenters, validation
 migrations/          Schema source of truth
 ```
-
-Conventions: [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).
 
 ## Domain events
 
@@ -54,14 +84,75 @@ Versioned types on the bus (`*.v1`). Realtime types drop the version (`entity.ac
 
 | Domain | Realtime | When |
 |---|---|---|
-| `workflow.created.v1` / `updated.v1` / `deleted.v1` | `workflow.*` | Workflow CRUD |
-| `endpoint.created.v1` / `updated.v1` / `deleted.v1` | `endpoint.*` | Endpoint CRUD |
-| `step.created.v1` / `updated.v1` / `deleted.v1` | `step.*` | Step CRUD / move |
-| `connection.created.v1` / `deleted.v1` | `connection.*` | Link / unlink steps |
+| `workflow.*.v1` | `workflow.*` | CRUD, activate/deactivate |
+| `endpoint.*.v1` | `endpoint.*` | Endpoint CRUD |
+| `step.created.v1` / `updated.v1` / `deleted.v1` / `position_updated.v1` | `step.*` | Step CRUD / move |
+| `connection.*.v1` | `connection.*` | Link / unlink steps |
+| `variable.*.v1` | `variable.*` | Variable CRUD |
+| `assertion.*.v1` | `assertion.*` | Assertion CRUD |
+| `workflowRun.*.v1` | `workflowRun.*` | Run lifecycle + `finished` |
+| `stepRun.*.v1` | `stepRun.*` | Step execution (HTTP and delay) |
 
-Plus user and organization events (`user.*`, `organization.*`).
+Plus user and project events (`user.*`, `project.*`).
 
 On step create/move and connection create/delete, the API **synchronously** recalculates `index`, `executionOrder`, and `treeIndex` from canvas position and the directed graph. Deleting a step also deletes its connections.
+
+Activity log messages are projected from domain events (natural language, structured IDs in API fields, user attribution on manual builder actions).
+
+## Delay steps (API)
+
+Create an HTTP step (default):
+
+```json
+POST /api/workflows/:workflowId/steps
+{
+  "endpointId": "…",
+  "position": { "x": 100, "y": 200 }
+}
+```
+
+Create a delay step:
+
+```json
+POST /api/workflows/:workflowId/steps
+{
+  "type": "delay",
+  "name": "Wait 30 seconds",
+  "delayDurationSeconds": 30,
+  "position": { "x": 100, "y": 300 }
+}
+```
+
+Update a delay step (`PUT …/steps/:id`):
+
+```json
+{
+  "name": "Wait 1 minute",
+  "description": "Optional",
+  "delayDurationSeconds": 60
+}
+```
+
+Rules:
+
+- `http` — `endpointId` required; no `delayDurationSeconds`
+- `delay` — `delayDurationSeconds` required; no `endpointId`; no variables or assertions
+- orphan delay (no connections) — skipped at runtime
+
+## Configuration
+
+Copy [`.env.dist`](.env.dist) and fill required values (Clerk, Postgres, RabbitMQ, Centrifugo).
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAX_SYNC_DELAY_SECONDS` | `30` | Short delays run in executor; longer delays use `waiting` + polling |
+| `STEP_RUN_WAITING_POLL_INTERVAL` | `2s` | Worker poll interval for due `waiting` step runs |
+| `STEP_RUN_WAITING_POLL_BATCH_SIZE` | `100` | Batch size per poll tick |
+| `SCHEDULER_INTERVAL` | `1m` | How often scheduled workflows are claimed |
+| `RABBITMQ_EXECUTOR_*` | `step_run.execute` | Executor queue topology |
+| `OUTBOX_POLL_INTERVAL` | `2s` | Outbox relay poll interval |
+
+See `.env.dist` for the full list (CORS, worker concurrency, Stripe, etc.).
 
 ## Getting started
 
@@ -76,9 +167,12 @@ make migrate
 | Service | Port | Notes |
 |---|---|---|
 | API | `4000` | Air hot reload |
-| Worker | — | Outbox relay + consumer |
+| Worker | — | Outbox relay + consumer + delay poller |
+| Executor | — | HTTP step runs |
+| Scheduler | — | Cron-like workflow starts |
 | Postgres | `9543` | |
 | RabbitMQ | `5672` / UI `15672` | Credentials from `.env` |
+| Centrifugo | `8000` | WebSocket |
 | ngrok | `4040` | Clerk webhook tunnel |
 
 ## Makefile
@@ -97,16 +191,21 @@ make migrate
 
 Health: `GET /livez`, `/readyz`, `/startupz`
 
-Auth: Bearer Clerk JWT on `/api/*`. Webhook: `POST /webhooks/clerk` (Svix).
+Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `POST /webhooks/stripe`.
 
 | Area | Routes |
 |---|---|
-| User | `GET /api/users/me`, `PUT /api/users/me/active-organization` |
-| Organizations | `GET/POST /api/organizations`, `GET/PUT/DELETE /api/organizations/:id`, members, activate |
-| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id` |
-| Endpoints | `GET/POST /api/endpoints`, `GET/PUT/DELETE /api/endpoints/:id` |
-| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT .../position`) |
+| User | `GET /api/users/me`, `PUT /api/users/me/active-project` |
+| Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/:id`, members, activate |
+| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id`, activate/deactivate |
+| Endpoints | `GET/POST /api/endpoints`, import OpenAPI, `GET/PUT/DELETE /api/endpoints/:id` |
+| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http` and `delay` |
 | Connections | nested under `/api/workflows/:workflowId/connections` |
+| Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
+| Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |
+| Activity | `GET /api/workflows/:workflowId/activity` |
+| Workflow runs | `POST /workflows/:id/start`, `POST /workflows/:id/stop`, list, detail, analytics |
+| Billing | `/api/plans`, `/api/subscription`, `/api/quota`, `/api/subscriptions/*`, `/api/invoices` |
 | Realtime | `GET /api/realtime/connection` |
 
 ## Messaging
@@ -115,3 +214,17 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhook: `POST /webhooks/clerk` (Svix).
 - Worker polls unpublished rows, publishes an envelope (`eventId`, `type`, `aggregateId`, `occurredAt`, `payload`), then sets `published_at`.
 - Dedup key: `(event_id, handler_name)` in `processed_events`.
 - Topology: main queue → TTL retry → main; poison / non-retryable → DLQ. Never `Nack(requeue=true)`.
+
+### Execution flow (simplified)
+
+```
+StartWorkflowRun → workflowRun.started.v1
+  → Orchestrator: root step runs (HTTP or delay)
+  → stepRun.queued.v1 (HTTP + short delay only)
+  → Executor: HTTP call OR sleep until resumeAt
+  → stepRun.succeeded.v1 | failed.v1
+  → Orchestrator: enqueue next steps, finalize run
+  → Centrifugo + activity log
+```
+
+Long delays: `waiting` + `resumeAt` → worker poller → `started` + `succeeded` → orchestrator continues.

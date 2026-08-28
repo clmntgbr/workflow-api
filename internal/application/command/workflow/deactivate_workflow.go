@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -11,7 +12,8 @@ import (
 )
 
 type DeactivateWorkflowCommand struct {
-	ID             uuid.UUID
+	ID        uuid.UUID
+	UserID    uuid.UUID
 	ProjectID uuid.UUID
 }
 
@@ -43,7 +45,7 @@ func (h *DeactivateWorkflowHandler) Handle(ctx context.Context, cmd DeactivateWo
 		if err := h.repo.Update(txCtx, w); err != nil {
 			return errors.New("failed to deactivate workflow")
 		}
-		if err := h.outbox.StoreEvents(txCtx, w.PullEvents()); err != nil {
+		if err := h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(w.PullEvents(), cmd.UserID)); err != nil {
 			return err
 		}
 		workflow = w

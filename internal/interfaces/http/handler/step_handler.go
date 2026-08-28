@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strings"
 
 	stepcmd "go-api/internal/application/command/step"
@@ -20,7 +21,9 @@ import (
 
 type StepHandler struct {
 	createHandler              *stepcmd.CreateStepHandler
+	createDelayHandler         *stepcmd.CreateDelayStepHandler
 	updateHandler              *stepcmd.UpdateStepHandler
+	updateDelayHandler         *stepcmd.UpdateDelayStepHandler
 	updatePositionHandler      *stepcmd.UpdateStepPositionHandler
 	deleteHandler              *stepcmd.DeleteStepHandler
 	getByIDHandler             *querystep.GetStepByIDHandler
@@ -31,7 +34,9 @@ type StepHandler struct {
 
 func NewStepHandler(
 	createHandler *stepcmd.CreateStepHandler,
+	createDelayHandler *stepcmd.CreateDelayStepHandler,
 	updateHandler *stepcmd.UpdateStepHandler,
+	updateDelayHandler *stepcmd.UpdateDelayStepHandler,
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
 	deleteHandler *stepcmd.DeleteStepHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
@@ -41,7 +46,9 @@ func NewStepHandler(
 ) *StepHandler {
 	return &StepHandler{
 		createHandler:              createHandler,
+		createDelayHandler:         createDelayHandler,
 		updateHandler:              updateHandler,
+		updateDelayHandler:         updateDelayHandler,
 		updatePositionHandler:      updatePositionHandler,
 		deleteHandler:              deleteHandler,
 		getByIDHandler:             getByIDHandler,
@@ -73,6 +80,46 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 	}
 	if err := validation.Struct(c, &req); err != nil {
 		return err
+	}
+
+	stepType := req.Type
+	if stepType == "" {
+		stepType = string(domainstep.TypeHTTP)
+	}
+
+	if stepType == string(domainstep.TypeDelay) {
+		if req.DelayDurationSeconds == nil || *req.DelayDurationSeconds <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "delayDurationSeconds is required for delay steps"})
+		}
+		s, err := h.createDelayHandler.Handle(c.Context(), stepcmd.CreateDelayStepCommand{
+			UserID:               user.ID,
+			WorkflowID:           workflowID,
+			ProjectID:            orgID,
+			Name:                 req.Name,
+			DelayDurationSeconds: *req.DelayDurationSeconds,
+			Position: domainstep.Position{
+				X: req.Position.X,
+				Y: req.Position.Y,
+			},
+		})
+		if err != nil {
+			if handled, resp := respondQuotaError(c, err); handled {
+				return resp
+			}
+			switch {
+			case errors.Is(err, domainstep.ErrInvalidStepTypeConfig):
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+			case err.Error() == "workflow not found":
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": err.Error()})
+			default:
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create step"})
+			}
+		}
+		return c.Status(fiber.StatusCreated).JSON(presenter.NewStepDetailResponseFromEntity(*s))
+	}
+
+	if req.EndpointID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "endpointId is required for HTTP steps"})
 	}
 
 	endpointID, err := uuid.Parse(req.EndpointID)
@@ -187,6 +234,11 @@ func (h *StepHandler) ListByWorkflow(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -200,6 +252,49 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid step id"})
+	}
+
+	existing, err := h.getByIDHandler.Handle(c.Context(), querystep.GetStepByIDQuery{ID: id})
+	if err != nil {
+		if err.Error() == "step not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to get step"})
+	}
+	if existing.ProjectID != orgID || existing.WorkflowID != workflowID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+	}
+
+	if existing.Type == domainstep.TypeDelay {
+		var req dto.UpdateDelayStepRequest
+		if err := c.Bind().Body(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+		}
+		req.Name = strings.TrimSpace(req.Name)
+		req.Description = strings.TrimSpace(req.Description)
+		if err := validation.Struct(c, &req); err != nil {
+			return err
+		}
+		s, err := h.updateDelayHandler.Handle(c.Context(), stepcmd.UpdateDelayStepCommand{
+			ID:                   id,
+			UserID:               user.ID,
+			WorkflowID:           workflowID,
+			ProjectID:            orgID,
+			Name:                 req.Name,
+			Description:          req.Description,
+			DelayDurationSeconds: req.DelayDurationSeconds,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, domainstep.ErrInvalidStepTypeConfig):
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+			case err.Error() == "step not found":
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+			default:
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update step"})
+			}
+		}
+		return c.Status(fiber.StatusOK).JSON(presenter.NewStepDetailResponseFromEntity(*s))
 	}
 
 	var req dto.UpdateStepRequest
@@ -230,6 +325,7 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 
 	s, err := h.updateHandler.Handle(c.Context(), stepcmd.UpdateStepCommand{
 		ID:             id,
+		UserID:         user.ID,
 		WorkflowID:     workflowID,
 		ProjectID: orgID,
 		Name:           req.Name,
@@ -255,6 +351,11 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -279,9 +380,10 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 	}
 
 	s, err := h.updatePositionHandler.Handle(c.Context(), stepcmd.UpdateStepPositionCommand{
-		ID:             id,
-		ProjectID: orgID,
-		WorkflowID:     workflowID,
+		ID:         id,
+		UserID:     user.ID,
+		ProjectID:  orgID,
+		WorkflowID: workflowID,
 		Position: domainstep.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,
@@ -300,6 +402,11 @@ func (h *StepHandler) UpdatePosition(c fiber.Ctx) error {
 }
 
 func (h *StepHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -316,9 +423,10 @@ func (h *StepHandler) Delete(c fiber.Ctx) error {
 	}
 
 	if err := h.deleteHandler.Handle(c.Context(), stepcmd.DeleteStepCommand{
-		ID:             id,
-		WorkflowID:     workflowID,
-		ProjectID: orgID,
+		ID:         id,
+		UserID:     user.ID,
+		WorkflowID: workflowID,
+		ProjectID:  orgID,
 	}); err != nil {
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})

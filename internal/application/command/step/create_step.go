@@ -6,6 +6,7 @@ import (
 	cmdquota "go-api/internal/application/command/quota"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -15,11 +16,11 @@ import (
 )
 
 type CreateStepCommand struct {
-	UserID         uuid.UUID
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
-	Position       domainstep.Position
+	UserID     uuid.UUID
+	WorkflowID uuid.UUID
+	EndpointID uuid.UUID
+	ProjectID  uuid.UUID
+	Position   domainstep.Position
 }
 
 type CreateStepHandler struct {
@@ -133,10 +134,10 @@ func (h *CreateStepHandler) Handle(
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 
 	s := domainstep.NewStep(domainstep.NewStepParams{
-		ID:             now.ID,
-		WorkflowID:     cmd.WorkflowID,
-		EndpointID:     cmd.EndpointID,
-		ProjectID: cmd.ProjectID,
+		ID:         now.ID,
+		WorkflowID: cmd.WorkflowID,
+		EndpointID: cmd.EndpointID,
+		ProjectID:  cmd.ProjectID,
 		Endpoint: domainstep.EndpointSnapshot{
 			ID:             endpoint.ID,
 			Name:           endpoint.Name,
@@ -158,6 +159,9 @@ func (h *CreateStepHandler) Handle(
 	})
 
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
+		if err := domainstep.ValidateConfig(s); err != nil {
+			return err
+		}
 		if err := h.stepRepo.Save(txCtx, s); err != nil {
 			return err
 		}
@@ -167,7 +171,7 @@ func (h *CreateStepHandler) Handle(
 		if err := h.stepRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, s.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(s.PullEvents(), cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to create step")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -13,8 +14,9 @@ import (
 )
 
 type CancelWorkflowRunCommand struct {
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
+	WorkflowID uuid.UUID
+	ProjectID  uuid.UUID
+	UserID     uuid.UUID
 }
 
 type CancelWorkflowRunHandler struct {
@@ -98,7 +100,7 @@ func (h *CancelWorkflowRunHandler) Handle(
 			events = append(events, stepRun.PullEvents()...)
 		}
 
-		return h.outbox.StoreEvents(txCtx, events)
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(events, cmd.UserID))
 	})
 	if err != nil {
 		return nil, errors.New("failed to cancel workflow run")

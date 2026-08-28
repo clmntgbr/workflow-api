@@ -2,7 +2,11 @@ package di
 
 import (
 	"log"
+	"time"
 
+	stepruncmd "go-api/internal/application/command/steprun"
+	eventassertion "go-api/internal/application/event/assertion"
+	eventactivitylog "go-api/internal/application/event/activitylog"
 	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
@@ -16,6 +20,7 @@ import (
 	eventworkflow "go-api/internal/application/event/workflow"
 	eventworkflowrun "go-api/internal/application/event/workflowrun"
 	"go-api/internal/application/registry"
+	domainassertion "go-api/internal/domain/assertion"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domaininvoice "go-api/internal/domain/invoice"
@@ -40,9 +45,12 @@ import (
 )
 
 type Container struct {
-	Relay    *outbox.Relay
-	Consumer *rabbitmq.Consumer
-	Conn     *rabbitmq.Connection
+	Relay                         *outbox.Relay
+	Consumer                      *rabbitmq.Consumer
+	Conn                          *rabbitmq.Connection
+	ResumeWaitingStepRunsHandler  *stepruncmd.ResumeDueWaitingStepRunsHandler
+	WaitingPollInterval           time.Duration
+	WaitingPollBatchSize          int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -76,18 +84,23 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	realtimePublisher := centrifugo.NewPublisher(env)
 	projectReadRepo := read.NewProjectReadRepository(db)
 	workflowReadRepo := read.NewWorkflowReadRepository(db)
+	workflowRunReadRepo := read.NewWorkflowRunReadRepository(db)
 	stepReadRepo := read.NewStepReadRepository(db)
+	userReadRepo := read.NewUserReadRepository(db)
 	connReadRepo := read.NewConnectionReadRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
+	assertionReadRepo := read.NewAssertionReadRepository(db)
 	orchestrator := eventworkflowrun.NewOrchestrator(
 		workflowRunWriteRepo,
 		stepRunWriteRepo,
 		stepReadRepo,
 		connReadRepo,
 		variableReadRepo,
+		assertionReadRepo,
 		outboxRepo,
+		env.MaxSyncDelaySeconds,
 	)
 	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
@@ -97,8 +110,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishStepRealtime := eventstep.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishConnectionRealtime := eventconnection.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishAssertionRealtime := eventassertion.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	activityLogWriteRepo := write.NewActivityLogWriteRepository(db)
+	recordActivityLog := eventactivitylog.NewRecordHandler(activityLogWriteRepo, workflowReadRepo, workflowRunReadRepo, stepReadRepo, userReadRepo)
 	reg := registry.NewHandlerRegistry()
 
 	reg.Register(domainuser.EventTypeUserCreated, dedup.With(
@@ -338,6 +354,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		publishVariableRealtime.OnUpdated,
 	))
 
+	reg.Register(domainassertion.EventTypeAssertionCreated, dedup.With(
+		dedupRepo,
+		"assertion_created",
+		eventassertion.NewAssertionCreatedHandler().Handle,
+	))
+	reg.Register(domainassertion.EventTypeAssertionCreated, dedup.With(
+		dedupRepo,
+		"publish_assertion_created_realtime",
+		publishAssertionRealtime.OnCreated,
+	))
+	reg.Register(domainassertion.EventTypeAssertionUpdated, dedup.With(
+		dedupRepo,
+		"assertion_updated",
+		eventassertion.NewAssertionUpdatedHandler().Handle,
+	))
+	reg.Register(domainassertion.EventTypeAssertionUpdated, dedup.With(
+		dedupRepo,
+		"publish_assertion_updated_realtime",
+		publishAssertionRealtime.OnUpdated,
+	))
+
 	reg.Register(domainsubscription.EventTypeSubscriptionCreated, dedup.With(
 		dedupRepo,
 		"subscription_created",
@@ -385,6 +422,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_workflow_run_cancelled_realtime",
 		publishWorkflowRunRealtime.OnCancelled,
 	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunFinished, dedup.With(
+		dedupRepo,
+		"publish_workflow_run_finished_realtime",
+		publishWorkflowRunRealtime.OnFinished,
+	))
 	reg.Register(domainworkflowrun.EventTypeWorkflowRunScheduledSkipped, dedup.With(
 		dedupRepo,
 		"workflow_run_scheduled_skipped",
@@ -422,11 +464,28 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		publishStepRunRealtime.OnFailed,
 	))
 
+	eventactivitylog.Register(reg, dedupRepo, recordActivityLog)
+
 	consumer := rabbitmq.NewConsumer(conn, reg, env.WorkerConcurrency, env.WorkerMaxRetries)
+
+	waitingPollBatchSize := env.StepRunWaitingPollBatchSize
+	if waitingPollBatchSize <= 0 {
+		waitingPollBatchSize = 100
+	}
+	waitingPollInterval := env.StepRunWaitingPollInterval
+	if waitingPollInterval <= 0 {
+		waitingPollInterval = 2 * time.Second
+	}
 
 	return &Container{
 		Relay:    relay,
 		Consumer: consumer,
 		Conn:     conn,
+		ResumeWaitingStepRunsHandler: stepruncmd.NewResumeDueWaitingStepRunsHandler(
+			stepRunWriteRepo,
+			outboxRepo,
+		),
+		WaitingPollInterval:  waitingPollInterval,
+		WaitingPollBatchSize: waitingPollBatchSize,
 	}
 }

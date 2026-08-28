@@ -15,11 +15,13 @@ import (
 )
 
 type stepRow struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
-	Name           string
+	ID                   uuid.UUID
+	WorkflowID           uuid.UUID
+	EndpointID           *uuid.UUID
+	ProjectID            uuid.UUID
+	Type                 string
+	DelayDurationSeconds *int
+	Name                 string
 	Description    string
 	URL            string
 	Method         string
@@ -43,7 +45,7 @@ type stepRow struct {
 func (stepRow) TableName() string { return "steps" }
 
 var stepSelectColumns = []string{
-	"id", "workflow_id", "endpoint_id", "project_id",
+	"id", "workflow_id", "endpoint_id", "project_id", "type", "delay_duration_seconds",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
@@ -98,6 +100,13 @@ func (r *stepReadRepository) FindByWorkflowID(
 	return views, nil
 }
 
+func intValueOrZero(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
 func toStepView(row stepRow) (*domainstep.StepView, error) {
 	headers := map[string]string{}
 	if len(row.Headers) > 0 {
@@ -120,12 +129,19 @@ func toStepView(row stepRow) (*domainstep.StepView, error) {
 		}
 	}
 
+	stepType := domainstep.Type(row.Type)
+	if stepType == "" {
+		stepType = domainstep.TypeHTTP
+	}
+
 	return &domainstep.StepView{
-		ID:             row.ID,
-		WorkflowID:     row.WorkflowID,
-		EndpointID:     row.EndpointID,
-		ProjectID: row.ProjectID,
-		Name:           row.Name,
+		ID:                   row.ID,
+		WorkflowID:           row.WorkflowID,
+		EndpointID:           row.EndpointID,
+		ProjectID:            row.ProjectID,
+		Type:                 stepType,
+		DelayDurationSeconds: intValueOrZero(row.DelayDurationSeconds),
+		Name:                 row.Name,
 		Description:    row.Description,
 		URL:            row.URL,
 		Method:         row.Method,

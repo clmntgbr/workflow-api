@@ -1,10 +1,15 @@
 package connection
 
-import "time"
+import (
+	"time"
+
+	"go-api/internal/domain/event"
+)
 
 const EventTypeConnectionCreated = "connection.created.v1"
 
 type ConnectionCreated struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	ConnectionID   string    `json:"connectionId"`
 	WorkflowID     string    `json:"workflowId"`
@@ -22,6 +27,7 @@ func (e ConnectionCreated) OccurredAt() time.Time { return e.Timestamp }
 const EventTypeConnectionDeleted = "connection.deleted.v1"
 
 type ConnectionDeleted struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	ConnectionID   string    `json:"connectionId"`
 	WorkflowID     string    `json:"workflowId"`

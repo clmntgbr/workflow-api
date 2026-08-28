@@ -9,7 +9,7 @@ type VariableResponse struct {
 	Description *string `json:"description"`
 	Kind        string  `json:"kind"`
 	Path        *string `json:"path"`
-	Value       any     `json:"value,omitempty"`
+	Value       any     `json:"value"`
 	StepID      *string `json:"stepId"`
 }
 
@@ -34,14 +34,8 @@ func NewVariableResponseFromView(view domainvariable.VariableView) VariableRespo
 	}
 
 	var path *string
-	if view.Kind != domainvariable.KindStatic && view.Path != "" {
-		path = &view.Path
-	}
-
-	var stepID *string
-	if view.StepID != nil {
-		value := view.StepID.String()
-		stepID = &value
+	if view.Kind != domainvariable.KindStatic {
+		path = optionalNonEmptyString(view.Path)
 	}
 
 	return VariableResponse{
@@ -52,7 +46,7 @@ func NewVariableResponseFromView(view domainvariable.VariableView) VariableRespo
 		Kind:        kind,
 		Path:        path,
 		Value:       view.Value,
-		StepID:      stepID,
+		StepID:      optionalUUIDString(view.StepID),
 	}
 }
 

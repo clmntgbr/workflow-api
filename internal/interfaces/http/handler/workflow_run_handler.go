@@ -139,7 +139,8 @@ func (h *WorkflowRunHandler) StartWorkflow(c fiber.Ctx) error {
 }
 
 func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
-	if _, err := httpctx.GetUser(c); err != nil {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
@@ -167,6 +168,7 @@ func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
 	run, err := h.cancelHandler.Handle(c.Context(), workflowruncmd.CancelWorkflowRunCommand{
 		WorkflowID: workflowID,
 		ProjectID:  orgID,
+		UserID:     user.ID,
 	})
 	if err != nil {
 		if errors.Is(err, domainworkflowrun.ErrWorkflowNotFound) {

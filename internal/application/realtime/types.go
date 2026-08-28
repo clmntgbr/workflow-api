@@ -11,6 +11,7 @@ const (
 	ActionSucceeded                 = "succeeded"
 	ActionFailed                    = "failed"
 	ActionCancelled                 = "cancelled"
+	ActionFinished                  = "finished"
 	ActionImported                  = "imported"
 
 	EntityUser         = "user"
@@ -20,6 +21,7 @@ const (
 	EntityStep         = "step"
 	EntityConnection   = "connection"
 	EntityVariable     = "variable"
+	EntityAssertion    = "assertion"
 	EntityWorkflowRun  = "workflowRun"
 	EntityStepRun      = "stepRun"
 )

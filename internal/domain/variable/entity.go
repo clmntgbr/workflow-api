@@ -108,6 +108,20 @@ func (v *Variable) Update(p UpdateVariableParams) error {
 	return nil
 }
 
+func (v *Variable) MarkDeleted(projectID uuid.UUID) {
+	v.UpdatedAt = time.Now().UTC()
+	v.recordEvent(VariableDeleted{
+		ID:         uuid.New().String(),
+		VariableID: v.ID.String(),
+		WorkflowID: v.WorkflowID.String(),
+		StepID:     optionalUUIDString(v.StepID),
+		ProjectID:  projectID.String(),
+		Key:        v.Key,
+		Kind:       string(v.Kind),
+		Timestamp:  v.UpdatedAt,
+	})
+}
+
 type UpdateVariableParams struct {
 	Name           string
 	Key            string

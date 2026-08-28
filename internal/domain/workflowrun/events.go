@@ -1,13 +1,26 @@
 package workflowrun
 
-import "time"
+import (
+	"time"
+
+	"go-api/internal/domain/event"
+)
 
 const (
 	EventTypeWorkflowRunStarted          = "workflowRun.started.v1"
 	EventTypeWorkflowRunSucceeded        = "workflowRun.succeeded.v1"
 	EventTypeWorkflowRunFailed           = "workflowRun.failed.v1"
 	EventTypeWorkflowRunCancelled        = "workflowRun.cancelled.v1"
+	EventTypeWorkflowRunFinished         = "workflowRun.finished.v1"
 	EventTypeWorkflowRunScheduledSkipped = "workflowRun.scheduledSkipped.v1"
+)
+
+type FinishType string
+
+const (
+	FinishTypeSuccess   FinishType = "success"
+	FinishTypeFailed    FinishType = "failed"
+	FinishTypeCancelled FinishType = "cancelled"
 )
 
 type WorkflowRunStarted struct {
@@ -53,6 +66,7 @@ func (e WorkflowRunFailed) AggregateID() string   { return e.WorkflowRunID }
 func (e WorkflowRunFailed) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowRunCancelled struct {
+	event.PerformedBy
 	ID            string    `json:"eventId"`
 	WorkflowRunID string    `json:"workflowRunId"`
 	WorkflowID    string    `json:"workflowId"`
@@ -64,6 +78,21 @@ func (e WorkflowRunCancelled) EventID() string       { return e.ID }
 func (e WorkflowRunCancelled) EventType() string     { return EventTypeWorkflowRunCancelled }
 func (e WorkflowRunCancelled) AggregateID() string   { return e.WorkflowRunID }
 func (e WorkflowRunCancelled) OccurredAt() time.Time { return e.Timestamp }
+
+type WorkflowRunFinished struct {
+	ID            string     `json:"eventId"`
+	WorkflowRunID string     `json:"workflowRunId"`
+	WorkflowID    string     `json:"workflowId"`
+	FinishType    FinishType `json:"finishType"`
+	Status        string     `json:"status"`
+	Error         string     `json:"error,omitempty"`
+	Timestamp     time.Time  `json:"timestamp"`
+}
+
+func (e WorkflowRunFinished) EventID() string       { return e.ID }
+func (e WorkflowRunFinished) EventType() string     { return EventTypeWorkflowRunFinished }
+func (e WorkflowRunFinished) AggregateID() string   { return e.WorkflowRunID }
+func (e WorkflowRunFinished) OccurredAt() time.Time { return e.Timestamp }
 
 type WorkflowRunScheduledSkipped struct {
 	ID         string    `json:"eventId"`

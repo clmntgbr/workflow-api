@@ -11,7 +11,7 @@ type QuotaResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 
-	MaxProjectMembers  int `json:"maxProjectMembers"`
+	MaxProjectMembers       int `json:"maxProjectMembers"`
 	MaxProjects             int `json:"maxProjects"`
 	MaxWorkflows            int `json:"maxWorkflows"`
 	MaxStepsPerWorkflow     int `json:"maxStepsPerWorkflow"`
@@ -43,7 +43,7 @@ type PlanResponse struct {
 	Name            string        `json:"name"`
 	Description     *string       `json:"description"`
 	Slug            string        `json:"slug"`
-	StripePriceID   string        `json:"stripePriceId"`
+	StripePriceID   *string       `json:"stripePriceId"`
 	IsActive        bool          `json:"isActive"`
 	BillingInterval string        `json:"billingInterval"`
 	Price           float64       `json:"price"`
@@ -58,7 +58,7 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 	return QuotaResponse{
 		ID:                         view.ID.String(),
 		Name:                       view.Name,
-		MaxProjectMembers:     view.MaxProjectMembers,
+		MaxProjectMembers:          view.MaxProjectMembers,
 		MaxProjects:                view.MaxProjects,
 		MaxWorkflows:               view.MaxWorkflows,
 		MaxStepsPerWorkflow:        view.MaxStepsPerWorkflow,
@@ -87,7 +87,7 @@ func NewPlanResponseFromView(view domainplan.PlanView) PlanResponse {
 		Name:            view.Name,
 		Description:     optionalNonEmptyString(view.Description),
 		Slug:            view.Slug,
-		StripePriceID:   view.StripePriceID,
+		StripePriceID:   optionalNonEmptyString(view.StripePriceID),
 		IsActive:        view.IsActive,
 		BillingInterval: string(view.BillingInterval),
 		Price:           view.Price,

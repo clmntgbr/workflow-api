@@ -84,6 +84,7 @@ func (r *WorkflowRun) MarkSucceeded() error {
 	r.Error = ""
 	r.UpdatedAt = now
 	r.recordEvent(r.succeededEvent(now))
+	r.recordEvent(r.finishedEvent(now))
 	return nil
 }
 
@@ -104,6 +105,7 @@ func (r *WorkflowRun) MarkFailed(errMsg string) error {
 	r.Error = errMsg
 	r.UpdatedAt = now
 	r.recordEvent(r.failedEvent(now))
+	r.recordEvent(r.finishedEvent(now))
 	return nil
 }
 
@@ -120,6 +122,7 @@ func (r *WorkflowRun) MarkCancelled() error {
 	r.FinishedAt = &now
 	r.UpdatedAt = now
 	r.recordEvent(r.cancelledEvent(now))
+	r.recordEvent(r.finishedEvent(now))
 	return nil
 }
 
@@ -194,5 +197,30 @@ func (r *WorkflowRun) cancelledEvent(at time.Time) WorkflowRunCancelled {
 		WorkflowID:    r.WorkflowID.String(),
 		Status:        string(r.Status),
 		Timestamp:     at,
+	}
+}
+
+func (r *WorkflowRun) finishedEvent(at time.Time) WorkflowRunFinished {
+	return WorkflowRunFinished{
+		ID:            uuid.New().String(),
+		WorkflowRunID: r.ID.String(),
+		WorkflowID:    r.WorkflowID.String(),
+		FinishType:    finishTypeFromStatus(r.Status),
+		Status:        string(r.Status),
+		Error:         r.Error,
+		Timestamp:     at,
+	}
+}
+
+func finishTypeFromStatus(status Status) FinishType {
+	switch status {
+	case StatusSuccess:
+		return FinishTypeSuccess
+	case StatusFailed:
+		return FinishTypeFailed
+	case StatusCancelled:
+		return FinishTypeCancelled
+	default:
+		return FinishType(status)
 	}
 }

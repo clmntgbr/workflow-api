@@ -69,6 +69,11 @@ func (h *VariableHandler) ensureWorkflow(c fiber.Ctx, workflowID, orgID uuid.UUI
 }
 
 func (h *VariableHandler) Create(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -105,7 +110,8 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 	}
 
 	variable, err := h.createHandler.Handle(c.Context(), variablecmd.CreateVariableCommand{
-		WorkflowID:     workflowID,
+		UserID:      user.ID,
+		WorkflowID:  workflowID,
 		ProjectID: orgID,
 		StepID:         stepID,
 		Kind:           kind,
@@ -253,6 +259,11 @@ func (h *VariableHandler) GetByID(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) Update(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -275,8 +286,9 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 	}
 
 	variable, err := h.updateHandler.Handle(c.Context(), variablecmd.UpdateVariableCommand{
-		ID:             id,
-		WorkflowID:     workflowID,
+		ID:          id,
+		UserID:      user.ID,
+		WorkflowID:  workflowID,
 		ProjectID: orgID,
 		Name:           req.Name,
 		Key:            req.Key,
@@ -298,6 +310,11 @@ func (h *VariableHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *VariableHandler) Delete(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -316,7 +333,9 @@ func (h *VariableHandler) Delete(c fiber.Ctx) error {
 
 	if err := h.deleteHandler.Handle(c.Context(), variablecmd.DeleteVariableCommand{
 		ID:         id,
+		UserID:     user.ID,
 		WorkflowID: workflowID,
+		ProjectID:  orgID,
 	}); err != nil {
 		if errors.Is(err, domainvariable.ErrNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Variable not found"})

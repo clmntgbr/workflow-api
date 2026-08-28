@@ -114,10 +114,3 @@ func workflowDetailResponse(
 		NotifyOnCancel:        notifyOnCancel,
 	}
 }
-
-func optionalNonEmptyString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}

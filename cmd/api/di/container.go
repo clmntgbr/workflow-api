@@ -3,27 +3,30 @@ package di
 import (
 	"log"
 
+	assertioncmd "go-api/internal/application/command/assertion"
 	authcmd "go-api/internal/application/command/auth"
 	conncmd "go-api/internal/application/command/connection"
 	endpointcmd "go-api/internal/application/command/endpoint"
 	identitycmd "go-api/internal/application/command/identity"
-	cmdquota "go-api/internal/application/command/quota"
 	projectcmd "go-api/internal/application/command/project"
-	subscriptioncmd "go-api/internal/application/command/subscription"
+	cmdquota "go-api/internal/application/command/quota"
 	stepcmd "go-api/internal/application/command/step"
+	subscriptioncmd "go-api/internal/application/command/subscription"
 	usercmd "go-api/internal/application/command/user"
 	variablecmd "go-api/internal/application/command/variable"
 	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
+	queryassertion "go-api/internal/application/query/assertion"
+	queryactivitylog "go-api/internal/application/query/activitylog"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
-	queryinvoice "go-api/internal/application/query/invoice"
 	queryinsight "go-api/internal/application/query/insight"
-	queryproject "go-api/internal/application/query/project"
+	queryinvoice "go-api/internal/application/query/invoice"
 	queryplan "go-api/internal/application/query/plan"
-	querysubscription "go-api/internal/application/query/subscription"
+	queryproject "go-api/internal/application/query/project"
 	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
+	querysubscription "go-api/internal/application/query/subscription"
 	queryuser "go-api/internal/application/query/user"
 	queryvariable "go-api/internal/application/query/variable"
 	queryworkflow "go-api/internal/application/query/workflow"
@@ -31,10 +34,10 @@ import (
 	infraClerk "go-api/internal/infrastructure/clerk"
 	"go-api/internal/infrastructure/config"
 	infraopenapi "go-api/internal/infrastructure/openapi"
-	infrastripe "go-api/internal/infrastructure/stripe"
 	"go-api/internal/infrastructure/persistence/outbox"
 	"go-api/internal/infrastructure/persistence/read"
 	"go-api/internal/infrastructure/persistence/write"
+	infrastripe "go-api/internal/infrastructure/stripe"
 	httphandler "go-api/internal/interfaces/http/handler"
 	"go-api/internal/interfaces/http/middleware"
 
@@ -42,23 +45,25 @@ import (
 )
 
 type Container struct {
-	AuthenticateMiddleware *middleware.AuthenticateMiddleware
-	UserWebhookMiddleware  *middleware.UserWebhookMiddleware
-	UserWebhookHandler     *httphandler.UserWebhookHandler
+	AuthenticateMiddleware   *middleware.AuthenticateMiddleware
+	UserWebhookMiddleware    *middleware.UserWebhookMiddleware
+	UserWebhookHandler       *httphandler.UserWebhookHandler
 	BillingWebhookMiddleware *middleware.BillingWebhookMiddleware
 	BillingWebhookHandler    *httphandler.BillingWebhookHandler
-	UserHandler            *httphandler.UserHandler
-	ProjectHandler    *httphandler.ProjectHandler
-	WorkflowHandler        *httphandler.WorkflowHandler
-	EndpointHandler        *httphandler.EndpointHandler
-	StepHandler            *httphandler.StepHandler
-	ConnectionHandler      *httphandler.ConnectionHandler
-	WorkflowRunHandler     *httphandler.WorkflowRunHandler
-	VariableHandler        *httphandler.VariableHandler
-	PlanHandler            *httphandler.PlanHandler
-	SubscriptionHandler    *httphandler.SubscriptionHandler
-	InvoiceHandler         *httphandler.InvoiceHandler
-	RealtimeHandler        *httphandler.RealtimeHandler
+	UserHandler              *httphandler.UserHandler
+	ProjectHandler           *httphandler.ProjectHandler
+	WorkflowHandler          *httphandler.WorkflowHandler
+	EndpointHandler          *httphandler.EndpointHandler
+	StepHandler              *httphandler.StepHandler
+	ConnectionHandler        *httphandler.ConnectionHandler
+	WorkflowRunHandler       *httphandler.WorkflowRunHandler
+	VariableHandler          *httphandler.VariableHandler
+	AssertionHandler         *httphandler.AssertionHandler
+	ActivityLogHandler       *httphandler.ActivityLogHandler
+	PlanHandler              *httphandler.PlanHandler
+	SubscriptionHandler      *httphandler.SubscriptionHandler
+	InvoiceHandler           *httphandler.InvoiceHandler
+	RealtimeHandler          *httphandler.RealtimeHandler
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -86,6 +91,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	insightReadRepo := read.NewInsightReadRepository(db)
 	variableWriteRepo := write.NewVariableWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
+	assertionWriteRepo := write.NewAssertionWriteRepository(db)
+	assertionReadRepo := read.NewAssertionReadRepository(db)
+	activityLogReadRepo := read.NewActivityLogReadRepository(db)
 	quotaReadRepo := read.NewQuotaReadRepository(db)
 	planWriteRepo := write.NewPlanWriteRepository(db)
 	planReadRepo := read.NewPlanReadRepository(db, quotaReadRepo)
@@ -144,6 +152,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
 	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
+	updateDelayStepHandler := stepcmd.NewUpdateDelayStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
 		stepReadRepo,
@@ -156,6 +165,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		connWriteRepo,
 		connReadRepo,
 		variableWriteRepo,
+		assertionWriteRepo,
 		outboxRepo,
 	)
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
@@ -163,11 +173,19 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, variableReadRepo, stepWriteRepo, outboxRepo)
 	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo, outboxRepo)
-	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo, stepReadRepo)
+	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo, stepReadRepo, outboxRepo)
 	getVariableByIDHandler := queryvariable.NewGetVariableByIDHandler(variableReadRepo)
 	listVariablesByWorkflowHandler := queryvariable.NewListVariablesByWorkflowHandler(variableReadRepo)
 	listAvailableVariablesHandler := queryvariable.NewListAvailableVariablesHandler(variableReadRepo, connReadRepo)
 	searchVariablePathsHandler := queryvariable.NewSearchVariablePathsHandler(stepRunReadRepo)
+
+	createAssertionHandler := assertioncmd.NewCreateAssertionHandler(assertionWriteRepo, stepWriteRepo, outboxRepo)
+	updateAssertionHandler := assertioncmd.NewUpdateAssertionHandler(assertionWriteRepo, outboxRepo)
+	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo, outboxRepo)
+	getAssertionByIDHandler := queryassertion.NewGetAssertionByIDHandler(assertionReadRepo)
+	listAssertionsByStepHandler := queryassertion.NewListAssertionsByStepHandler(assertionReadRepo)
+	listActivityLogsByWorkflowHandler := queryactivitylog.NewListByWorkflowHandler(activityLogReadRepo)
+	searchAssertionPathsHandler := queryassertion.NewSearchAssertionPathsHandler(stepRunReadRepo)
 
 	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
 	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo)
@@ -241,6 +259,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		stepReadRepo,
 		connReadRepo,
 		endpointReadRepo,
+		workflowReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	createDelayStepHandler := stepcmd.NewCreateDelayStepHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
 		workflowReadRepo,
 		outboxRepo,
 		assertCreateAllowedHandler,
@@ -353,7 +379,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		StepHandler: httphandler.NewStepHandler(
 			createStepHandler,
+			createDelayStepHandler,
 			updateStepHandler,
+			updateDelayStepHandler,
 			updateStepPositionHandler,
 			deleteStepHandler,
 			getStepByIDHandler,
@@ -390,6 +418,20 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getStepByIDHandler,
 			getWorkflowByIDHandler,
 		),
+		AssertionHandler: httphandler.NewAssertionHandler(
+			createAssertionHandler,
+			updateAssertionHandler,
+			deleteAssertionHandler,
+			getAssertionByIDHandler,
+			listAssertionsByStepHandler,
+			searchAssertionPathsHandler,
+			getStepByIDHandler,
+			getWorkflowByIDHandler,
+		),
+		ActivityLogHandler: httphandler.NewActivityLogHandler(
+			listActivityLogsByWorkflowHandler,
+			getWorkflowByIDHandler,
+		),
 		PlanHandler: httphandler.NewPlanHandler(listActivePlansHandler),
 		SubscriptionHandler: httphandler.NewSubscriptionHandler(
 			getCurrentSubscriptionHandler,
@@ -398,7 +440,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			createSubscriptionHandler,
 			createBillingPortalHandler,
 		),
-		InvoiceHandler: httphandler.NewInvoiceHandler(listInvoicesHandler),
+		InvoiceHandler:  httphandler.NewInvoiceHandler(listInvoicesHandler),
 		RealtimeHandler: httphandler.NewRealtimeHandler(env),
 	}
 }

@@ -1,6 +1,7 @@
 package step
 
 import (
+	"go-api/internal/domain/event"
 	"time"
 
 	"go-api/internal/domain/httpquery"
@@ -9,12 +10,15 @@ import (
 const EventTypeStepCreated = "step.created.v1"
 
 type StepCreated struct {
+	event.PerformedBy
 	ID             string            `json:"eventId"`
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
-	EndpointID     string            `json:"endpointId"`
-	ProjectID string            `json:"projectId"`
-	Name           string            `json:"name"`
+	EndpointID           string            `json:"endpointId,omitempty"`
+	ProjectID            string            `json:"projectId"`
+	Type                 string            `json:"type"`
+	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
@@ -41,11 +45,14 @@ func (e StepCreated) OccurredAt() time.Time { return e.Timestamp }
 const EventTypeStepUpdated = "step.updated.v1"
 
 type StepUpdated struct {
+	event.PerformedBy
 	ID             string            `json:"eventId"`
 	StepID         string            `json:"stepId"`
 	WorkflowID     string            `json:"workflowId"`
-	ProjectID string            `json:"projectId"`
-	Name           string            `json:"name"`
+	ProjectID            string            `json:"projectId"`
+	Type                 string            `json:"type"`
+	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
@@ -68,9 +75,31 @@ func (e StepUpdated) EventType() string     { return EventTypeStepUpdated }
 func (e StepUpdated) AggregateID() string   { return e.StepID }
 func (e StepUpdated) OccurredAt() time.Time { return e.Timestamp }
 
+const EventTypeStepPositionUpdated = "step.position_updated.v1"
+
+type StepPositionUpdated struct {
+	event.PerformedBy
+	ID             string    `json:"eventId"`
+	StepID         string    `json:"stepId"`
+	WorkflowID     string    `json:"workflowId"`
+	ProjectID      string    `json:"projectId"`
+	Name           string    `json:"name"`
+	Index          string    `json:"index"`
+	ExecutionOrder int       `json:"executionOrder"`
+	TreeIndex      int       `json:"treeIndex"`
+	Position       Position  `json:"position"`
+	Timestamp      time.Time `json:"timestamp"`
+}
+
+func (e StepPositionUpdated) EventID() string       { return e.ID }
+func (e StepPositionUpdated) EventType() string     { return EventTypeStepPositionUpdated }
+func (e StepPositionUpdated) AggregateID() string   { return e.StepID }
+func (e StepPositionUpdated) OccurredAt() time.Time { return e.Timestamp }
+
 const EventTypeStepDeleted = "step.deleted.v1"
 
 type StepDeleted struct {
+	event.PerformedBy
 	ID             string    `json:"eventId"`
 	StepID         string    `json:"stepId"`
 	WorkflowID     string    `json:"workflowId"`

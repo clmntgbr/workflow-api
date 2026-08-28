@@ -48,7 +48,7 @@ func NewInsightResponseFromView(view domaininsight.InsightView) InsightResponse 
 
 func NewInsightListResponseFromViews(views []domaininsight.InsightView) []InsightResponse {
 	if len(views) == 0 {
-		return nil
+		return []InsightResponse{}
 	}
 	items := make([]InsightResponse, 0, len(views))
 	for _, view := range views {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/port"
 
@@ -11,7 +12,8 @@ import (
 )
 
 type DeleteEndpointCommand struct {
-	ID             uuid.UUID
+	ID        uuid.UUID
+	UserID    uuid.UUID
 	ProjectID uuid.UUID
 }
 
@@ -45,6 +47,6 @@ func (h *DeleteEndpointHandler) Handle(ctx context.Context, cmd DeleteEndpointCo
 		if err := h.repo.Update(txCtx, e); err != nil {
 			return errors.New("failed to delete endpoint")
 		}
-		return h.outbox.StoreEvents(txCtx, e.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(e.PullEvents(), cmd.UserID))
 	})
 }

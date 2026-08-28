@@ -34,8 +34,8 @@ type WorkflowRunDetailResponse struct {
 	FinishedAt  *time.Time              `json:"finishedAt"`
 	Error       *string                 `json:"error"`
 	CreatedAt   time.Time               `json:"createdAt"`
-	Workflow    *WorkflowDetailResponse `json:"workflow,omitempty"`
-	StepRuns    []StepRunResponse       `json:"stepRuns,omitempty"`
+	Workflow    *WorkflowDetailResponse `json:"workflow"`
+	StepRuns    []StepRunResponse       `json:"stepRuns"`
 }
 
 type WorkflowRunAnalyticsResponse struct {

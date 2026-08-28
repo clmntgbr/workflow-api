@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 
+	domainassertion "go-api/internal/domain/assertion"
 	domainconnection "go-api/internal/domain/connection"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -14,18 +16,20 @@ import (
 )
 
 type DeleteStepCommand struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	WorkflowID uuid.UUID
+	ProjectID  uuid.UUID
 }
 
 type DeleteStepHandler struct {
-	stepRepo     domainstep.StepWriteRepository
-	stepReadRepo domainstep.StepReadRepository
-	connRepo     domainconnection.ConnectionWriteRepository
-	connReadRepo domainconnection.ConnectionReadRepository
-	variableRepo domainvariable.VariableWriteRepository
-	outbox       port.OutboxRepository
+	stepRepo      domainstep.StepWriteRepository
+	stepReadRepo  domainstep.StepReadRepository
+	connRepo      domainconnection.ConnectionWriteRepository
+	connReadRepo  domainconnection.ConnectionReadRepository
+	variableRepo  domainvariable.VariableWriteRepository
+	assertionRepo domainassertion.AssertionWriteRepository
+	outbox        port.OutboxRepository
 }
 
 func NewDeleteStepHandler(
@@ -34,15 +38,17 @@ func NewDeleteStepHandler(
 	connRepo domainconnection.ConnectionWriteRepository,
 	connReadRepo domainconnection.ConnectionReadRepository,
 	variableRepo domainvariable.VariableWriteRepository,
+	assertionRepo domainassertion.AssertionWriteRepository,
 	outbox port.OutboxRepository,
 ) *DeleteStepHandler {
 	return &DeleteStepHandler{
-		stepRepo:     stepRepo,
-		stepReadRepo: stepReadRepo,
-		connRepo:     connRepo,
-		connReadRepo: connReadRepo,
-		variableRepo: variableRepo,
-		outbox:       outbox,
+		stepRepo:      stepRepo,
+		stepReadRepo:  stepReadRepo,
+		connRepo:      connRepo,
+		connReadRepo:  connReadRepo,
+		variableRepo:  variableRepo,
+		assertionRepo: assertionRepo,
+		outbox:        outbox,
 	}
 }
 
@@ -126,6 +132,9 @@ func (h *DeleteStepHandler) Handle(ctx context.Context, cmd DeleteStepCommand) e
 		if err := h.variableRepo.DeleteByStepID(txCtx, s.ID); err != nil {
 			return errors.New("failed to delete variables")
 		}
+		if err := h.assertionRepo.DeleteByStepID(txCtx, s.ID); err != nil {
+			return errors.New("failed to delete assertions")
+		}
 
 		if err := h.stepRepo.UpdateOrdering(txCtx, ordering); err != nil {
 			return err
@@ -133,6 +142,6 @@ func (h *DeleteStepHandler) Handle(ctx context.Context, cmd DeleteStepCommand) e
 		if err := h.stepRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, events)
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(events, cmd.UserID))
 	})
 }

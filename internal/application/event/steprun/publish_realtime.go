@@ -7,15 +7,15 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/port"
+	domainproject "go-api/internal/domain/project"
 	domainsteprun "go-api/internal/domain/steprun"
 
 	"github.com/google/uuid"
 )
 
 type PublishRealtimeHandler struct {
-	realtime port.RealtimePublisher
+	realtime    port.RealtimePublisher
 	projectRepo domainproject.ProjectReadRepository
 }
 
@@ -24,7 +24,7 @@ func NewPublishRealtimeHandler(
 	projectRepo domainproject.ProjectReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
-		realtime: realtimePublisher,
+		realtime:    realtimePublisher,
 		projectRepo: projectRepo,
 	}
 }

@@ -10,12 +10,13 @@ const (
 	StatusSuccess   Status = "success"
 	StatusFailed    Status = "failed"
 	StatusCancelled Status = "cancelled"
+	StatusWaiting   Status = "waiting"
 	StatusSkipped   Status = "skipped"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusPending, StatusRunning, StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
+	case StatusPending, StatusRunning, StatusWaiting, StatusSuccess, StatusFailed, StatusCancelled, StatusSkipped:
 		return true
 	default:
 		return false

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
@@ -13,6 +14,7 @@ import (
 
 type UpdateEndpointCommand struct {
 	ID             uuid.UUID
+	UserID         uuid.UUID
 	Name           string
 	Description    string
 	URL            string
@@ -83,6 +85,6 @@ func (h *UpdateEndpointHandler) Handle(ctx context.Context, cmd UpdateEndpointCo
 		if err := h.repo.Update(txCtx, e); err != nil {
 			return errors.New("failed to update endpoint")
 		}
-		return h.outbox.StoreEvents(txCtx, e.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(e.PullEvents(), cmd.UserID))
 	})
 }

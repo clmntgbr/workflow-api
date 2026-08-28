@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -13,6 +14,7 @@ import (
 
 type UpdateWorkflowCommand struct {
 	ID                    uuid.UUID
+	UserID                uuid.UUID
 	Name                  string
 	Description           string
 	Status                domainworkflow.Status
@@ -81,6 +83,6 @@ func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCo
 		if err := h.repo.Update(txCtx, w); err != nil {
 			return errors.New("failed to update workflow")
 		}
-		return h.outbox.StoreEvents(txCtx, w.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(w.PullEvents(), cmd.UserID))
 	})
 }

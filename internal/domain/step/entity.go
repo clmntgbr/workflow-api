@@ -12,8 +12,10 @@ import (
 type Step struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
-	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
+	EndpointID     *uuid.UUID
+	ProjectID      uuid.UUID
+	Type           Type
+	DelayDurationSeconds int
 
 	Name           string
 	Description    string
@@ -58,12 +60,61 @@ type NewStepParams struct {
 	ID             uuid.UUID
 	WorkflowID     uuid.UUID
 	EndpointID     uuid.UUID
-	ProjectID uuid.UUID
+	ProjectID      uuid.UUID
 	Endpoint       EndpointSnapshot
 	Index          string
 	ExecutionOrder int
 	TreeIndex      int
 	Position       Position
+}
+
+type NewDelayStepParams struct {
+	ID                   uuid.UUID
+	WorkflowID           uuid.UUID
+	ProjectID            uuid.UUID
+	Name                 string
+	DelayDurationSeconds int
+	Index                string
+	ExecutionOrder       int
+	TreeIndex            int
+	Position             Position
+}
+
+func NewDelayStep(p NewDelayStepParams) (*Step, error) {
+	now := time.Now().UTC()
+	id := p.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+	name := p.Name
+	if name == "" {
+		name = "Delay"
+	}
+
+	s := &Step{
+		ID:                   id,
+		WorkflowID:           p.WorkflowID,
+		EndpointID:           nil,
+		ProjectID:            p.ProjectID,
+		Type:                 TypeDelay,
+		DelayDurationSeconds: p.DelayDurationSeconds,
+		Name:                 name,
+		Headers:              map[string]string{},
+		Query:                httpquery.Empty(),
+		Body:                 map[string]any{},
+		Index:                p.Index,
+		ExecutionOrder:       p.ExecutionOrder,
+		TreeIndex:            p.TreeIndex,
+		Position:             p.Position,
+		Status:               StatusActive,
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}
+	if err := ValidateConfig(s); err != nil {
+		return nil, err
+	}
+	s.recordEvent(s.newCreatedEvent(now))
+	return s, nil
 }
 
 func NewStep(p NewStepParams) *Step {
@@ -82,11 +133,13 @@ func NewStep(p NewStepParams) *Step {
 		body = map[string]any{}
 	}
 
+	endpointID := p.EndpointID
 	s := &Step{
 		ID:             id,
 		WorkflowID:     p.WorkflowID,
-		EndpointID:     p.EndpointID,
-		ProjectID: p.ProjectID,
+		EndpointID:     &endpointID,
+		ProjectID:      p.ProjectID,
+		Type:           TypeHTTP,
 		Name:           p.Endpoint.Name,
 		Description:    p.Endpoint.Description,
 		URL:            p.Endpoint.URL,
@@ -106,31 +159,44 @@ func NewStep(p NewStepParams) *Step {
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	s.recordEvent(StepCreated{
-		ID:             uuid.New().String(),
-		StepID:         s.ID.String(),
-		WorkflowID:     s.WorkflowID.String(),
-		EndpointID:     s.EndpointID.String(),
-		ProjectID: s.ProjectID.String(),
-		Name:           s.Name,
-		Description:    s.Description,
-		URL:            s.URL,
-		Method:         s.Method,
-		Headers:        s.Headers,
-		Query:          s.Query,
-		Body:           s.Body,
-		Timeout:        s.Timeout,
-		RetryOnFailure: s.RetryOnFailure,
-		RetryCount:     s.RetryCount,
-		RetryDelay:     s.RetryDelay,
-		Index:          s.Index,
-		ExecutionOrder: s.ExecutionOrder,
-		TreeIndex:      s.TreeIndex,
-		Position:       s.Position,
-		Status:         string(s.Status),
-		Timestamp:      now,
-	})
+	s.recordEvent(s.newCreatedEvent(now))
 	return s
+}
+
+func (s *Step) newCreatedEvent(at time.Time) StepCreated {
+	return StepCreated{
+		ID:                   uuid.New().String(),
+		StepID:               s.ID.String(),
+		WorkflowID:           s.WorkflowID.String(),
+		EndpointID:           endpointIDString(s.EndpointID),
+		ProjectID:            s.ProjectID.String(),
+		Type:                 string(s.Type),
+		DelayDurationSeconds: s.DelayDurationSeconds,
+		Name:                 s.Name,
+		Description:          s.Description,
+		URL:                  s.URL,
+		Method:               s.Method,
+		Headers:              s.Headers,
+		Query:                s.Query,
+		Body:                 s.Body,
+		Timeout:              s.Timeout,
+		RetryOnFailure:       s.RetryOnFailure,
+		RetryCount:           s.RetryCount,
+		RetryDelay:           s.RetryDelay,
+		Index:                s.Index,
+		ExecutionOrder:       s.ExecutionOrder,
+		TreeIndex:            s.TreeIndex,
+		Position:             s.Position,
+		Status:               string(s.Status),
+		Timestamp:            at,
+	}
+}
+
+func endpointIDString(id *uuid.UUID) string {
+	if id == nil {
+		return ""
+	}
+	return id.String()
 }
 
 func (s *Step) ApplyPositionUpdate(index string, position Position) {
@@ -138,7 +204,7 @@ func (s *Step) ApplyPositionUpdate(index string, position Position) {
 	s.ExecutionOrder = CalculateExecutionOrder(index)
 	s.Position = position
 	s.UpdatedAt = time.Now().UTC()
-	s.recordUpdatedEvent()
+	s.recordPositionUpdatedEvent()
 }
 
 type UpdateStepConfigParams struct {
@@ -153,6 +219,12 @@ type UpdateStepConfigParams struct {
 	RetryOnFailure bool
 	RetryCount     int
 	RetryDelay     int
+}
+
+type UpdateDelayStepConfigParams struct {
+	Name                 string
+	Description          string
+	DelayDurationSeconds int
 }
 
 func (s *Step) ApplyConfigUpdate(p UpdateStepConfigParams) {
@@ -181,13 +253,30 @@ func (s *Step) ApplyConfigUpdate(p UpdateStepConfigParams) {
 	s.recordUpdatedEvent()
 }
 
+func (s *Step) ApplyDelayConfigUpdate(p UpdateDelayStepConfigParams) error {
+	if s.Type != TypeDelay {
+		return ErrInvalidStepTypeConfig
+	}
+	s.Name = p.Name
+	s.Description = p.Description
+	s.DelayDurationSeconds = p.DelayDurationSeconds
+	s.UpdatedAt = time.Now().UTC()
+	if err := ValidateConfig(s); err != nil {
+		return err
+	}
+	s.recordUpdatedEvent()
+	return nil
+}
+
 func (s *Step) recordUpdatedEvent() {
 	s.recordEvent(StepUpdated{
-		ID:             uuid.New().String(),
-		StepID:         s.ID.String(),
-		WorkflowID:     s.WorkflowID.String(),
-		ProjectID: s.ProjectID.String(),
-		Name:           s.Name,
+		ID:                   uuid.New().String(),
+		StepID:               s.ID.String(),
+		WorkflowID:           s.WorkflowID.String(),
+		ProjectID:            s.ProjectID.String(),
+		Type:                 string(s.Type),
+		DelayDurationSeconds: s.DelayDurationSeconds,
+		Name:                 s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
 		Method:         s.Method,
@@ -198,6 +287,21 @@ func (s *Step) recordUpdatedEvent() {
 		RetryOnFailure: s.RetryOnFailure,
 		RetryCount:     s.RetryCount,
 		RetryDelay:     s.RetryDelay,
+		Index:          s.Index,
+		ExecutionOrder: s.ExecutionOrder,
+		TreeIndex:      s.TreeIndex,
+		Position:       s.Position,
+		Timestamp:      s.UpdatedAt,
+	})
+}
+
+func (s *Step) recordPositionUpdatedEvent() {
+	s.recordEvent(StepPositionUpdated{
+		ID:             uuid.New().String(),
+		StepID:         s.ID.String(),
+		WorkflowID:     s.WorkflowID.String(),
+		ProjectID:      s.ProjectID.String(),
+		Name:           s.Name,
 		Index:          s.Index,
 		ExecutionOrder: s.ExecutionOrder,
 		TreeIndex:      s.TreeIndex,

@@ -42,6 +42,9 @@ type Config struct {
 	SchedulerBatchSize         int
 	SchedulerConcurrency       int
 	SchedulerMaxBatchesPerTick int
+	MaxSyncDelaySeconds        int
+	StepRunWaitingPollInterval time.Duration
+	StepRunWaitingPollBatchSize int
 	StripeSecretKey            string
 	RedirectSuccessURL         string
 	RedirectCancelURL          string
@@ -86,7 +89,10 @@ func Load() *Config {
 		SchedulerBatchSize:         getEnvIntOrDefault("SCHEDULER_BATCH_SIZE", 100),
 		SchedulerConcurrency:       getEnvIntOrDefault("SCHEDULER_CONCURRENCY", 32),
 		SchedulerMaxBatchesPerTick: getEnvIntOrDefault("SCHEDULER_MAX_BATCHES_PER_TICK", 100),
-		StripeSecretKey:            getEnvOrDefault("STRIPE_SECRET_KEY", ""),
+		MaxSyncDelaySeconds:         getEnvIntOrDefault("MAX_SYNC_DELAY_SECONDS", 30),
+		StepRunWaitingPollInterval:  getEnvDuration("STEP_RUN_WAITING_POLL_INTERVAL", 2*time.Second),
+		StepRunWaitingPollBatchSize: getEnvIntOrDefault("STEP_RUN_WAITING_POLL_BATCH_SIZE", 100),
+		StripeSecretKey:             getEnvOrDefault("STRIPE_SECRET_KEY", ""),
 		RedirectSuccessURL:         getEnvOrDefault("REDIRECT_SUCCESS_URL", "http://localhost:3000/subscription/success"),
 		RedirectCancelURL:          getEnvOrDefault("REDIRECT_CANCEL_URL", "http://localhost:3000/subscription/failed"),
 		RedirectPortalURL:          getEnvOrDefault("REDIRECT_PORTAL_URL", "http://localhost:3000/subscription"),

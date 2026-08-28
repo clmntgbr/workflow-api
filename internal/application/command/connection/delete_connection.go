@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/application/messaging"
 	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -36,8 +37,9 @@ func NewDeleteConnectionHandler(
 }
 
 type DeleteConnectionCommand struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	WorkflowID uuid.UUID
 	ProjectID uuid.UUID
 }
 
@@ -100,6 +102,6 @@ func (h *DeleteConnectionHandler) Handle(ctx context.Context, cmd DeleteConnecti
 		if err := h.stepWriteRepo.UpdateTreeIndices(txCtx, treeIndices); err != nil {
 			return err
 		}
-		return h.outbox.StoreEvents(txCtx, conn.PullEvents())
+		return h.outbox.StoreEvents(txCtx, messaging.WithPerformedBy(conn.PullEvents(), cmd.UserID))
 	})
 }

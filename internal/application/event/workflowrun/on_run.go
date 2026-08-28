@@ -71,6 +71,9 @@ func (h *Orchestrator) OnStarted(ctx context.Context, payload []byte) error {
 
 		created := make([]*domainsteprun.StepRun, 0)
 		for _, step := range rootSteps(steps, connections) {
+			if isOrphanDelay(step, connections) {
+				continue
+			}
 			if _, ok := existingByStep[step.ID]; ok {
 				continue
 			}
@@ -188,6 +191,9 @@ func (h *Orchestrator) advanceAfterStep(
 			if !ok {
 				continue
 			}
+			if isOrphanDelay(target, connections) {
+				continue
+			}
 
 			switch {
 			case canEnqueue(targetID, connections, runsByStep):
@@ -223,7 +229,6 @@ func (h *Orchestrator) advanceAfterStep(
 	return nil
 }
 
-
 func (h *Orchestrator) skipBranch(
 	ctx context.Context,
 	run *domainworkflowrun.WorkflowRun,
@@ -246,12 +251,14 @@ func (h *Orchestrator) skipBranch(
 		}
 
 		stepRun := domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
-			WorkflowRunID:  run.ID,
-			StepID:         current.ID,
-			WorkflowID:     current.WorkflowID,
-			EndpointID:     current.EndpointID,
-			ProjectID: current.ProjectID,
-			Name:           current.Name,
+			WorkflowRunID:        run.ID,
+			StepID:               current.ID,
+			WorkflowID:           current.WorkflowID,
+			EndpointID:           current.EndpointID,
+			ProjectID:            current.ProjectID,
+			StepType:             current.Type,
+			DelayDurationSeconds: current.DelayDurationSeconds,
+			Name:                 current.Name,
 			Description:    current.Description,
 			URL:            current.URL,
 			Method:         current.Method,
