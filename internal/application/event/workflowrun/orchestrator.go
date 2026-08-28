@@ -20,14 +20,13 @@ import (
 )
 
 type Orchestrator struct {
-	runRepo              domainworkflowrun.WorkflowRunWriteRepository
-	stepRunRepo          domainsteprun.StepRunWriteRepository
-	stepReadRepo         domainstep.StepReadRepository
-	connReadRepo         domainconnection.ConnectionReadRepository
-	variableRead         domainvariable.VariableReadRepository
-	assertionRead        domainassertion.AssertionReadRepository
-	outbox               port.OutboxRepository
-	maxSyncDelaySeconds  int
+	runRepo       domainworkflowrun.WorkflowRunWriteRepository
+	stepRunRepo   domainsteprun.StepRunWriteRepository
+	stepReadRepo  domainstep.StepReadRepository
+	connReadRepo  domainconnection.ConnectionReadRepository
+	variableRead  domainvariable.VariableReadRepository
+	assertionRead domainassertion.AssertionReadRepository
+	outbox        port.OutboxRepository
 }
 
 func NewOrchestrator(
@@ -38,20 +37,15 @@ func NewOrchestrator(
 	variableRead domainvariable.VariableReadRepository,
 	assertionRead domainassertion.AssertionReadRepository,
 	outbox port.OutboxRepository,
-	maxSyncDelaySeconds int,
 ) *Orchestrator {
-	if maxSyncDelaySeconds <= 0 {
-		maxSyncDelaySeconds = 30
-	}
 	return &Orchestrator{
-		runRepo:             runRepo,
-		stepRunRepo:         stepRunRepo,
-		stepReadRepo:        stepReadRepo,
-		connReadRepo:        connReadRepo,
-		variableRead:        variableRead,
-		assertionRead:       assertionRead,
-		outbox:              outbox,
-		maxSyncDelaySeconds: maxSyncDelaySeconds,
+		runRepo:       runRepo,
+		stepRunRepo:   stepRunRepo,
+		stepReadRepo:  stepReadRepo,
+		connReadRepo:  connReadRepo,
+		variableRead:  variableRead,
+		assertionRead: assertionRead,
+		outbox:        outbox,
 	}
 }
 
@@ -185,14 +179,9 @@ func (h *Orchestrator) buildDelayStepRun(
 	startedAt := time.Now().UTC()
 	stepRun.StartedAt = &startedAt
 
-	if step.DelayDurationSeconds > h.maxSyncDelaySeconds {
-		if err := stepRun.MarkWaiting(deadline); err != nil {
-			return nil, err
-		}
-		return stepRun, nil
+	if err := stepRun.MarkWaiting(deadline); err != nil {
+		return nil, err
 	}
-
-	stepRun.Queue()
 	return stepRun, nil
 }
 

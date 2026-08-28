@@ -28,9 +28,7 @@ Resources are scoped to the caller’s **active project**. Shared workflow URLs 
 - **Workflow runs** — manual (`POST /workflows/:id/start`), API, schedule, webhook
 - **Orchestration** — worker advances the graph after each step run succeeds/fails/skips
 - **HTTP steps** — dedicated **executor** binary consumes `stepRun.queued`, calls the target API, runs assertions, records **insights** (timings)
-- **Delay steps** — two execution paths based on `MAX_SYNC_DELAY_SECONDS` (default `30`):
-  - **Short delay** (`≤` threshold) — executor sleeps until `resumeAt`, then marks success (no HTTP)
-  - **Long delay** (`>` threshold) — step run created in `waiting` with `resumeAt`; worker polls every `STEP_RUN_WAITING_POLL_INTERVAL` (default `2s`) and resumes when due
+- **Delay steps** — always `waiting` + `resumeAt`; worker polls (`STEP_RUN_WAITING_POLL_INTERVAL`, default `1s`) and resumes when due — executor handles HTTP only
 - **Cancellation** — `POST /workflows/:id/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
 - **Scheduling** — **scheduler** binary claims due workflows and starts runs
 
@@ -145,8 +143,7 @@ Copy [`.env.dist`](.env.dist) and fill required values (Clerk, Postgres, RabbitM
 
 | Variable | Default | Description |
 |---|---|---|
-| `MAX_SYNC_DELAY_SECONDS` | `30` | Short delays run in executor; longer delays use `waiting` + polling |
-| `STEP_RUN_WAITING_POLL_INTERVAL` | `2s` | Worker poll interval for due `waiting` step runs |
+| `STEP_RUN_WAITING_POLL_INTERVAL` | `1s` | Worker poll interval for due `waiting` delay step runs |
 | `STEP_RUN_WAITING_POLL_BATCH_SIZE` | `100` | Batch size per poll tick |
 | `SCHEDULER_INTERVAL` | `1m` | How often scheduled workflows are claimed |
 | `RABBITMQ_EXECUTOR_*` | `step_run.execute` | Executor queue topology |
@@ -219,12 +216,12 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 
 ```
 StartWorkflowRun → workflowRun.started.v1
-  → Orchestrator: root step runs (HTTP or delay)
-  → stepRun.queued.v1 (HTTP + short delay only)
-  → Executor: HTTP call OR sleep until resumeAt
+  → Orchestrator: root step runs (HTTP queued, delay waiting)
+  → stepRun.queued.v1 (HTTP only)
+  → Executor: HTTP call
   → stepRun.succeeded.v1 | failed.v1
   → Orchestrator: enqueue next steps, finalize run
   → Centrifugo + activity log
 ```
 
-Long delays: `waiting` + `resumeAt` → worker poller → `started` + `succeeded` → orchestrator continues.
+Delays: `waiting` + `resumeAt` → worker poller → `started` + `succeeded` → orchestrator continues.
