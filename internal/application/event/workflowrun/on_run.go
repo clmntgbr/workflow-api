@@ -70,21 +70,19 @@ func (h *Orchestrator) OnStarted(ctx context.Context, payload []byte) error {
 		}
 
 		created := make([]*domainsteprun.StepRun, 0)
+		stepsByID := stepByID(steps)
 		for _, step := range rootSteps(steps, connections) {
-			if isOrphanDelay(step, connections) {
+			if isOrphanDelay(step, connections) || isOrphanCondition(step, connections) {
 				continue
 			}
 			if _, ok := existingByStep[step.ID]; ok {
 				continue
 			}
-			stepRun, err := h.buildStepRun(txCtx, run, step)
+			more, err := h.activateStepRun(txCtx, run, step, stepsByID, connections, existingByStep)
 			if err != nil {
 				return err
 			}
-			if err := h.stepRunRepo.Save(txCtx, stepRun); err != nil {
-				return err
-			}
-			created = append(created, stepRun)
+			created = append(created, more...)
 		}
 
 		return h.outbox.StoreEvents(txCtx, collectEvents(run, created...))
@@ -122,7 +120,26 @@ func (h *Orchestrator) OnSucceeded(ctx context.Context, payload []byte) error {
 		return messaging.NonRetryable(err)
 	}
 
+	skip, err := h.shouldSkipAdvanceAfterSuccess(ctx, stepID)
+	if err != nil {
+		return err
+	}
+	if skip {
+		return nil
+	}
+
 	return h.advanceAfterStep(ctx, workflowRunID, stepID, stepRunID, evt.ExtractedVariables)
+}
+
+func (h *Orchestrator) shouldSkipAdvanceAfterSuccess(ctx context.Context, stepID uuid.UUID) (bool, error) {
+	step, err := h.stepReadRepo.FindByID(ctx, stepID)
+	if err != nil {
+		return false, messaging.Retryable(err)
+	}
+	if step == nil {
+		return false, messaging.NonRetryable(errWorkflowRunNotFound)
+	}
+	return step.Type == domainstep.TypeCondition, nil
 }
 
 func (h *Orchestrator) OnFailed(ctx context.Context, payload []byte) error {
@@ -191,21 +208,17 @@ func (h *Orchestrator) advanceAfterStep(
 			if !ok {
 				continue
 			}
-			if isOrphanDelay(target, connections) {
+			if isOrphanDelay(target, connections) || isOrphanCondition(target, connections) {
 				continue
 			}
 
 			switch {
 			case canEnqueue(targetID, connections, runsByStep):
-				stepRun, err := h.buildStepRun(txCtx, run, target)
+				more, err := h.activateStepRun(txCtx, run, target, stepsByID, connections, runsByStep)
 				if err != nil {
 					return err
 				}
-				if err := h.stepRunRepo.Save(txCtx, stepRun); err != nil {
-					return err
-				}
-				runsByStep[targetID] = stepRun
-				changed = append(changed, stepRun)
+				changed = append(changed, more...)
 			case shouldSkip(targetID, connections, runsByStep):
 				skipped, err := h.skipBranch(txCtx, run, target, stepsByID, connections, runsByStep)
 				if err != nil {

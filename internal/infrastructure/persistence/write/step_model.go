@@ -18,6 +18,7 @@ type StepModel struct {
 	ProjectID            uuid.UUID  `gorm:"column:project_id"`
 	Type                 string     `gorm:"column:type"`
 	DelayDurationSeconds *int       `gorm:"column:delay_duration_seconds"`
+	Expression           *string    `gorm:"column:expression"`
 	Name                 string     `gorm:"column:name"`
 	Description    string       `gorm:"column:description"`
 	URL            string       `gorm:"column:url"`
@@ -83,6 +84,7 @@ func stepModelFromDomain(s *domainstep.Step) (*StepModel, error) {
 		ProjectID:            s.ProjectID,
 		Type:                 stepType,
 		DelayDurationSeconds: intPtrOrNil(s.DelayDurationSeconds),
+		Expression:           s.Expression,
 		Name:                 s.Name,
 		Description:    s.Description,
 		URL:            s.URL,
@@ -139,6 +141,7 @@ func stepDomainFromModel(m *StepModel) (*domainstep.Step, error) {
 		ProjectID:            m.ProjectID,
 		Type:                 stepType,
 		DelayDurationSeconds: intValueOrZero(m.DelayDurationSeconds),
+		Expression:           m.Expression,
 		Name:                 m.Name,
 		Description:    m.Description,
 		URL:            m.URL,

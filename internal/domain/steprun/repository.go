@@ -67,6 +67,7 @@ type StepRunView struct {
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	ResumeAt           *time.Time
+	MatchedBranch      *bool
 	Error              string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time

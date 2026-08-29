@@ -29,6 +29,7 @@ type StepRunResponse struct {
 	StartedAt        *time.Time                `json:"startedAt"`
 	FinishedAt       *time.Time                `json:"finishedAt"`
 	ResumeAt         *time.Time                `json:"resumeAt,omitempty"`
+	MatchedBranch    *bool                     `json:"matchedBranch,omitempty"`
 	Error            *string                   `json:"error"`
 }
 
@@ -63,6 +64,7 @@ func NewStepRunResponseFromViewWithStep(
 		StartedAt:  view.StartedAt,
 		FinishedAt: view.FinishedAt,
 		ResumeAt:   view.ResumeAt,
+		MatchedBranch: view.MatchedBranch,
 		Error:      optionalNonEmptyString(view.Error),
 	}
 	if step != nil {

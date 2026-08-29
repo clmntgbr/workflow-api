@@ -10,11 +10,12 @@ import (
 )
 
 type connectionReadRow struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
-	SourceStepID   uuid.UUID
-	TargetStepID   uuid.UUID
+	ID           uuid.UUID
+	WorkflowID   uuid.UUID
+	ProjectID    uuid.UUID
+	SourceStepID uuid.UUID
+	TargetStepID uuid.UUID
+	Branch       *string
 }
 
 func (connectionReadRow) TableName() string { return "connections" }
@@ -40,12 +41,21 @@ func (r *connectionReadRepository) FindByWorkflowID(ctx context.Context, workflo
 	views := make([]domainconnection.ConnectionView, 0, len(rows))
 	for _, row := range rows {
 		views = append(views, domainconnection.ConnectionView{
-			ID:             row.ID,
-			WorkflowID:     row.WorkflowID,
-			ProjectID: row.ProjectID,
-			SourceStepID:   row.SourceStepID,
-			TargetStepID:   row.TargetStepID,
+			ID:           row.ID,
+			WorkflowID:   row.WorkflowID,
+			ProjectID:    row.ProjectID,
+			SourceStepID: row.SourceStepID,
+			TargetStepID: row.TargetStepID,
+			Branch:       branchFromReadRow(row.Branch),
 		})
 	}
 	return views, nil
+}
+
+func branchFromReadRow(branch *string) *domainconnection.ConditionBranch {
+	if branch == nil {
+		return nil
+	}
+	value := domainconnection.ConditionBranch(*branch)
+	return &value
 }

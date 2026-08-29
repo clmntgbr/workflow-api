@@ -48,7 +48,8 @@ type StepRun struct {
 
 	StartedAt  *time.Time
 	FinishedAt *time.Time
-	ResumeAt   *time.Time
+	ResumeAt       *time.Time
+	MatchedBranch  *bool
 	Error      string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -198,6 +199,27 @@ func (s *StepRun) MarkSucceeded(
 		assertionsResult = []domainassertion.Result{}
 	}
 	s.AssertionsResult = assertionsResult
+	s.Error = ""
+	s.FinishedAt = &now
+	s.UpdatedAt = now
+	s.recordEvent(s.succeededEvent(now))
+	return nil
+}
+
+func (s *StepRun) MarkConditionSucceeded(matchedBranch bool) error {
+	if s.Status.IsTerminal() {
+		return ErrAlreadyTerminal
+	}
+	if s.Status != StatusPending && s.Status != StatusRunning {
+		return ErrInvalidStatusTransition
+	}
+
+	now := time.Now().UTC()
+	if s.StartedAt == nil {
+		s.StartedAt = &now
+	}
+	s.Status = StatusSuccess
+	s.MatchedBranch = &matchedBranch
 	s.Error = ""
 	s.FinishedAt = &now
 	s.UpdatedAt = now

@@ -1,6 +1,7 @@
 package step
 
 import (
+	"strings"
 	"time"
 
 	"go-api/internal/domain/event"
@@ -14,8 +15,9 @@ type Step struct {
 	WorkflowID     uuid.UUID
 	EndpointID     *uuid.UUID
 	ProjectID      uuid.UUID
-	Type           Type
+	Type                 Type
 	DelayDurationSeconds int
+	Expression           *string
 
 	Name           string
 	Description    string
@@ -80,6 +82,18 @@ type NewDelayStepParams struct {
 	Position             Position
 }
 
+type NewConditionStepParams struct {
+	ID             uuid.UUID
+	WorkflowID     uuid.UUID
+	ProjectID      uuid.UUID
+	Name           string
+	Expression     string
+	Index          string
+	ExecutionOrder int
+	TreeIndex      int
+	Position       Position
+}
+
 func NewDelayStep(p NewDelayStepParams) (*Step, error) {
 	now := time.Now().UTC()
 	id := p.ID
@@ -109,6 +123,44 @@ func NewDelayStep(p NewDelayStepParams) (*Step, error) {
 		Status:               StatusActive,
 		CreatedAt:            now,
 		UpdatedAt:            now,
+	}
+	if err := ValidateConfig(s); err != nil {
+		return nil, err
+	}
+	s.recordEvent(s.newCreatedEvent(now))
+	return s, nil
+}
+
+func NewConditionStep(p NewConditionStepParams) (*Step, error) {
+	now := time.Now().UTC()
+	id := p.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+	name := p.Name
+	if name == "" {
+		name = "Condition"
+	}
+	expression := strings.TrimSpace(p.Expression)
+
+	s := &Step{
+		ID:             id,
+		WorkflowID:     p.WorkflowID,
+		EndpointID:     nil,
+		ProjectID:      p.ProjectID,
+		Type:           TypeCondition,
+		Expression:     &expression,
+		Name:           name,
+		Headers:        map[string]string{},
+		Query:          httpquery.Empty(),
+		Body:           map[string]any{},
+		Index:          p.Index,
+		ExecutionOrder: p.ExecutionOrder,
+		TreeIndex:      p.TreeIndex,
+		Position:       p.Position,
+		Status:         StatusActive,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	if err := ValidateConfig(s); err != nil {
 		return nil, err
@@ -172,6 +224,7 @@ func (s *Step) newCreatedEvent(at time.Time) StepCreated {
 		ProjectID:            s.ProjectID.String(),
 		Type:                 string(s.Type),
 		DelayDurationSeconds: s.DelayDurationSeconds,
+		Expression:           s.Expression,
 		Name:                 s.Name,
 		Description:          s.Description,
 		URL:                  s.URL,
@@ -227,6 +280,12 @@ type UpdateDelayStepConfigParams struct {
 	DelayDurationSeconds int
 }
 
+type UpdateConditionStepConfigParams struct {
+	Name        string
+	Description string
+	Expression  string
+}
+
 func (s *Step) ApplyConfigUpdate(p UpdateStepConfigParams) {
 	headers := p.Headers
 	if headers == nil {
@@ -268,6 +327,22 @@ func (s *Step) ApplyDelayConfigUpdate(p UpdateDelayStepConfigParams) error {
 	return nil
 }
 
+func (s *Step) ApplyConditionConfigUpdate(p UpdateConditionStepConfigParams) error {
+	if s.Type != TypeCondition {
+		return ErrInvalidStepTypeConfig
+	}
+	expression := strings.TrimSpace(p.Expression)
+	s.Name = p.Name
+	s.Description = p.Description
+	s.Expression = &expression
+	s.UpdatedAt = time.Now().UTC()
+	if err := ValidateConfig(s); err != nil {
+		return err
+	}
+	s.recordUpdatedEvent()
+	return nil
+}
+
 func (s *Step) recordUpdatedEvent() {
 	s.recordEvent(StepUpdated{
 		ID:                   uuid.New().String(),
@@ -276,6 +351,7 @@ func (s *Step) recordUpdatedEvent() {
 		ProjectID:            s.ProjectID.String(),
 		Type:                 string(s.Type),
 		DelayDurationSeconds: s.DelayDurationSeconds,
+		Expression:           s.Expression,
 		Name:                 s.Name,
 		Description:    s.Description,
 		URL:            s.URL,

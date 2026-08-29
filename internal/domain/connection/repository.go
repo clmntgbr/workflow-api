@@ -18,9 +18,10 @@ type ConnectionReadRepository interface {
 }
 
 type ConnectionView struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
-	SourceStepID   uuid.UUID
-	TargetStepID   uuid.UUID
+	ID           uuid.UUID
+	WorkflowID   uuid.UUID
+	ProjectID    uuid.UUID
+	SourceStepID uuid.UUID
+	TargetStepID uuid.UUID
+	Branch       *ConditionBranch
 }

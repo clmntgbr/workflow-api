@@ -15,9 +15,10 @@ import (
 type CreateConnectionCommand struct {
 	UserID       uuid.UUID
 	WorkflowID   uuid.UUID
-	ProjectID uuid.UUID
-	SourceStepID   uuid.UUID
-	TargetStepID   uuid.UUID
+	ProjectID    uuid.UUID
+	SourceStepID uuid.UUID
+	TargetStepID uuid.UUID
+	Branch       *domainconnection.ConditionBranch
 }
 
 type CreateConnectionHandler struct {
@@ -74,11 +75,23 @@ func (h *CreateConnectionHandler) Handle(
 		return nil, errors.New("target step not found")
 	}
 
+	if source.Type == domainstep.TypeCondition {
+		if cmd.Branch == nil {
+			return nil, domainconnection.ErrConditionRequiresBranch
+		}
+		if !cmd.Branch.Valid() {
+			return nil, domainconnection.ErrInvalidBranch
+		}
+	} else if cmd.Branch != nil {
+		return nil, domainconnection.ErrNonConditionBranchForbidden
+	}
+
 	conn := domainconnection.NewConnection(domainconnection.NewConnectionParams{
-		WorkflowID:     cmd.WorkflowID,
-		ProjectID: cmd.ProjectID,
-		SourceStepID:   cmd.SourceStepID,
-		TargetStepID:   cmd.TargetStepID,
+		WorkflowID:   cmd.WorkflowID,
+		ProjectID:    cmd.ProjectID,
+		SourceStepID: cmd.SourceStepID,
+		TargetStepID: cmd.TargetStepID,
+		Branch:       cmd.Branch,
 	})
 
 	steps, err := h.stepReadRepo.FindByWorkflowID(ctx, cmd.WorkflowID)
@@ -110,6 +123,22 @@ func (h *CreateConnectionHandler) Handle(
 		TargetStepID: cmd.TargetStepID,
 	})
 	ordering := domainstep.CalculateOrderingByPosition(positioned, edges)
+
+	connectionViews := make([]domainconnection.ConnectionView, 0, len(connections)+1)
+	for _, connectionView := range connections {
+		connectionViews = append(connectionViews, connectionView)
+	}
+	connectionViews = append(connectionViews, domainconnection.ConnectionView{
+		ID:           conn.ID,
+		WorkflowID:   conn.WorkflowID,
+		ProjectID:    conn.ProjectID,
+		SourceStepID: conn.SourceStepID,
+		TargetStepID: conn.TargetStepID,
+		Branch:       conn.Branch,
+	})
+	if err := domainconnection.ValidateWorkflowConnections(steps, connectionViews); err != nil {
+		return nil, err
+	}
 
 	executionOrderByStepID := make(map[uuid.UUID]int, len(ordering))
 	for stepID, values := range ordering {

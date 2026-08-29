@@ -57,8 +57,8 @@ func (h *CreateAssertionHandler) Handle(
 	if step.WorkflowID != cmd.WorkflowID || step.ProjectID != cmd.ProjectID {
 		return nil, errors.New("step not found")
 	}
-	if step.Type == domainstep.TypeDelay {
-		return nil, domainstep.ErrDelayStepCannotHaveExtras
+	if step.Type != domainstep.TypeHTTP {
+		return nil, domainstep.ErrNonHTTPStepCannotHaveExtras
 	}
 
 	assertion, err := domainassertion.NewAssertion(domainassertion.NewAssertionParams{

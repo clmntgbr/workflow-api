@@ -51,6 +51,7 @@ type stepRunRow struct {
 	StartedAt          *time.Time
 	FinishedAt         *time.Time
 	ResumeAt           *time.Time
+	MatchedBranch      *bool
 	Error              string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -65,7 +66,7 @@ var stepRunSelectColumns = []string{
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
 	"status", "attempt", "variable_extracts", "assertions", "response_snapshot", "extracted_variables",
-	"assertions_result", "started_at", "finished_at", "resume_at", "error", "created_at", "updated_at",
+	"assertions_result", "started_at", "finished_at", "resume_at", "matched_branch", "error", "created_at", "updated_at",
 }
 
 type stepRunReadRepository struct {
@@ -330,6 +331,7 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		StartedAt:          row.StartedAt,
 		FinishedAt:         row.FinishedAt,
 		ResumeAt:           row.ResumeAt,
+		MatchedBranch:      row.MatchedBranch,
 		Error:              row.Error,
 		CreatedAt:          row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,

@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"errors"
+
 	conncmd "go-api/internal/application/command/connection"
 	queryconn "go-api/internal/application/query/connection"
 	queryworkflow "go-api/internal/application/query/workflow"
+	domainconnection "go-api/internal/domain/connection"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
@@ -67,18 +70,34 @@ func (h *ConnectionHandler) Create(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid target step id"})
 	}
 
+	var branch *domainconnection.ConditionBranch
+	if req.Branch != nil {
+		parsed, err := domainconnection.ParseConditionBranch(*req.Branch)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		branch = &parsed
+	}
+
 	conn, err := h.createHandler.Handle(c.Context(), conncmd.CreateConnectionCommand{
 		UserID:       user.ID,
 		WorkflowID:   workflowID,
 		ProjectID:    orgID,
-		SourceStepID:   sourceStepID,
-		TargetStepID:   targetStepID,
+		SourceStepID: sourceStepID,
+		TargetStepID: targetStepID,
+		Branch:       branch,
 	})
 	if err != nil {
-		switch err.Error() {
-		case "source step not found", "target step not found":
+		switch {
+		case errors.Is(err, domainconnection.ErrInvalidBranch),
+			errors.Is(err, domainconnection.ErrConditionRequiresBranch),
+			errors.Is(err, domainconnection.ErrNonConditionBranchForbidden),
+			errors.Is(err, domainconnection.ErrConditionOutgoingCount),
+			errors.Is(err, domainconnection.ErrConditionalTargetMultipleParents):
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		case err.Error() == "source step not found", err.Error() == "target step not found":
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": err.Error()})
-		case "source and target steps must be different":
+		case err.Error() == "source and target steps must be different":
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create connection"})

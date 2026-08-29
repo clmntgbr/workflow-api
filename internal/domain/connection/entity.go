@@ -9,39 +9,43 @@ import (
 )
 
 type Connection struct {
-	ID             uuid.UUID
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
-	SourceStepID   uuid.UUID
-	TargetStepID   uuid.UUID
+	ID           uuid.UUID
+	WorkflowID   uuid.UUID
+	ProjectID    uuid.UUID
+	SourceStepID uuid.UUID
+	TargetStepID uuid.UUID
+	Branch       *ConditionBranch
 
 	events []event.DomainEvent
 }
 
 type NewConnectionParams struct {
-	WorkflowID     uuid.UUID
-	ProjectID uuid.UUID
-	SourceStepID   uuid.UUID
-	TargetStepID   uuid.UUID
+	WorkflowID   uuid.UUID
+	ProjectID    uuid.UUID
+	SourceStepID uuid.UUID
+	TargetStepID uuid.UUID
+	Branch       *ConditionBranch
 }
 
 func NewConnection(p NewConnectionParams) *Connection {
 	now := time.Now().UTC()
 	c := &Connection{
-		ID:             uuid.New(),
-		WorkflowID:     p.WorkflowID,
-		ProjectID: p.ProjectID,
-		SourceStepID:   p.SourceStepID,
-		TargetStepID:   p.TargetStepID,
+		ID:           uuid.New(),
+		WorkflowID:   p.WorkflowID,
+		ProjectID:    p.ProjectID,
+		SourceStepID: p.SourceStepID,
+		TargetStepID: p.TargetStepID,
+		Branch:       p.Branch,
 	}
 	c.recordEvent(ConnectionCreated{
-		ID:             uuid.New().String(),
-		ConnectionID:   c.ID.String(),
-		WorkflowID:     c.WorkflowID.String(),
-		ProjectID: c.ProjectID.String(),
-		SourceStepID:   c.SourceStepID.String(),
-		TargetStepID:   c.TargetStepID.String(),
-		Timestamp:      now,
+		ID:           uuid.New().String(),
+		ConnectionID: c.ID.String(),
+		WorkflowID:   c.WorkflowID.String(),
+		ProjectID:    c.ProjectID.String(),
+		SourceStepID: c.SourceStepID.String(),
+		TargetStepID: c.TargetStepID.String(),
+		Branch:       branchString(p.Branch),
+		Timestamp:    now,
 	})
 	return c
 }
@@ -64,4 +68,11 @@ func (c *Connection) PullEvents() []event.DomainEvent {
 
 func (c *Connection) recordEvent(evt event.DomainEvent) {
 	c.events = append(c.events, evt)
+}
+
+func branchString(branch *ConditionBranch) string {
+	if branch == nil {
+		return ""
+	}
+	return string(*branch)
 }

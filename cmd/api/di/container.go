@@ -153,6 +153,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 
 	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
 	updateDelayStepHandler := stepcmd.NewUpdateDelayStepHandler(stepWriteRepo, outboxRepo)
+	updateConditionStepHandler := stepcmd.NewUpdateConditionStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
 		stepWriteRepo,
 		stepReadRepo,
@@ -274,6 +275,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		outboxRepo,
 		assertCreateAllowedHandler,
 	)
+	createConditionStepHandler := stepcmd.NewCreateConditionStepHandler(
+		stepWriteRepo,
+		stepReadRepo,
+		connReadRepo,
+		workflowReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
 
 	previewPlanChangeHandler := querysubscription.NewPreviewPlanChangeHandler(
 		userReadRepo,
@@ -383,8 +392,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		StepHandler: httphandler.NewStepHandler(
 			createStepHandler,
 			createDelayStepHandler,
+			createConditionStepHandler,
 			updateStepHandler,
 			updateDelayStepHandler,
+			updateConditionStepHandler,
 			updateStepPositionHandler,
 			deleteStepHandler,
 			getStepByIDHandler,

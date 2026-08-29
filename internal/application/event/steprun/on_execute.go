@@ -13,6 +13,7 @@ import (
 	"go-api/internal/application/messaging"
 	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
+	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainvariable "go-api/internal/domain/variable"
 
@@ -92,6 +93,9 @@ func (h *ExecuteHandler) Handle(ctx context.Context, payload []byte) error {
 	}
 	if run.Status.IsTerminal() {
 		return nil
+	}
+	if run.StepType != domainstep.TypeHTTP {
+		return messaging.NonRetryable(errors.New("only HTTP step runs can be executed"))
 	}
 
 	attemptQueueAnchor := run.CreatedAt

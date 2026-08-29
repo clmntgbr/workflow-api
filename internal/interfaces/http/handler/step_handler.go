@@ -22,8 +22,10 @@ import (
 type StepHandler struct {
 	createHandler              *stepcmd.CreateStepHandler
 	createDelayHandler         *stepcmd.CreateDelayStepHandler
+	createConditionHandler     *stepcmd.CreateConditionStepHandler
 	updateHandler              *stepcmd.UpdateStepHandler
 	updateDelayHandler         *stepcmd.UpdateDelayStepHandler
+	updateConditionHandler     *stepcmd.UpdateConditionStepHandler
 	updatePositionHandler      *stepcmd.UpdateStepPositionHandler
 	deleteHandler              *stepcmd.DeleteStepHandler
 	getByIDHandler             *querystep.GetStepByIDHandler
@@ -35,8 +37,10 @@ type StepHandler struct {
 func NewStepHandler(
 	createHandler *stepcmd.CreateStepHandler,
 	createDelayHandler *stepcmd.CreateDelayStepHandler,
+	createConditionHandler *stepcmd.CreateConditionStepHandler,
 	updateHandler *stepcmd.UpdateStepHandler,
 	updateDelayHandler *stepcmd.UpdateDelayStepHandler,
+	updateConditionHandler *stepcmd.UpdateConditionStepHandler,
 	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
 	deleteHandler *stepcmd.DeleteStepHandler,
 	getByIDHandler *querystep.GetStepByIDHandler,
@@ -47,8 +51,10 @@ func NewStepHandler(
 	return &StepHandler{
 		createHandler:              createHandler,
 		createDelayHandler:         createDelayHandler,
+		createConditionHandler:     createConditionHandler,
 		updateHandler:              updateHandler,
 		updateDelayHandler:         updateDelayHandler,
+		updateConditionHandler:     updateConditionHandler,
 		updatePositionHandler:      updatePositionHandler,
 		deleteHandler:              deleteHandler,
 		getByIDHandler:             getByIDHandler,
@@ -97,6 +103,37 @@ func (h *StepHandler) Create(c fiber.Ctx) error {
 			ProjectID:            orgID,
 			Name:                 req.Name,
 			DelayDurationSeconds: *req.DelayDurationSeconds,
+			Position: domainstep.Position{
+				X: req.Position.X,
+				Y: req.Position.Y,
+			},
+		})
+		if err != nil {
+			if handled, resp := respondQuotaError(c, err); handled {
+				return resp
+			}
+			switch {
+			case errors.Is(err, domainstep.ErrInvalidStepTypeConfig):
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+			case err.Error() == "workflow not found":
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": err.Error()})
+			default:
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to create step"})
+			}
+		}
+		return c.Status(fiber.StatusCreated).JSON(presenter.NewStepDetailResponseFromEntity(*s))
+	}
+
+	if stepType == string(domainstep.TypeCondition) {
+		if req.Expression == nil || strings.TrimSpace(*req.Expression) == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "expression is required for condition steps"})
+		}
+		s, err := h.createConditionHandler.Handle(c.Context(), stepcmd.CreateConditionStepCommand{
+			UserID:     user.ID,
+			WorkflowID: workflowID,
+			ProjectID:  orgID,
+			Name:       req.Name,
+			Expression: strings.TrimSpace(*req.Expression),
 			Position: domainstep.Position{
 				X: req.Position.X,
 				Y: req.Position.Y,
@@ -284,6 +321,39 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 			Name:                 req.Name,
 			Description:          req.Description,
 			DelayDurationSeconds: req.DelayDurationSeconds,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, domainstep.ErrInvalidStepTypeConfig):
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+			case err.Error() == "step not found":
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
+			default:
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to update step"})
+			}
+		}
+		return c.Status(fiber.StatusOK).JSON(presenter.NewStepDetailResponseFromEntity(*s))
+	}
+
+	if existing.Type == domainstep.TypeCondition {
+		var req dto.UpdateConditionStepRequest
+		if err := c.Bind().Body(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+		}
+		req.Name = strings.TrimSpace(req.Name)
+		req.Description = strings.TrimSpace(req.Description)
+		req.Expression = strings.TrimSpace(req.Expression)
+		if err := validation.Struct(c, &req); err != nil {
+			return err
+		}
+		s, err := h.updateConditionHandler.Handle(c.Context(), stepcmd.UpdateConditionStepCommand{
+			ID:          id,
+			UserID:      user.ID,
+			WorkflowID:  workflowID,
+			ProjectID:   orgID,
+			Name:        req.Name,
+			Description: req.Description,
+			Expression:  req.Expression,
 		})
 		if err != nil {
 			switch {

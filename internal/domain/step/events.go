@@ -18,6 +18,7 @@ type StepCreated struct {
 	ProjectID            string            `json:"projectId"`
 	Type                 string            `json:"type"`
 	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Expression           *string           `json:"expression,omitempty"`
 	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`
@@ -52,6 +53,7 @@ type StepUpdated struct {
 	ProjectID            string            `json:"projectId"`
 	Type                 string            `json:"type"`
 	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
+	Expression           *string           `json:"expression,omitempty"`
 	Name                 string            `json:"name"`
 	Description    string            `json:"description"`
 	URL            string            `json:"url"`

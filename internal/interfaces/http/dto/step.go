@@ -8,11 +8,18 @@ type PositionRequest struct {
 }
 
 type CreateStepRequest struct {
-	Type                 string          `json:"type" validate:"omitempty,oneof=http delay"`
+	Type                 string          `json:"type" validate:"omitempty,oneof=http delay condition"`
 	EndpointID           string          `json:"endpointId" validate:"omitempty,uuid"`
 	Name                 string          `json:"name" validate:"omitempty,min=1,max=255"`
 	DelayDurationSeconds *int            `json:"delayDurationSeconds" validate:"omitempty,min=1"`
+	Expression           *string         `json:"expression" validate:"omitempty,min=1"`
 	Position             PositionRequest `json:"position"`
+}
+
+type UpdateConditionStepRequest struct {
+	Name        string `json:"name" validate:"required,min=1,max=255"`
+	Description string `json:"description" validate:"omitempty,max=2000"`
+	Expression  string `json:"expression" validate:"required,min=1"`
 }
 
 type UpdateDelayStepRequest struct {

@@ -38,6 +38,17 @@ func isOrphanDelay(
 		len(outgoingIDs(step.ID, connections)) == 0
 }
 
+func isOrphanCondition(
+	step domainstep.StepView,
+	connections []domainconnection.ConnectionView,
+) bool {
+	if step.Type != domainstep.TypeCondition {
+		return false
+	}
+	return len(incomingIDs(step.ID, connections)) == 0 &&
+		len(outgoingIDs(step.ID, connections)) == 0
+}
+
 func rootSteps(
 	steps []domainstep.StepView,
 	connections []domainconnection.ConnectionView,
@@ -72,7 +83,7 @@ func reachableStepIDs(
 	seen := make(map[uuid.UUID]struct{}, len(steps))
 	queue := make([]uuid.UUID, 0, len(roots))
 	for _, root := range roots {
-		if isOrphanDelay(root, connections) {
+		if isOrphanDelay(root, connections) || isOrphanCondition(root, connections) {
 			continue
 		}
 		queue = append(queue, root.ID)

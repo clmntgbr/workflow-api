@@ -48,6 +48,7 @@ type StepRunModel struct {
 	StartedAt          *time.Time   `gorm:"column:started_at"`
 	FinishedAt         *time.Time   `gorm:"column:finished_at"`
 	ResumeAt           *time.Time   `gorm:"column:resume_at"`
+	MatchedBranch      *bool        `gorm:"column:matched_branch"`
 	Error              string       `gorm:"column:error"`
 	CreatedAt          time.Time    `gorm:"column:created_at"`
 	UpdatedAt          time.Time    `gorm:"column:updated_at"`
@@ -165,6 +166,7 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		StartedAt:          s.StartedAt,
 		FinishedAt:         s.FinishedAt,
 		ResumeAt:           s.ResumeAt,
+		MatchedBranch:      s.MatchedBranch,
 		Error:              s.Error,
 		CreatedAt:          s.CreatedAt,
 		UpdatedAt:          s.UpdatedAt,
@@ -267,6 +269,7 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		StartedAt:          m.StartedAt,
 		FinishedAt:         m.FinishedAt,
 		ResumeAt:           m.ResumeAt,
+		MatchedBranch:      m.MatchedBranch,
 		Error:              m.Error,
 		CreatedAt:          m.CreatedAt,
 		UpdatedAt:          m.UpdatedAt,

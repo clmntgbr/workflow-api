@@ -21,6 +21,7 @@ type stepRow struct {
 	ProjectID            uuid.UUID
 	Type                 string
 	DelayDurationSeconds *int
+	Expression           *string
 	Name                 string
 	Description    string
 	URL            string
@@ -45,7 +46,7 @@ type stepRow struct {
 func (stepRow) TableName() string { return "steps" }
 
 var stepSelectColumns = []string{
-	"id", "workflow_id", "endpoint_id", "project_id", "type", "delay_duration_seconds",
+	"id", "workflow_id", "endpoint_id", "project_id", "type", "delay_duration_seconds", "expression",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
@@ -141,6 +142,7 @@ func toStepView(row stepRow) (*domainstep.StepView, error) {
 		ProjectID:            row.ProjectID,
 		Type:                 stepType,
 		DelayDurationSeconds: intValueOrZero(row.DelayDurationSeconds),
+		Expression:           row.Expression,
 		Name:                 row.Name,
 		Description:    row.Description,
 		URL:            row.URL,

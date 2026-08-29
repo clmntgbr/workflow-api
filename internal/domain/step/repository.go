@@ -30,6 +30,7 @@ type StepView struct {
 	ProjectID            uuid.UUID
 	Type                 Type
 	DelayDurationSeconds int
+	Expression           *string
 	Name                 string
 	Description    string
 	URL            string

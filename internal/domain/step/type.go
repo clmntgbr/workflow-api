@@ -1,17 +1,23 @@
 package step
 
-import "errors"
+import (
+	"errors"
+	"strings"
+
+	domaincondition "go-api/internal/domain/condition"
+)
 
 type Type string
 
 const (
-	TypeHTTP  Type = "http"
-	TypeDelay Type = "delay"
+	TypeHTTP       Type = "http"
+	TypeDelay      Type = "delay"
+	TypeCondition  Type = "condition"
 )
 
 func (t Type) Valid() bool {
 	switch t {
-	case TypeHTTP, TypeDelay:
+	case TypeHTTP, TypeDelay, TypeCondition:
 		return true
 	default:
 		return false
@@ -27,8 +33,10 @@ func ParseType(value string) (Type, error) {
 }
 
 var (
-	ErrInvalidStepTypeConfig     = errors.New("invalid step type configuration")
-	ErrDelayStepCannotHaveExtras = errors.New("delay steps cannot have variables or assertions")
+	ErrInvalidStepTypeConfig      = errors.New("invalid step type configuration")
+	ErrNonHTTPStepCannotHaveExtras = errors.New("only HTTP steps can have variables or assertions")
+	// ErrDelayStepCannotHaveExtras is kept for backward compatibility with existing callers.
+	ErrDelayStepCannotHaveExtras = ErrNonHTTPStepCannotHaveExtras
 )
 
 func ValidateConfig(s *Step) error {
@@ -47,12 +55,31 @@ func ValidateConfig(s *Step) error {
 		if s.DelayDurationSeconds != 0 {
 			return ErrInvalidStepTypeConfig
 		}
+		if s.Expression != nil {
+			return ErrInvalidStepTypeConfig
+		}
 	case TypeDelay:
 		if s.EndpointID != nil {
 			return ErrInvalidStepTypeConfig
 		}
 		if s.DelayDurationSeconds <= 0 {
 			return ErrInvalidStepTypeConfig
+		}
+		if s.Expression != nil {
+			return ErrInvalidStepTypeConfig
+		}
+	case TypeCondition:
+		if s.EndpointID != nil {
+			return ErrInvalidStepTypeConfig
+		}
+		if s.DelayDurationSeconds != 0 {
+			return ErrInvalidStepTypeConfig
+		}
+		if s.Expression == nil || strings.TrimSpace(*s.Expression) == "" {
+			return ErrInvalidStepTypeConfig
+		}
+		if err := domaincondition.ValidateSyntax(strings.TrimSpace(*s.Expression)); err != nil {
+			return err
 		}
 	default:
 		return ErrInvalidStepTypeConfig

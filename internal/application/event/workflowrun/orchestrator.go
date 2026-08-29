@@ -72,6 +72,9 @@ func (h *Orchestrator) buildStepRun(
 	if step.Type == domainstep.TypeDelay {
 		return h.buildDelayStepRun(run, step)
 	}
+	if step.Type == domainstep.TypeCondition {
+		return h.buildConditionStepRun(run, step)
+	}
 
 	variables, err := h.variableRead.FindByStepID(ctx, step.ID)
 	if err != nil {
@@ -183,6 +186,26 @@ func (h *Orchestrator) buildDelayStepRun(
 		return nil, err
 	}
 	return stepRun, nil
+}
+
+func (h *Orchestrator) buildConditionStepRun(
+	run *domainworkflowrun.WorkflowRun,
+	step domainstep.StepView,
+) (*domainsteprun.StepRun, error) {
+	return domainsteprun.NewStepRun(domainsteprun.NewStepRunParams{
+		WorkflowRunID: run.ID,
+		StepID:        step.ID,
+		WorkflowID:    step.WorkflowID,
+		EndpointID:    nil,
+		ProjectID:     step.ProjectID,
+		StepType:      domainstep.TypeCondition,
+		Name:          step.Name,
+		Description:   step.Description,
+		Index:         step.Index,
+		ExecutionOrder: step.ExecutionOrder,
+		TreeIndex:     step.TreeIndex,
+		Position:      step.Position,
+	}), nil
 }
 
 func stepRunsByStepID(runs []*domainsteprun.StepRun) map[uuid.UUID]*domainsteprun.StepRun {

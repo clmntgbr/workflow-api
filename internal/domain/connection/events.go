@@ -16,6 +16,7 @@ type ConnectionCreated struct {
 	ProjectID string    `json:"projectId"`
 	SourceStepID   string    `json:"sourceStepId"`
 	TargetStepID   string    `json:"targetStepId"`
+	Branch         string    `json:"branch,omitempty"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

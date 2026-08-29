@@ -17,6 +17,7 @@ type StepListResponse struct {
 	Type                 string               `json:"type"`
 	EndpointID           *string              `json:"endpointId,omitempty"`
 	DelayDurationSeconds *int                 `json:"delayDurationSeconds,omitempty"`
+	Expression           *string              `json:"expression,omitempty"`
 	Name                 string               `json:"name"`
 	URL                  string               `json:"url"`
 	Method               string               `json:"method"`
@@ -46,6 +47,7 @@ func NewStepListResponseFromView(view domainstep.StepView) StepListResponse {
 		Type:                 string(view.Type),
 		EndpointID:           optionalUUIDString(view.EndpointID),
 		DelayDurationSeconds: optionalPositiveInt(view.DelayDurationSeconds),
+		Expression:           view.Expression,
 		Name:                 view.Name,
 		URL:                  view.URL,
 		Method:               view.Method,
@@ -110,6 +112,7 @@ func NewStepDetailResponseFromEntity(s domainstep.Step) StepDetailResponse {
 			Type:                 string(s.Type),
 			EndpointID:           optionalUUIDString(s.EndpointID),
 			DelayDurationSeconds: optionalPositiveInt(s.DelayDurationSeconds),
+			Expression:           s.Expression,
 			Name:                 s.Name,
 			URL:                  s.URL,
 			Method:               s.Method,
