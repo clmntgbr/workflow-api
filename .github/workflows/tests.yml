@@ -1,0 +1,78 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  handler-tests:
+    name: Handler HTTP tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run handler tests
+        run: |
+          go test ./internal/interfaces/http/handler/test/... \
+            -count=1 \
+            -race \
+            -timeout=5m
+
+      - name: Run handler tests with coverage
+        run: |
+          go test ./internal/interfaces/http/handler/test/... \
+            -count=1 \
+            -race \
+            -timeout=5m \
+            -coverprofile=coverage.txt \
+            -covermode=atomic \
+            -coverpkg=./internal/interfaces/http/handler/...
+
+      - name: Add coverage to job summary
+        run: |
+          {
+            echo '## Handler coverage'
+            echo ''
+            echo 'Packages under test: `internal/interfaces/http/handler/test/...`'
+            echo 'Coverage scope: `internal/interfaces/http/handler/...`'
+            echo ''
+            echo '### Total'
+            echo '```'
+            go tool cover -func=coverage.txt | tail -1
+            echo '```'
+            echo ''
+            echo '### By file'
+            echo '```'
+            go tool cover -func=coverage.txt | grep 'handler/'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: handler-coverage
+          path: coverage.txt
+          if-no-files-found: error
