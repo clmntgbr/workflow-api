@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"testing"
 
@@ -29,6 +30,14 @@ func WithActiveProject(userID, projectID uuid.UUID) fiber.Handler {
 			ID:              userID,
 			ActiveProjectID: &projectIDCopy,
 		})
+		return c.Next()
+	}
+}
+
+// WithUserWithoutProject injects a user without an active project.
+func WithUserWithoutProject(userID uuid.UUID) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		httpctx.SetUser(c, domainuser.User{ID: userID})
 		return c.Next()
 	}
 }
@@ -71,3 +80,35 @@ func DecodeJSONMap(t *testing.T, resp *http.Response) map[string]any {
 func IntPtr(v int) *int       { return &v }
 func BoolPtr(v bool) *bool    { return &v }
 func StringPtr(v string) *string { return &v }
+
+// MultipartImportRequest builds a multipart request for OpenAPI import endpoints.
+func MultipartImportRequest(path string, spec []byte, payload map[string]any) (*http.Request, error) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	filePart, err := writer.CreateFormFile("file", "openapi.json")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := filePart.Write(spec); err != nil {
+		return nil, err
+	}
+
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	if err := writer.WriteField("payload", string(payloadJSON)); err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, path, &body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req, nil
+}

@@ -1,6 +1,7 @@
-package handler_test
+package endpointtest
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -104,17 +105,28 @@ func (m *mockListEndpointsByProjectHandler) Handle(
 	return m.views, m.total, m.err
 }
 
-type noopImportEndpointHandler struct{}
+type mockImportEndpointHandler struct {
+	called bool
+	cmd    endpointcmd.ImportEndpointsFromOpenAPICommand
+	result []domainendpoint.Endpoint
+	err    error
+}
 
-func (noopImportEndpointHandler) Handle(
+func (m *mockImportEndpointHandler) Handle(
 	_ context.Context,
-	_ endpointcmd.ImportEndpointsFromOpenAPICommand,
+	cmd endpointcmd.ImportEndpointsFromOpenAPICommand,
 ) ([]domainendpoint.Endpoint, error) {
-	return nil, errors.New("not implemented in test")
+	m.called = true
+	m.cmd = cmd
+	if m.result == nil {
+		m.result = []domainendpoint.Endpoint{}
+	}
+	return m.result, m.err
 }
 
 func mountEndpointRoutes(app *fiber.App, h *handler.EndpointHandler) {
 	app.Post("/endpoints", h.Create)
+	app.Post("/endpoints/import", h.ImportFromOpenAPI)
 	app.Get("/endpoints", h.ListByProject)
 	app.Get("/endpoints/:id", h.GetByID)
 	app.Put("/endpoints/:id", h.Update)
@@ -127,6 +139,7 @@ func newEndpointHandler(
 	deleteH *mockDeleteEndpointHandler,
 	getByID *mockGetEndpointByIDHandler,
 	list *mockListEndpointsByProjectHandler,
+	importH *mockImportEndpointHandler,
 ) *handler.EndpointHandler {
 	if create == nil {
 		create = &mockCreateEndpointHandler{}
@@ -143,9 +156,12 @@ func newEndpointHandler(
 	if list == nil {
 		list = &mockListEndpointsByProjectHandler{}
 	}
+	if importH == nil {
+		importH = &mockImportEndpointHandler{err: errors.New("import not configured")}
+	}
 	return handler.NewEndpointHandler(
 		create,
-		noopImportEndpointHandler{},
+		importH,
 		update,
 		deleteH,
 		getByID,
@@ -214,7 +230,7 @@ func sampleEndpointView() *domainendpoint.EndpointView {
 
 func TestEndpointHandler_Create_Success(t *testing.T) {
 	create := &mockCreateEndpointHandler{result: sampleEndpointEntity()}
-	h := newEndpointHandler(create, nil, nil, nil, nil)
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
@@ -259,7 +275,7 @@ func TestEndpointHandler_Create_Success(t *testing.T) {
 
 func TestEndpointHandler_Create_Unauthorized(t *testing.T) {
 	create := &mockCreateEndpointHandler{}
-	h := newEndpointHandler(create, nil, nil, nil, nil)
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/endpoints", h.Create)
@@ -355,7 +371,7 @@ func TestEndpointHandler_Create_InvalidData(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			create := &mockCreateEndpointHandler{}
-			h := newEndpointHandler(create, nil, nil, nil, nil)
+			h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 			app := testutil.NewTestApp()
 			app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
@@ -390,7 +406,7 @@ func TestEndpointHandler_Create_InvalidData(t *testing.T) {
 
 func TestEndpointHandler_Create_HandlerError(t *testing.T) {
 	create := &mockCreateEndpointHandler{err: errors.New("failed to create endpoint")}
-	h := newEndpointHandler(create, nil, nil, nil, nil)
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
@@ -414,7 +430,7 @@ func TestEndpointHandler_Create_HandlerError(t *testing.T) {
 
 func TestEndpointHandler_Create_HandlerError_QuotaExceeded(t *testing.T) {
 	create := &mockCreateEndpointHandler{err: cmdquota.ErrEndpointQuotaExceeded}
-	h := newEndpointHandler(create, nil, nil, nil, nil)
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
@@ -439,7 +455,7 @@ func TestEndpointHandler_GetByID_Success(t *testing.T) {
 		views: []*domainendpoint.EndpointView{view},
 		errs:  []error{nil},
 	}
-	h := newEndpointHandler(nil, nil, nil, getByID, nil)
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
@@ -469,7 +485,7 @@ func TestEndpointHandler_GetByID_Success(t *testing.T) {
 
 func TestEndpointHandler_GetByID_Unauthorized(t *testing.T) {
 	getByID := &mockGetEndpointByIDHandler{}
-	h := newEndpointHandler(nil, nil, nil, getByID, nil)
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", h.GetByID)
@@ -493,7 +509,7 @@ func TestEndpointHandler_GetByID_Unauthorized(t *testing.T) {
 
 func TestEndpointHandler_GetByID_InvalidID(t *testing.T) {
 	getByID := &mockGetEndpointByIDHandler{}
-	h := newEndpointHandler(nil, nil, nil, getByID, nil)
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
@@ -520,7 +536,7 @@ func TestEndpointHandler_GetByID_HandlerError_NotFound(t *testing.T) {
 		views: []*domainendpoint.EndpointView{nil},
 		errs:  []error{errors.New("endpoint not found")},
 	}
-	h := newEndpointHandler(nil, nil, nil, getByID, nil)
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
@@ -546,7 +562,7 @@ func TestEndpointHandler_GetByID_HandlerError_WrongProject(t *testing.T) {
 		views: []*domainendpoint.EndpointView{view},
 		errs:  []error{nil},
 	}
-	h := newEndpointHandler(nil, nil, nil, getByID, nil)
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
@@ -572,7 +588,7 @@ func TestEndpointHandler_Update_Success(t *testing.T) {
 		errs:  []error{nil, nil},
 	}
 	update := &mockUpdateEndpointHandler{}
-	h := newEndpointHandler(nil, update, nil, getByID, nil)
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
@@ -606,7 +622,7 @@ func TestEndpointHandler_Update_Success(t *testing.T) {
 func TestEndpointHandler_Update_Unauthorized(t *testing.T) {
 	update := &mockUpdateEndpointHandler{}
 	getByID := &mockGetEndpointByIDHandler{}
-	h := newEndpointHandler(nil, update, nil, getByID, nil)
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", h.Update)
@@ -631,7 +647,7 @@ func TestEndpointHandler_Update_Unauthorized(t *testing.T) {
 func TestEndpointHandler_Update_InvalidID(t *testing.T) {
 	update := &mockUpdateEndpointHandler{}
 	getByID := &mockGetEndpointByIDHandler{}
-	h := newEndpointHandler(nil, update, nil, getByID, nil)
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
@@ -660,7 +676,7 @@ func TestEndpointHandler_Update_InvalidData(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateEndpointHandler{}
-	h := newEndpointHandler(nil, update, nil, getByID, nil)
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
@@ -692,7 +708,7 @@ func TestEndpointHandler_Update_HandlerError_NotFound(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateEndpointHandler{err: errors.New("endpoint not found")}
-	h := newEndpointHandler(nil, update, nil, getByID, nil)
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
@@ -713,7 +729,7 @@ func TestEndpointHandler_Update_HandlerError_NotFound(t *testing.T) {
 
 func TestEndpointHandler_Delete_Success(t *testing.T) {
 	deleteH := &mockDeleteEndpointHandler{}
-	h := newEndpointHandler(nil, nil, deleteH, nil, nil)
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
@@ -743,7 +759,7 @@ func TestEndpointHandler_Delete_Success(t *testing.T) {
 
 func TestEndpointHandler_Delete_Unauthorized(t *testing.T) {
 	deleteH := &mockDeleteEndpointHandler{}
-	h := newEndpointHandler(nil, nil, deleteH, nil, nil)
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/endpoints/:id", h.Delete)
@@ -767,7 +783,7 @@ func TestEndpointHandler_Delete_Unauthorized(t *testing.T) {
 
 func TestEndpointHandler_Delete_InvalidID(t *testing.T) {
 	deleteH := &mockDeleteEndpointHandler{}
-	h := newEndpointHandler(nil, nil, deleteH, nil, nil)
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
@@ -791,7 +807,7 @@ func TestEndpointHandler_Delete_InvalidID(t *testing.T) {
 
 func TestEndpointHandler_Delete_HandlerError_NotFound(t *testing.T) {
 	deleteH := &mockDeleteEndpointHandler{err: errors.New("endpoint not found")}
-	h := newEndpointHandler(nil, nil, deleteH, nil, nil)
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
@@ -816,7 +832,7 @@ func TestEndpointHandler_ListByProject_Success(t *testing.T) {
 		views: []domainendpoint.EndpointView{*view},
 		total: 1,
 	}
-	h := newEndpointHandler(nil, nil, nil, nil, list)
+	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
@@ -855,7 +871,7 @@ func TestEndpointHandler_ListByProject_Success(t *testing.T) {
 
 func TestEndpointHandler_ListByProject_Unauthorized(t *testing.T) {
 	list := &mockListEndpointsByProjectHandler{}
-	h := newEndpointHandler(nil, nil, nil, nil, list)
+	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints", h.ListByProject)
@@ -879,7 +895,7 @@ func TestEndpointHandler_ListByProject_Unauthorized(t *testing.T) {
 
 func TestEndpointHandler_ListByProject_HandlerError_InvalidMethodFilter(t *testing.T) {
 	list := &mockListEndpointsByProjectHandler{err: errors.New("invalid endpoint method: FOO")}
-	h := newEndpointHandler(nil, nil, nil, nil, list)
+	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
@@ -900,12 +916,525 @@ func TestEndpointHandler_ListByProject_HandlerError_InvalidMethodFilter(t *testi
 
 func TestEndpointHandler_ListByProject_HandlerError_Internal(t *testing.T) {
 	list := &mockListEndpointsByProjectHandler{err: errors.New("database unavailable")}
-	h := newEndpointHandler(nil, nil, nil, nil, list)
+	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestEndpointHandler_Create_InvalidRequestBody(t *testing.T) {
+	create := &mockCreateEndpointHandler{}
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+
+	req, err := http.NewRequest(http.MethodPost, "/endpoints", bytes.NewBufferString("not-json"))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if create.called {
+		t.Fatal("create handler must not be called with invalid body")
+	}
+}
+
+func TestEndpointHandler_Create_MissingActiveProject(t *testing.T) {
+	create := &mockCreateEndpointHandler{}
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/endpoints", testutil.WithUserWithoutProject(testUserID), h.Create)
+
+	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", validCreateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if create.called {
+		t.Fatal("create handler must not be called without active project")
+	}
+}
+
+func TestEndpointHandler_Create_InvalidURLQuery(t *testing.T) {
+	create := &mockCreateEndpointHandler{}
+	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+
+	body := validCreateEndpointBody()
+	body["url"] = "https://api.example.com/users?bad%"
+
+	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if create.called {
+		t.Fatal("create handler must not be called with invalid url query")
+	}
+}
+
+func TestEndpointHandler_GetByID_HandlerError_Internal(t *testing.T) {
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{nil},
+		errs:  []error{errors.New("database unavailable")},
+	}
+	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestEndpointHandler_Update_MissingActiveProject(t *testing.T) {
+	update := &mockUpdateEndpointHandler{}
+	getByID := &mockGetEndpointByIDHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithUserWithoutProject(testUserID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if update.called || getByID.calls > 0 {
+		t.Fatal("handlers must not be called without active project")
+	}
+}
+
+func TestEndpointHandler_Update_InvalidRequestBody(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := http.NewRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), bytes.NewBufferString("not-json"))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called with invalid body")
+	}
+}
+
+func TestEndpointHandler_Update_GetExisting_InternalError(t *testing.T) {
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{nil},
+		errs:  []error{errors.New("database unavailable")},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called when get existing fails")
+	}
+}
+
+func TestEndpointHandler_Update_HandlerError_WrongProject(t *testing.T) {
+	view := sampleEndpointView()
+	view.ProjectID = uuid.New()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusNotFound)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called for wrong project")
+	}
+}
+
+func TestEndpointHandler_Update_InvalidMethod(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	body := validUpdateEndpointBody()
+	body["method"] = "INVALID"
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called with invalid method")
+	}
+}
+
+func TestEndpointHandler_Update_InvalidStatus(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	body := validUpdateEndpointBody()
+	body["status"] = "deleted"
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called with deleted status")
+	}
+}
+
+func TestEndpointHandler_Update_InvalidURLQuery(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	body := validUpdateEndpointBody()
+	body["url"] = "https://api.example.com/users?bad%"
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called with invalid url query")
+	}
+}
+
+func TestEndpointHandler_Update_HandlerError_InvalidStatus(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{err: errors.New("invalid status")}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestEndpointHandler_Update_HandlerError_Internal(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{err: errors.New("database unavailable")}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestEndpointHandler_Update_ReloadFailure(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view, nil},
+		errs:  []error{nil, errors.New("database unavailable")},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if !update.called {
+		t.Fatal("expected update handler to be called")
+	}
+}
+
+func TestEndpointHandler_Delete_MissingActiveProject(t *testing.T) {
+	deleteH := &mockDeleteEndpointHandler{}
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Delete("/endpoints/:id", testutil.WithUserWithoutProject(testUserID), h.Delete)
+
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if deleteH.called {
+		t.Fatal("delete handler must not be called without active project")
+	}
+}
+
+func TestEndpointHandler_Update_GetExisting_NotFound(t *testing.T) {
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{nil},
+		errs:  []error{errors.New("endpoint not found")},
+	}
+	update := &mockUpdateEndpointHandler{}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusNotFound)
+	}
+	if update.called {
+		t.Fatal("update handler must not be called when endpoint does not exist")
+	}
+}
+
+func TestEndpointHandler_Update_HandlerError_UseDelete(t *testing.T) {
+	view := sampleEndpointView()
+	getByID := &mockGetEndpointByIDHandler{
+		views: []*domainendpoint.EndpointView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateEndpointHandler{err: errors.New("use delete to mark an endpoint as deleted")}
+	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestEndpointHandler_ListByProject_InvalidQuery(t *testing.T) {
+	list := &mockListEndpointsByProjectHandler{}
+	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
+
+	app := testutil.NewTestApp()
+	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
+
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints?page=not-a-number", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if list.called {
+		t.Fatal("list handler must not be called with invalid query")
+	}
+}
+
+func TestEndpointHandler_Delete_HandlerError_Internal(t *testing.T) {
+	deleteH := &mockDeleteEndpointHandler{err: errors.New("database unavailable")}
+	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
+
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}

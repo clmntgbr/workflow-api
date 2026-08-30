@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"strings"
 
 	endpointcmd "go-api/internal/application/command/endpoint"
@@ -70,10 +69,7 @@ func (h *EndpointHandler) Create(c fiber.Ctx) error {
 		return err
 	}
 
-	method, err := domainendpoint.ParseMethod(req.Method)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid method"})
-	}
+	method := domainendpoint.Method(strings.ToUpper(req.Method))
 
 	headers := req.Headers
 	if headers == nil {
@@ -131,22 +127,13 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 	if err != nil || fileHeader == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is required"})
 	}
-	if fileHeader.Size > maxOpenAPIImportFileSize {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is too large"})
-	}
 
-	file, err := fileHeader.Open()
+	spec, err := readOpenAPISpecFromMultipartFile(fileHeader, maxOpenAPIImportFileSize)
 	if err != nil {
+		if errors.Is(err, errOpenAPIFileTooLarge) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is too large"})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Failed to read OpenAPI file"})
-	}
-	defer file.Close()
-
-	spec, err := io.ReadAll(io.LimitReader(file, maxOpenAPIImportFileSize+1))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Failed to read OpenAPI file"})
-	}
-	if int64(len(spec)) > maxOpenAPIImportFileSize {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "OpenAPI file is too large"})
 	}
 
 	payload := strings.TrimSpace(c.FormValue("payload"))
@@ -164,10 +151,7 @@ func (h *EndpointHandler) ImportFromOpenAPI(c fiber.Ctx) error {
 		return err
 	}
 
-	status, err := domainendpoint.ParseStatus(req.Status)
-	if err != nil || status == domainendpoint.StatusDeleted {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid status"})
-	}
+	status := domainendpoint.Status(req.Status)
 
 	headers := req.Headers
 	if headers == nil {
@@ -251,15 +235,8 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 		return err
 	}
 
-	method, err := domainendpoint.ParseMethod(req.Method)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid method"})
-	}
-
-	status, err := domainendpoint.ParseStatus(req.Status)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid status"})
-	}
+	method := domainendpoint.Method(strings.ToUpper(req.Method))
+	status := domainendpoint.Status(req.Status)
 
 	headers := req.Headers
 	if headers == nil {
