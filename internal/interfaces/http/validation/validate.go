@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -8,6 +9,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
+
+var ErrValidationFailed = errors.New("validation failed")
 
 var validate *validator.Validate
 
@@ -83,12 +86,21 @@ func BindBody(c fiber.Ctx, dst any) error {
 
 func Struct(c fiber.Ctx, dst any) error {
 	if err := validate.Struct(dst); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Validation failed",
 			"errors":  formatErrors(err),
 		})
+		return ErrValidationFailed
 	}
 	return nil
+}
+
+// FiberErrorHandler suppresses ErrValidationFailed because the response is already written.
+func FiberErrorHandler(c fiber.Ctx, err error) error {
+	if errors.Is(err, ErrValidationFailed) {
+		return nil
+	}
+	return fiber.DefaultErrorHandler(c, err)
 }
 
 func formatErrors(err error) map[string]string {

@@ -4,6 +4,7 @@ import (
 	"go-api/cmd/api/di"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/persistence/schema"
+	"go-api/internal/interfaces/http/validation"
 	"log"
 	"time"
 
@@ -28,6 +29,7 @@ func main() {
 		StrictRouting: true,
 		UnescapePath:  true,
 		BodyLimit:     10 * 1024 * 1024,
+		ErrorHandler:  validation.FiberErrorHandler,
 	})
 
 	app.Use(helmet.New())

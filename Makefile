@@ -32,6 +32,19 @@ lint:
 	$(COMPOSE_DEV) exec api golangci-lint run --fix
 
 # ============================================
+# Tests (handler HTTP, via api container)
+# ============================================
+
+tests:
+	$(COMPOSE_DEV) exec api go test ./internal/interfaces/http/handler/... -v -count=1
+
+coverage:
+	$(COMPOSE_DEV) exec api go test -coverprofile=coverage.out ./internal/interfaces/http/handler/... -coverpkg=./internal/interfaces/http/handler/...
+
+coverage-html: coverage
+	$(COMPOSE_DEV) exec api go tool cover -html=coverage.out -o coverage.html
+
+# ============================================
 # CLI Commands (via Docker)
 # ============================================
 

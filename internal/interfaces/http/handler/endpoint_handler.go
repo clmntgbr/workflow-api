@@ -21,21 +21,21 @@ import (
 )
 
 type EndpointHandler struct {
-	createHandler    *endpointcmd.CreateEndpointHandler
-	importHandler    *endpointcmd.ImportEndpointsFromOpenAPIHandler
-	updateHandler    *endpointcmd.UpdateEndpointHandler
-	deleteHandler    *endpointcmd.DeleteEndpointHandler
-	getByIDHandler   *queryendpoint.GetEndpointByIDHandler
-	listByOrgHandler *queryendpoint.ListEndpointsByProjectHandler
+	createHandler    endpointCreateHandler
+	importHandler    endpointImportHandler
+	updateHandler    endpointUpdateHandler
+	deleteHandler    endpointDeleteHandler
+	getByIDHandler   endpointGetByIDHandler
+	listByOrgHandler endpointListByProjectHandler
 }
 
 func NewEndpointHandler(
-	createHandler *endpointcmd.CreateEndpointHandler,
-	importHandler *endpointcmd.ImportEndpointsFromOpenAPIHandler,
-	updateHandler *endpointcmd.UpdateEndpointHandler,
-	deleteHandler *endpointcmd.DeleteEndpointHandler,
-	getByIDHandler *queryendpoint.GetEndpointByIDHandler,
-	listByOrgHandler *queryendpoint.ListEndpointsByProjectHandler,
+	createHandler endpointCreateHandler,
+	importHandler endpointImportHandler,
+	updateHandler endpointUpdateHandler,
+	deleteHandler endpointDeleteHandler,
+	getByIDHandler endpointGetByIDHandler,
+	listByOrgHandler endpointListByProjectHandler,
 ) *EndpointHandler {
 	return &EndpointHandler{
 		createHandler:    createHandler,
