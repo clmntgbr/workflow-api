@@ -14,10 +14,11 @@ This service is the source of truth for that graph and its execution: persistenc
 - **Projects** — multi-tenant workspaces, members, active project on the user
 - **Workflows** — named graphs scoped to a project (soft delete, activate/deactivate, scheduling)
 - **Endpoints** — reusable HTTP templates (method, URL, headers, query, body, retries) + OpenAPI import
-- **Steps** — nodes on the canvas; two types:
+- **Steps** — nodes on the canvas; three types:
   - **`http`** — snapshot of an endpoint (default)
   - **`delay`** — pause between steps (`delayDurationSeconds`), no HTTP call
-- **Connections** — directed edges between steps (`sourceStepId` → `targetStepId`)
+  - **`condition`** — boolean expression (`expression`, e.g. `{{plan}} == "premium"`) evaluated at runtime; exactly two outgoing connections with `branch: "true"` / `"false"`
+- **Connections** — directed edges between steps (`sourceStepId` → `targetStepId`); optional `branch` on edges from condition steps
 - **Variables** — static values or JSON-path extracts from previous HTTP responses
 - **Assertions** — post-response validation rules per HTTP step (status, headers, body)
 - **Activity logs** — human-readable audit trail per workflow (builder actions + runs)
@@ -32,6 +33,7 @@ Resources are scoped to the caller’s **active project**. Shared workflow URLs 
 - **Orchestration** — worker advances the graph after each step run succeeds/fails/skips
 - **HTTP steps** — dedicated **executor** binary consumes `stepRun.queued`, calls the target API, runs assertions, records **insights** (timings)
 - **Delay steps** — always `waiting` + `resumeAt`; worker polls (`STEP_RUN_WAITING_POLL_INTERVAL`, default `1s`) and resumes when due — executor handles HTTP only
+- **Condition steps** — evaluated inline by the worker (no executor); taken branch is activated, the other branch subtree is skipped
 - **Cancellation** — `POST /workflows/:id/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
 - **Scheduling** — **scheduler** binary claims due workflows and starts runs
 
@@ -75,8 +77,15 @@ internal/
   domain/            Aggregates (user, project, workflow, endpoint, step, …)
   application/       command / query / event / realtime / registry
   infrastructure/    persistence, rabbitmq, clerk, centrifugo, stripe, config
-  interfaces/http/   handlers, DTOs, presenters, validation
+  interfaces/http/
+    handler/         HTTP handlers (production code)
+      test/          Handler tests (one subfolder per resource)
+        endpoint/    Endpoint handler tests (mocked command/query)
+        quota/       Quota error mapping tests
+    testutil/        Shared HTTP test helpers (Fiber app, JSON, multipart)
+    dto/             Request/response DTOs, presenters, validation
 migrations/          Schema source of truth
+.github/workflows/   CI (tests + Codecov upload)
 ```
 
 ## Domain events
@@ -136,9 +145,43 @@ Update a delay step (`PUT …/steps/:id`):
 
 Rules:
 
-- `http` — `endpointId` required; no `delayDurationSeconds`
-- `delay` — `delayDurationSeconds` required; no `endpointId`; no variables or assertions
+- `http` — `endpointId` required; no `delayDurationSeconds` or `expression`
+- `delay` — `delayDurationSeconds` required; no `endpointId` or `expression`; no variables or assertions
+- `condition` — `expression` required; no `endpointId` or `delayDurationSeconds`; no variables or assertions; two outgoing connections with `branch: "true"` and `branch: "false"`
 - orphan delay (no connections) — skipped at runtime
+
+## Condition steps (API)
+
+Create a condition step:
+
+```json
+POST /api/workflows/:workflowId/steps
+{
+  "type": "condition",
+  "name": "Premium plan?",
+  "expression": "{{plan}} == \"premium\"",
+  "position": { "x": 100, "y": 400 }
+}
+```
+
+Link branches (`POST /api/workflows/:workflowId/connections`):
+
+```json
+{ "sourceStepId": "<condition-step-id>", "targetStepId": "<true-branch-step-id>", "branch": "true" }
+{ "sourceStepId": "<condition-step-id>", "targetStepId": "<false-branch-step-id>", "branch": "false" }
+```
+
+Update (`PUT …/steps/:id` on a condition step):
+
+```json
+{
+  "name": "Premium plan?",
+  "description": "Optional",
+  "expression": "{{plan}} == \"premium\""
+}
+```
+
+Expressions use [expr-lang](https://github.com/expr-lang/expr) with workflow variables in scope (`{{varName}}` placeholders are resolved before evaluation).
 
 ## Configuration
 
@@ -185,12 +228,30 @@ make migrate
 | `make migrate` | Apply SQL + fail on model/DB drift |
 | `make migrate-check` | Schema drift check only |
 | `make lint` | golangci-lint --fix |
-| `make tests` | Handler HTTP tests (`handler/test/...`) |
+| `make tests` | Handler HTTP tests via Docker (`handler/test/...`) |
 | `make coverage` | Handler tests + `coverage.out` |
 | `make coverage-html` | Coverage report → `coverage.html` |
 | `make shell` | Shell into the API container |
 
-Coverage is uploaded to [Codecov](https://codecov.io/gh/clmntgbr/workflow-api) on every push/PR to `main` (flag: `handler`). Add `CODECOV_TOKEN` in the repository secrets for CI upload.
+## Testing
+
+Handler tests live under `internal/interfaces/http/handler/test/`, one subfolder per resource. They use mocked command/query handlers and shared helpers from `internal/interfaces/http/testutil/`.
+
+**Locally** (no Docker):
+
+```bash
+go test ./internal/interfaces/http/handler/test/... -count=1 -race
+go test ./internal/interfaces/http/handler/test/... -count=1 \
+  -coverprofile=coverage.out \
+  -coverpkg=./internal/interfaces/http/handler/...
+go tool cover -html=coverage.out -o coverage.html
+```
+
+**Via Docker** (same paths inside the `api` container): `make tests`, `make coverage`, `make coverage-html`.
+
+**CI** — [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on push/PR to `main` / `master`: tests with `-race`, coverage on `internal/interfaces/http/handler/...`, artifact upload, and [Codecov](https://codecov.io/gh/clmntgbr/workflow-api) (flag `handler`). Set the `CODECOV_TOKEN` repository secret for uploads.
+
+To add tests for another handler, create `handler/test/<resource>/` and follow the endpoint package as a template (`Test<Handler>_<Method>_<Scenario>` naming, five scenario types per endpoint where applicable).
 
 ## HTTP surface
 
@@ -204,8 +265,8 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/:id`, members, activate |
 | Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id`, activate/deactivate |
 | Endpoints | `GET/POST /api/endpoints`, import OpenAPI, `GET/PUT/DELETE /api/endpoints/:id` |
-| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http` and `delay`; `lastRunStatus` reflects the **active run** when one is in progress, otherwise the latest completed run per step |
-| Connections | nested under `/api/workflows/:workflowId/connections` |
+| Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http`, `delay`, and `condition`; `lastRunStatus` reflects the **active run** when one is in progress, otherwise the latest completed run per step |
+| Connections | nested under `/api/workflows/:workflowId/connections` (`branch` on edges from condition steps) |
 | Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
 | Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |
 | Activity | `GET /api/workflows/:workflowId/activity` |
@@ -224,11 +285,11 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 
 ```
 StartWorkflowRun → workflowRun.started.v1
-  → Orchestrator: root step runs (HTTP queued, delay waiting)
+  → Orchestrator: root step runs (HTTP queued, delay waiting, condition inline)
   → stepRun.queued.v1 (HTTP only)
   → Executor: HTTP call
   → stepRun.succeeded.v1 | failed.v1
-  → Orchestrator: enqueue next steps, finalize run
+  → Orchestrator: enqueue next steps (branch routing for conditions), finalize run
   → Centrifugo + activity log
 ```
 
