@@ -61,8 +61,52 @@ Delay step runs emit the same realtime events as HTTP steps (`stepRun.started`, 
 
 Architecture: **Clean Architecture + CQRS**. HTTP handlers call command/query handlers directly. Domain events go through a **transactional outbox**, then a **worker** publishes to RabbitMQ and dispatches handlers (dedup + Centrifugo + activity logs).
 
-Conventions: [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).  
-Product overview (French): [`docs/project-overview.md`](docs/project-overview.md).
+Conventions: [`.cursor/rules/architecture.mdc`](.cursor/rules/architecture.mdc).
+
+## Documentation
+
+Feature-level docs for the HTTP API and related behaviour.
+
+### Builder (canvas & graph)
+
+| Doc | Description |
+|-----|-------------|
+| [Projects](docs/projects.md) | Multi-tenant workspaces, members, active project |
+| [Workflows](docs/workflows.md) | Workflow graphs, scheduling, activate/deactivate |
+| [Endpoints](docs/endpoints.md) | Reusable HTTP templates, OpenAPI import |
+| [Steps](docs/steps.md) | HTTP, delay, and condition nodes |
+| [Connections](docs/connections.md) | Directed edges, condition branches |
+| [Variables](docs/variables.md) | Static values and JSON-path extracts |
+| [Assertions](docs/assertions.md) | Post-response validation on HTTP steps |
+| [Activity logs](docs/activity-logs.md) | Audit trail per workflow |
+
+### Execution
+
+| Doc | Description |
+|-----|-------------|
+| [Workflow runs](docs/workflow-runs.md) | Start/stop, list, detail, analytics |
+
+### Platform
+
+| Doc | Description |
+|-----|-------------|
+| [User & auth](docs/user.md) | Clerk JWT, current user, active project |
+| [Realtime](docs/realtime.md) | Centrifugo WebSocket connection |
+| [Billing](docs/billing.md) | Plans, subscription, quota, invoices, Stripe |
+| [Webhooks](docs/webhooks.md) | Clerk and Stripe inbound webhooks |
+
+### Engineering
+
+| Doc | Description |
+|-----|-------------|
+| [Handler tests](docs/handler-tests.md) | HTTP handler test layout, mocks, coverage, CI |
+
+### Quick reference
+
+- **Auth:** `Authorization: Bearer <Clerk JWT>` on `/api/*` (except `GET /api/plans`)
+- **Scope:** Most builder resources use the caller’s **active project** (`PUT /api/users/me/active-project`)
+- **Health:** `GET /livez`, `/readyz`, `/startupz`
+- **Legacy code:** `409` + `WRONG_ORGANIZATION` when a workflow belongs to another project the user can access — API code kept for client compatibility; domain terminology is **project**
 
 ## Layout
 

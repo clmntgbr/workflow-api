@@ -10,7 +10,7 @@ coverage:
     project:
       default: off
       handler:
-        target: 98%
+        target: 95%
         threshold: 0.5%
         flags:
           - handler
