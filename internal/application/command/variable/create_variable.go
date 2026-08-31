@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go-api/internal/application/messaging"
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
@@ -31,6 +32,7 @@ type CreateVariableHandler struct {
 	variableReadRepo domainvariable.VariableReadRepository
 	stepRepo         domainstep.StepWriteRepository
 	outbox           port.OutboxRepository
+	assert           *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateVariableHandler(
@@ -38,12 +40,14 @@ func NewCreateVariableHandler(
 	variableReadRepo domainvariable.VariableReadRepository,
 	stepRepo domainstep.StepWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateVariableHandler {
 	return &CreateVariableHandler{
 		variableRepo:     variableRepo,
 		variableReadRepo: variableReadRepo,
 		stepRepo:         stepRepo,
 		outbox:           outbox,
+		assert:           assert,
 	}
 }
 
@@ -62,6 +66,10 @@ func (h *CreateVariableHandler) Handle(ctx context.Context, cmd CreateVariableCo
 	}
 	if !kind.Valid() {
 		return nil, domainvariable.ErrInvalidKind
+	}
+
+	if err := h.assert.AssertVariableCreate(ctx, cmd.UserID, cmd.ProjectID, cmd.WorkflowID); err != nil {
+		return nil, err
 	}
 
 	var stepID *uuid.UUID

@@ -5,40 +5,50 @@ import (
 	"errors"
 
 	querysubscription "go-api/internal/application/query/subscription"
+	domainassertion "go-api/internal/domain/assertion"
 	domainproject "go-api/internal/domain/project"
 	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
+	domainvariable "go-api/internal/domain/variable"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrWorkflowQuotaExceeded    = errors.New("workflow quota exceeded for your current plan")
-	ErrEndpointQuotaExceeded    = errors.New("endpoint quota exceeded for your current plan")
-	ErrStepQuotaExceeded        = errors.New("step quota exceeded for your current plan")
-	ErrWorkflowRunQuotaExceeded = errors.New("workflow run quota exceeded for your current plan")
+	ErrWorkflowQuotaExceeded      = errors.New("workflow quota exceeded for your current plan")
+	ErrEndpointQuotaExceeded      = errors.New("endpoint quota exceeded for your current plan")
+	ErrStepQuotaExceeded          = errors.New("step quota exceeded for your current plan")
+	ErrVariableQuotaExceeded      = errors.New("variable quota exceeded for your current plan")
+	ErrAssertionQuotaExceeded     = errors.New("assertion quota exceeded for your current plan")
+	ErrWorkflowRunQuotaExceeded   = errors.New("workflow run quota exceeded for your current plan")
 	ErrConcurrentRunQuotaExceeded = errors.New("concurrent run quota exceeded for your current plan")
-	ErrProjectQuotaExceeded     = errors.New("project quota exceeded for your current plan")
+	ErrProjectQuotaExceeded       = errors.New("project quota exceeded for your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
-	getQuotaUsage *querysubscription.GetQuotaUsageHandler
-	stepReadRepo  domainstep.StepReadRepository
+	getQuotaUsage     *querysubscription.GetQuotaUsageHandler
+	stepReadRepo      domainstep.StepReadRepository
+	variableReadRepo  domainvariable.VariableReadRepository
+	assertionReadRepo domainassertion.AssertionReadRepository
 	projectReadRepo   domainproject.ProjectReadRepository
-	userReadRepo  domainuser.UserReadRepository
+	userReadRepo      domainuser.UserReadRepository
 }
 
 func NewAssertCreateAllowedHandler(
 	getQuotaUsage *querysubscription.GetQuotaUsageHandler,
 	stepReadRepo domainstep.StepReadRepository,
+	variableReadRepo domainvariable.VariableReadRepository,
+	assertionReadRepo domainassertion.AssertionReadRepository,
 	projectReadRepo domainproject.ProjectReadRepository,
 	userReadRepo domainuser.UserReadRepository,
 ) *AssertCreateAllowedHandler {
 	return &AssertCreateAllowedHandler{
-		getQuotaUsage: getQuotaUsage,
-		stepReadRepo:  stepReadRepo,
+		getQuotaUsage:     getQuotaUsage,
+		stepReadRepo:      stepReadRepo,
+		variableReadRepo:  variableReadRepo,
+		assertionReadRepo: assertionReadRepo,
 		projectReadRepo:   projectReadRepo,
-		userReadRepo:  userReadRepo,
+		userReadRepo:      userReadRepo,
 	}
 }
 
@@ -128,6 +138,54 @@ func (h *AssertCreateAllowedHandler) AssertStepCreate(
 	}
 	if int64(len(steps)) >= int64(usage.Limits.MaxStepsPerWorkflow) {
 		return ErrStepQuotaExceeded
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertVariableCreate(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+	workflowID uuid.UUID,
+) error {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+
+	variables, err := h.variableReadRepo.FindByWorkflowID(ctx, workflowID)
+	if err != nil {
+		return errors.New("failed to count workflow variables")
+	}
+	if int64(len(variables)) >= int64(usage.Limits.MaxVariablesPerWorkflow) {
+		return ErrVariableQuotaExceeded
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertAssertionCreate(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+	workflowID uuid.UUID,
+) error {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+
+	assertions, err := h.assertionReadRepo.FindByWorkflowID(ctx, workflowID)
+	if err != nil {
+		return errors.New("failed to count workflow assertions")
+	}
+	if int64(len(assertions)) >= int64(usage.Limits.MaxAssertionsPerWorkflow) {
+		return ErrAssertionQuotaExceeded
 	}
 	return nil
 }

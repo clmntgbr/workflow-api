@@ -19,6 +19,7 @@ type MonthlyQuotaCounter struct {
 type QuotaLimits struct {
 	MaxStepsPerWorkflow        int
 	MaxVariablesPerWorkflow    int
+	MaxAssertionsPerWorkflow   int
 	MinScheduleIntervalMinutes int
 	RunHistoryRetentionDays    int
 	MaxStepTimeoutSeconds      int

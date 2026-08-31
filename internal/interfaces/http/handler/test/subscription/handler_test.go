@@ -173,8 +173,10 @@ func sampleQuotaUsageView() *querysubscription.QuotaUsageView {
 		},
 		Projects: querysubscription.QuotaCounter{Used: 1, Max: 3, Left: 2},
 		Limits: querysubscription.QuotaLimits{
-			MaxStepsPerWorkflow: 50,
-			AllowsInsights:      true,
+			MaxStepsPerWorkflow:      50,
+			MaxVariablesPerWorkflow:  100,
+			MaxAssertionsPerWorkflow: 100,
+			AllowsInsights:             true,
 		},
 	}
 }
@@ -321,6 +323,12 @@ func TestSubscriptionHandler_GetQuota_Success(t *testing.T) {
 	testutil.DecodeJSON(t, resp, &out)
 	if out.WorkflowRuns.Used != 5 {
 		t.Fatalf("workflow runs used: got %d want 5", out.WorkflowRuns.Used)
+	}
+	if out.Limits.MaxVariablesPerWorkflow != 100 {
+		t.Fatalf("max variables: got %d want 100", out.Limits.MaxVariablesPerWorkflow)
+	}
+	if out.Limits.MaxAssertionsPerWorkflow != 100 {
+		t.Fatalf("max assertions: got %d want 100", out.Limits.MaxAssertionsPerWorkflow)
 	}
 }
 

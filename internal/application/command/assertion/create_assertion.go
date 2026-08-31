@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go-api/internal/application/messaging"
+	cmdquota "go-api/internal/application/command/quota"
 	domainassertion "go-api/internal/domain/assertion"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
@@ -29,17 +30,20 @@ type CreateAssertionHandler struct {
 	assertionRepo domainassertion.AssertionWriteRepository
 	stepRepo      domainstep.StepWriteRepository
 	outbox        port.OutboxRepository
+	assert        *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewCreateAssertionHandler(
 	assertionRepo domainassertion.AssertionWriteRepository,
 	stepRepo domainstep.StepWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *CreateAssertionHandler {
 	return &CreateAssertionHandler{
 		assertionRepo: assertionRepo,
 		stepRepo:      stepRepo,
 		outbox:        outbox,
+		assert:        assert,
 	}
 }
 
@@ -59,6 +63,10 @@ func (h *CreateAssertionHandler) Handle(
 	}
 	if step.Type != domainstep.TypeHTTP {
 		return nil, domainstep.ErrNonHTTPStepCannotHaveExtras
+	}
+
+	if err := h.assert.AssertAssertionCreate(ctx, cmd.UserID, cmd.ProjectID, cmd.WorkflowID); err != nil {
+		return nil, err
 	}
 
 	assertion, err := domainassertion.NewAssertion(domainassertion.NewAssertionParams{

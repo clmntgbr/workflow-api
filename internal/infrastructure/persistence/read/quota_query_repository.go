@@ -20,6 +20,7 @@ type quotaRow struct {
 	MaxStepsPerWorkflow        int
 	MaxEndpoints               int
 	MaxVariablesPerWorkflow    int
+	MaxAssertionsPerWorkflow   int
 	MaxWorkflowRunsPerMonth    int
 	MaxConcurrentRuns          int
 	MinScheduleIntervalMinutes int
@@ -85,6 +86,7 @@ func toQuotaView(row quotaRow) domainquota.QuotaView {
 		MaxStepsPerWorkflow:        row.MaxStepsPerWorkflow,
 		MaxEndpoints:               row.MaxEndpoints,
 		MaxVariablesPerWorkflow:    row.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: row.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    row.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          row.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: row.MinScheduleIntervalMinutes,

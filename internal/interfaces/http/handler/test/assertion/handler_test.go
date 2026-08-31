@@ -7,6 +7,7 @@ import (
 
 	domainassertion "go-api/internal/domain/assertion"
 	domainworkflow "go-api/internal/domain/workflow"
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/interfaces/http/presenter"
 	"go-api/internal/interfaces/http/testutil"
 )
@@ -221,6 +222,22 @@ func TestAssertionHandler_Create_HandlerBadRequest(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestAssertionHandler_Create_QuotaExceeded(t *testing.T) {
+	create := &mockCreateAssertionHandler{err: cmdquota.ErrAssertionQuotaExceeded}
+	h := newAssertionHandler(assertionMocks{create: create, getWorkflow: workflowMocksOK()})
+
+	app := testutil.NewTestApp()
+	app.Post(assertionsRoute(), activeProject(), h.Create)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, assertionsBasePath(), validNotNullAssertionBody()))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
 

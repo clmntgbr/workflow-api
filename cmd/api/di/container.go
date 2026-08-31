@@ -173,7 +173,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getStepByIDHandler := querystep.NewGetStepByIDHandler(stepReadRepo)
 	listStepsByWorkflowHandler := querystep.NewListStepsByWorkflowHandler(stepReadRepo)
 
-	createVariableHandler := variablecmd.NewCreateVariableHandler(variableWriteRepo, variableReadRepo, stepWriteRepo, outboxRepo)
 	updateVariableHandler := variablecmd.NewUpdateVariableHandler(variableWriteRepo, outboxRepo)
 	deleteVariableHandler := variablecmd.NewDeleteVariableHandler(variableWriteRepo, stepReadRepo, outboxRepo)
 	getVariableByIDHandler := queryvariable.NewGetVariableByIDHandler(variableReadRepo)
@@ -181,7 +180,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	listAvailableVariablesHandler := queryvariable.NewListAvailableVariablesHandler(variableReadRepo, connReadRepo)
 	searchVariablePathsHandler := queryvariable.NewSearchVariablePathsHandler(stepRunReadRepo)
 
-	createAssertionHandler := assertioncmd.NewCreateAssertionHandler(assertionWriteRepo, stepWriteRepo, outboxRepo)
 	updateAssertionHandler := assertioncmd.NewUpdateAssertionHandler(assertionWriteRepo, outboxRepo)
 	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo, outboxRepo)
 	getAssertionByIDHandler := queryassertion.NewGetAssertionByIDHandler(assertionReadRepo)
@@ -219,8 +217,24 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
 		getQuotaUsageHandler,
 		stepReadRepo,
+		variableReadRepo,
+		assertionReadRepo,
 		projectReadRepo,
 		userReadRepo,
+	)
+
+	createVariableHandler := variablecmd.NewCreateVariableHandler(
+		variableWriteRepo,
+		variableReadRepo,
+		stepWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
+	createAssertionHandler := assertioncmd.NewCreateAssertionHandler(
+		assertionWriteRepo,
+		stepWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
 	)
 
 	createOrgHandler := projectcmd.NewCreateProjectHandler(

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	variablecmd "go-api/internal/application/command/variable"
+	cmdquota "go-api/internal/application/command/quota"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -254,6 +255,22 @@ func TestVariableHandler_Create_HandlerBadRequest(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestVariableHandler_Create_QuotaExceeded(t *testing.T) {
+	create := &mockCreateVariableHandler{err: cmdquota.ErrVariableQuotaExceeded}
+	h := newVariableHandler(variableMocks{create: create, getWorkflow: workflowMocksOK()})
+
+	app := testutil.NewTestApp()
+	app.Post(variablesRoute(), activeProject(), h.Create)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, variablesBasePath(), validCreateVariableBody()))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
 

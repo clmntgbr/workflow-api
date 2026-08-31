@@ -29,6 +29,7 @@ type QuotaView struct {
 	MaxStepsPerWorkflow     int
 	MaxEndpoints            int
 	MaxVariablesPerWorkflow int
+	MaxAssertionsPerWorkflow int
 
 	MaxWorkflowRunsPerMonth    int
 	MaxConcurrentRuns          int

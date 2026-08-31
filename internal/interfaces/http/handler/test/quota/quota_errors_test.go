@@ -45,6 +45,16 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "variable quota exceeded",
+			err:        cmdquota.ErrVariableQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "assertion quota exceeded",
+			err:        cmdquota.ErrAssertionQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "workflow run quota exceeded",
 			err:        cmdquota.ErrWorkflowRunQuotaExceeded,
 			wantStatus: http.StatusForbidden,

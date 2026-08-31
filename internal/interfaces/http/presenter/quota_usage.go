@@ -23,6 +23,7 @@ type QuotaCounterResponse struct {
 type QuotaLimitsResponse struct {
 	MaxStepsPerWorkflow        int  `json:"maxStepsPerWorkflow"`
 	MaxVariablesPerWorkflow    int  `json:"maxVariablesPerWorkflow"`
+	MaxAssertionsPerWorkflow   int  `json:"maxAssertionsPerWorkflow"`
 	MinScheduleIntervalMinutes int  `json:"minScheduleIntervalMinutes"`
 	RunHistoryRetentionDays    int  `json:"runHistoryRetentionDays"`
 	MaxStepTimeoutSeconds      int  `json:"maxStepTimeoutSeconds"`
@@ -82,6 +83,7 @@ func NewQuotaUsageResponse(usage *querysubscription.QuotaUsageView) QuotaUsageRe
 		Limits: QuotaLimitsResponse{
 			MaxStepsPerWorkflow:        usage.Limits.MaxStepsPerWorkflow,
 			MaxVariablesPerWorkflow:    usage.Limits.MaxVariablesPerWorkflow,
+			MaxAssertionsPerWorkflow:   usage.Limits.MaxAssertionsPerWorkflow,
 			MinScheduleIntervalMinutes: usage.Limits.MinScheduleIntervalMinutes,
 			RunHistoryRetentionDays:    usage.Limits.RunHistoryRetentionDays,
 			MaxStepTimeoutSeconds:      usage.Limits.MaxStepTimeoutSeconds,

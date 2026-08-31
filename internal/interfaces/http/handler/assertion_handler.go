@@ -120,6 +120,9 @@ func (h *AssertionHandler) Create(c fiber.Ctx) error {
 		ExpectedValue: expectedValueFromRequest(req.ExpectedValue),
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
 		}

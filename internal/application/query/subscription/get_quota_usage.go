@@ -19,7 +19,7 @@ import (
 var ErrActiveProjectRequired = errors.New("active project is required")
 
 type GetQuotaUsageQuery struct {
-	UserID         uuid.UUID
+	UserID    uuid.UUID
 	ProjectID uuid.UUID
 }
 
@@ -43,7 +43,7 @@ func NewGetQuotaUsageHandler(
 	return &GetQuotaUsageHandler{
 		userRepo:         userRepo,
 		subscriptionRepo: subscriptionRepo,
-		projectRepo: projectRepo,
+		projectRepo:      projectRepo,
 		workflowRepo:     workflowRepo,
 		endpointRepo:     endpointRepo,
 		workflowRunRepo:  workflowRunRepo,
@@ -166,6 +166,7 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 		Limits: QuotaLimits{
 			MaxStepsPerWorkflow:        quota.MaxStepsPerWorkflow,
 			MaxVariablesPerWorkflow:    quota.MaxVariablesPerWorkflow,
+			MaxAssertionsPerWorkflow:   quota.MaxAssertionsPerWorkflow,
 			MinScheduleIntervalMinutes: quota.MinScheduleIntervalMinutes,
 			RunHistoryRetentionDays:    quota.RunHistoryRetentionDays,
 			MaxStepTimeoutSeconds:      quota.MaxStepTimeoutSeconds,

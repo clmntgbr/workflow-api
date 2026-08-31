@@ -16,6 +16,7 @@ type Quota struct {
 	MaxStepsPerWorkflow     int
 	MaxEndpoints            int
 	MaxVariablesPerWorkflow int
+	MaxAssertionsPerWorkflow int
 
 	MaxWorkflowRunsPerMonth    int
 	MaxConcurrentRuns          int
@@ -45,6 +46,7 @@ type NewQuotaParams struct {
 	MaxStepsPerWorkflow        int
 	MaxEndpoints               int
 	MaxVariablesPerWorkflow    int
+	MaxAssertionsPerWorkflow   int
 	MaxWorkflowRunsPerMonth    int
 	MaxConcurrentRuns          int
 	MinScheduleIntervalMinutes int
@@ -70,6 +72,7 @@ func NewQuota(p NewQuotaParams) *Quota {
 		MaxStepsPerWorkflow:        p.MaxStepsPerWorkflow,
 		MaxEndpoints:               p.MaxEndpoints,
 		MaxVariablesPerWorkflow:    p.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: p.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    p.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          p.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: p.MinScheduleIntervalMinutes,
@@ -95,6 +98,7 @@ func (q *Quota) ApplyUpdate(p NewQuotaParams) {
 	q.MaxStepsPerWorkflow = p.MaxStepsPerWorkflow
 	q.MaxEndpoints = p.MaxEndpoints
 	q.MaxVariablesPerWorkflow = p.MaxVariablesPerWorkflow
+	q.MaxAssertionsPerWorkflow = p.MaxAssertionsPerWorkflow
 	q.MaxWorkflowRunsPerMonth = p.MaxWorkflowRunsPerMonth
 	q.MaxConcurrentRuns = p.MaxConcurrentRuns
 	q.MinScheduleIntervalMinutes = p.MinScheduleIntervalMinutes

@@ -18,6 +18,7 @@ type QuotaModel struct {
 	MaxStepsPerWorkflow     int `gorm:"column:max_steps_per_workflow"`
 	MaxEndpoints            int `gorm:"column:max_endpoints"`
 	MaxVariablesPerWorkflow int `gorm:"column:max_variables_per_workflow"`
+	MaxAssertionsPerWorkflow int `gorm:"column:max_assertions_per_workflow"`
 
 	MaxWorkflowRunsPerMonth    int `gorm:"column:max_workflow_runs_per_month"`
 	MaxConcurrentRuns          int `gorm:"column:max_concurrent_runs"`
@@ -51,6 +52,7 @@ func quotaModelFromDomain(q *domainquota.Quota) *QuotaModel {
 		MaxStepsPerWorkflow:        q.MaxStepsPerWorkflow,
 		MaxEndpoints:               q.MaxEndpoints,
 		MaxVariablesPerWorkflow:    q.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: q.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    q.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          q.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: q.MinScheduleIntervalMinutes,
@@ -78,6 +80,7 @@ func quotaDomainFromModel(m *QuotaModel) *domainquota.Quota {
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,
 		MaxVariablesPerWorkflow:    m.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: m.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    m.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          m.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: m.MinScheduleIntervalMinutes,
@@ -105,6 +108,7 @@ func quotaViewFromModel(m *QuotaModel) domainquota.QuotaView {
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,
 		MaxVariablesPerWorkflow:    m.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: m.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    m.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          m.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: m.MinScheduleIntervalMinutes,

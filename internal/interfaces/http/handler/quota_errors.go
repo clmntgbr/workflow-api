@@ -26,6 +26,8 @@ func respondQuotaError(c fiber.Ctx, err error) (bool, error) {
 	case errors.Is(err, cmdquota.ErrWorkflowQuotaExceeded),
 		errors.Is(err, cmdquota.ErrEndpointQuotaExceeded),
 		errors.Is(err, cmdquota.ErrStepQuotaExceeded),
+		errors.Is(err, cmdquota.ErrVariableQuotaExceeded),
+		errors.Is(err, cmdquota.ErrAssertionQuotaExceeded),
 		errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded),
 		errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded),
 		errors.Is(err, cmdquota.ErrProjectQuotaExceeded):

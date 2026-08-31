@@ -17,6 +17,7 @@ type QuotaResponse struct {
 	MaxStepsPerWorkflow     int `json:"maxStepsPerWorkflow"`
 	MaxEndpoints            int `json:"maxEndpoints"`
 	MaxVariablesPerWorkflow int `json:"maxVariablesPerWorkflow"`
+	MaxAssertionsPerWorkflow int `json:"maxAssertionsPerWorkflow"`
 
 	MaxWorkflowRunsPerMonth    int `json:"maxWorkflowRunsPerMonth"`
 	MaxConcurrentRuns          int `json:"maxConcurrentRuns"`
@@ -64,6 +65,7 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 		MaxStepsPerWorkflow:        view.MaxStepsPerWorkflow,
 		MaxEndpoints:               view.MaxEndpoints,
 		MaxVariablesPerWorkflow:    view.MaxVariablesPerWorkflow,
+		MaxAssertionsPerWorkflow: view.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    view.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          view.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: view.MinScheduleIntervalMinutes,

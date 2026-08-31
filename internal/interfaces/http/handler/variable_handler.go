@@ -122,6 +122,9 @@ func (h *VariableHandler) Create(c fiber.Ctx) error {
 		Value:          req.Value,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		switch {
 		case errors.Is(err, domainvariable.ErrDuplicateKey):
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "Variable key already exists"})
