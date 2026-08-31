@@ -156,7 +156,7 @@ Keep orchestration (enqueue next step, finalize, cleanup, realtime publish) on t
 - Handlers call application command/query handlers **directly** — no generic bus.
 - One file per resource: `<resource>_handler.go`.
 - Inject dependencies through **port interfaces** defined in `<resource>_ports.go` (unexported `…Handler` interfaces per command/query port). Concrete application handlers satisfy these interfaces; DI in `cmd/api/di` stays unchanged.
-- Keep production handlers free of test-only logic. Rare cross-package test hooks live in `test_exports.go` at the handler package root (suffix `ForTest`, used only when ports + HTTP are insufficient — example: multipart import read overrides).
+- Keep production handlers free of test-only logic. Rare cross-package test hooks live in `<resource>_test_exports.go` at the handler package root (suffix `ForTest`, one file per resource when needed — example: `endpoint_test_exports.go`, `billing_webhook_test_exports.go`). Keep these files small; never add business logic.
 - Wire `validation.FiberErrorHandler` in the API app and in tests (`testutil.NewTestApp()`).
 - Map domain/application errors to consistent HTTP status codes at the handler boundary (quota helpers, not-found string checks, etc.).
 - **When adding a new handler or a new HTTP method on an existing handler**, add or extend handler HTTP tests in the **same change** (see [HTTP handler tests](#http-handler-tests)). Do not merge handler-only code without the matching test package updates.
@@ -196,7 +196,7 @@ internal/interfaces/http/testutil/
 ### Naming
 
 - Test functions: `Test<Resource>Handler_<Method>_<Scenario>`
-- Examples: `TestEndpointHandler_Create_Success`, `TestWorkflowHandler_GetByID_HandlerError_WrongOrganization`
+- Examples: `TestEndpointHandler_Create_Success`, `TestWorkflowHandler_GetByID_HandlerError_WrongProject`
 
 ### Scenarios (per HTTP method, when applicable)
 
@@ -205,7 +205,7 @@ Cover at least:
 1. **Success** — happy path, assert status, response shape, and that the mock command/query was called with expected fields.
 2. **Unauthorized** or **MissingActiveProject** — depending on whether the handler requires `httpctx.GetUser()` and/or `GetActiveProjectID()`.
 3. **Invalid input** — malformed JSON, invalid UUID path params, DTO validation failures (`400` + field errors where applicable).
-4. **Handler error (business)** — not found, wrong project, quota exceeded, domain validation errors, special codes (example: `409` + `WRONG_ORGANIZATION`).
+4. **Handler error (business)** — not found, wrong project, quota exceeded, domain validation errors, special codes (example: `409` + `WRONG_ORGANIZATION` — legacy API code kept for client compatibility; test names use `WrongProject`).
 5. **Handler error (internal)** — unexpected errors from mocked handlers → `500`.
 
 Add focused tests for branches that are hard to reach via DTO validation only (reload failures, multipart edge cases, webhook `Locals` payloads).
@@ -226,6 +226,8 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 ### Coverage
 
 - Target **100% statement coverage** on each `*_handler.go` file when adding or changing handlers.
+- Before replicating the test pattern on a new resource, run `go tool cover -func=coverage.out` on the reference handler and fix uncovered branches — a large test count does not guarantee full coverage.
+- **CI floor:** handler statement coverage must stay ≥ **98%** (enforced in `.github/workflows/tests.yml`; Codecov flag `handler` uses the same target in `codecov.yml`).
 - Run: `go test ./internal/interfaces/http/handler/test/... -race -coverpkg=./internal/interfaces/http/handler/...`
 - Local shortcuts: `make tests`, `make coverage`, `make coverage-html` (via Docker `api` container).
 

@@ -432,7 +432,7 @@ func TestWorkflowHandler_GetByID_Success(t *testing.T) {
 	}
 }
 
-func TestWorkflowHandler_GetByID_WrongOrganization(t *testing.T) {
+func TestWorkflowHandler_GetByID_WrongProject(t *testing.T) {
 	view := sampleWorkflowView()
 	view.ProjectID = otherProjectID
 	getByID := &mockGetWorkflowByIDHandler{

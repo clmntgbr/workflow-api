@@ -70,6 +70,16 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Enforce handler coverage floor
+        run: |
+          TOTAL=$(go tool cover -func=coverage.txt | tail -1 | awk '{print $3}' | tr -d '%')
+          MIN_COVERAGE=98.0
+          echo "Handler statement coverage: ${TOTAL}% (minimum: ${MIN_COVERAGE}%)"
+          awk -v total="$TOTAL" -v min="$MIN_COVERAGE" 'BEGIN { exit (total + 0 >= min + 0) ? 0 : 1 }' || {
+            echo "::error::Handler coverage ${TOTAL}% is below minimum ${MIN_COVERAGE}%"
+            exit 1
+          }
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v7
         with:
@@ -85,4 +95,4 @@ jobs:
           flags: handler
           name: handler
           slug: clmntgbr/workflow-api
-          fail_ci_if_error: false
+          fail_ci_if_error: true
