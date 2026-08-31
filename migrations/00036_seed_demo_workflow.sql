@@ -122,7 +122,7 @@ INSERT INTO steps (
     NULL,
     '01950000-0000-7000-8000-000000000001',
     'delay', 3, NULL,
-    'Wait 3 seconds',
+    'Delay',
     'Short delay before condition evaluation',
     '', '',
     '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
