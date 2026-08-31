@@ -35,6 +35,36 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "workflow quota exceeded",
+			err:        cmdquota.ErrWorkflowQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "step quota exceeded",
+			err:        cmdquota.ErrStepQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "workflow run quota exceeded",
+			err:        cmdquota.ErrWorkflowRunQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "concurrent run quota exceeded",
+			err:        cmdquota.ErrConcurrentRunQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "project quota exceeded",
+			err:        cmdquota.ErrProjectQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "nil error",
+			err:        nil,
+			wantStatus: 0,
+		},
+		{
 			name:       "unmapped error",
 			err:        errors.New("something else"),
 			wantStatus: 0,

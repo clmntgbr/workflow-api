@@ -340,3 +340,127 @@ func TestUserWebhookHandler_Execute_InvalidPayload_BadRequest(t *testing.T) {
 		t.Fatalf("message: got %v", body["message"])
 	}
 }
+
+func TestUserWebhookHandler_Execute_UserCreated_AlreadyExists(t *testing.T) {
+	getByExternalID := &mockGetUserByExternalIDHandler{
+		users: []*domainuser.User{sampleDomainUser()},
+		errs:  []error{nil},
+	}
+	createUser := &mockCreateUserHandler{}
+	h := newUserWebhookHandler(userWebhookMocks{
+		getByExternalID: getByExternalID,
+		createUser:      createUser,
+	})
+
+	resp := executeWebhook(t, h, clerkEvent("user.created", sampleUserCreatedData()))
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusCreated)
+	}
+	if createUser.called {
+		t.Fatal("create user handler must not be called when user already exists")
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserCreated_GetUserError(t *testing.T) {
+	getByExternalID := &mockGetUserByExternalIDHandler{
+		errs: []error{errors.New("database unavailable")},
+	}
+	createUser := &mockCreateUserHandler{}
+	h := newUserWebhookHandler(userWebhookMocks{
+		getByExternalID: getByExternalID,
+		createUser:      createUser,
+	})
+
+	resp := executeWebhook(t, h, clerkEvent("user.created", sampleUserCreatedData()))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserUpdated_GetUserError(t *testing.T) {
+	getByExternalID := &mockGetUserByExternalIDHandler{
+		errs: []error{errors.New("database unavailable")},
+	}
+	h := newUserWebhookHandler(userWebhookMocks{getByExternalID: getByExternalID})
+
+	resp := executeWebhook(t, h, clerkEvent("user.updated", sampleUserUpdatedData()))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserUpdated_InvalidPayload(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	event := dto.ClerkEvent{
+		Type:       "user.updated",
+		InstanceID: "ins_123",
+		Object:     "event",
+		Timestamp:  1704067200,
+		Data:       json.RawMessage(`{invalid-json`),
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserDeleted_InvalidPayload(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	event := dto.ClerkEvent{
+		Type:       "user.deleted",
+		InstanceID: "ins_123",
+		Object:     "event",
+		Timestamp:  1704067200,
+		Data:       json.RawMessage(`{invalid-json`),
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UnknownEventType(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	resp := executeWebhook(t, h, clerkEvent("organization.created", map[string]string{"id": "org_123"}))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserCreated_ValidationError(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	data := sampleUserCreatedData()
+	delete(data, "banned")
+
+	resp := executeWebhook(t, h, clerkEvent("user.created", data))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserUpdated_ValidationError(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	data := sampleUserUpdatedData()
+	delete(data, "id")
+
+	resp := executeWebhook(t, h, clerkEvent("user.updated", data))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestUserWebhookHandler_Execute_UserDeleted_ValidationError(t *testing.T) {
+	h := newUserWebhookHandler(userWebhookMocks{})
+
+	resp := executeWebhook(t, h, clerkEvent("user.deleted", map[string]string{}))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}

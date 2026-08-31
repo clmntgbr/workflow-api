@@ -2,8 +2,12 @@ package handler
 
 import (
 	"mime/multipart"
+	"time"
+
+	cmdsubscription "go-api/internal/application/command/subscription"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/stripe/stripe-go/v82"
 )
 
 // OpenAPIFormFileForTest mirrors openAPIFormFile for endpoint import read tests.
@@ -42,4 +46,29 @@ func SetReadOpenAPISpecFromMultipartFileForTest(
 // RespondQuotaErrorForTest exposes respondQuotaError for isolated mapper tests.
 func RespondQuotaErrorForTest(c fiber.Ctx, err error) (bool, error) {
 	return respondQuotaError(c, err)
+}
+
+// UpsertInvoiceCommandFromStripeForTest exposes upsertInvoiceCommandFromStripe.
+func UpsertInvoiceCommandFromStripeForTest(invoice *stripe.Invoice) cmdsubscription.UpsertInvoiceCommand {
+	return upsertInvoiceCommandFromStripe(invoice)
+}
+
+// InvoiceDescriptionForTest exposes invoiceDescription.
+func InvoiceDescriptionForTest(invoice *stripe.Invoice) string {
+	return invoiceDescription(invoice)
+}
+
+// SubscriptionIDFromInvoiceForTest exposes subscriptionIDFromInvoice.
+func SubscriptionIDFromInvoiceForTest(invoice *stripe.Invoice) string {
+	return subscriptionIDFromInvoice(invoice)
+}
+
+// CustomerIDFromInvoiceForTest exposes customerIDFromInvoice.
+func CustomerIDFromInvoiceForTest(invoice *stripe.Invoice) string {
+	return customerIDFromInvoice(invoice)
+}
+
+// UnixToTimeForTest exposes unixToTime.
+func UnixToTimeForTest(ts int64) time.Time {
+	return unixToTime(ts)
 }

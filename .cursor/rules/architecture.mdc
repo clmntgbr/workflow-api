@@ -39,7 +39,13 @@ internal/
     persistence/write|read|outbox|processed
     messaging/rabbitmq/   publisher, consumer, topology (retry/DLQ)
     config|<vendor adapters>/...
-  interfaces/http/        handlers, middleware, dto, presenter, validation
+  interfaces/http/
+    handler/              HTTP handlers + *_ports.go (test seams)
+      test/<resource>/    handler HTTP tests (one package per resource)
+    testutil/             shared Fiber/HTTP test helpers + fixtures
+    dto/                  request/response DTOs
+    presenter/            API response shapes
+    validation/           struct tags + Fiber error handler
 cmd/
   api/                    HTTP server
   worker/                 outbox relay + main RabbitMQ consumer
@@ -145,6 +151,77 @@ Keep orchestration (enqueue next step, finalize, cleanup, realtime publish) on t
 - Keep external contracts as defined (do not rename third-party payload fields).
 - DI folders: `cmd/<binary>/di` (manual composition).
 
+## HTTP handlers (interfaces/http)
+
+- Handlers call application command/query handlers **directly** — no generic bus.
+- One file per resource: `<resource>_handler.go`.
+- Inject dependencies through **port interfaces** defined in `<resource>_ports.go` (unexported `…Handler` interfaces per command/query port). Concrete application handlers satisfy these interfaces; DI in `cmd/api/di` stays unchanged.
+- Keep production handlers free of test-only logic. Rare cross-package test hooks live in `test_exports.go` at the handler package root (suffix `ForTest`, used only when ports + HTTP are insufficient — example: multipart import read overrides).
+- Wire `validation.FiberErrorHandler` in the API app and in tests (`testutil.NewTestApp()`).
+- Map domain/application errors to consistent HTTP status codes at the handler boundary (quota helpers, not-found string checks, etc.).
+
+## HTTP handler tests
+
+All handler HTTP tests live under `internal/interfaces/http/handler/test/`, **not** beside production handler files.
+
+### Layout
+
+```
+internal/interfaces/http/handler/
+  <resource>_handler.go
+  <resource>_ports.go          # required for mockable handlers
+  test/
+    <resource>/                # package name: <resource>test (e.g. endpointtest)
+      handler_test.go          # and/or split by method/concern
+      helpers_test.go          # mocks, mountRoutes, valid*Body()
+    quota/                     # cross-cutting handler helpers (e.g. quota mapper)
+internal/interfaces/http/testutil/
+  http.go                      # NewTestApp, JSONRequest, middleware helpers
+  fixtures.go                  # stable TestUserID, TestProjectID, …
+```
+
+### Naming
+
+- Test functions: `Test<Resource>Handler_<Method>_<Scenario>`
+- Examples: `TestEndpointHandler_Create_Success`, `TestWorkflowHandler_GetByID_HandlerError_WrongOrganization`
+
+### Scenarios (per HTTP method, when applicable)
+
+Cover at least:
+
+1. **Success** — happy path, assert status, response shape, and that the mock command/query was called with expected fields.
+2. **Unauthorized** or **MissingActiveProject** — depending on whether the handler requires `httpctx.GetUser()` and/or `GetActiveProjectID()`.
+3. **Invalid input** — malformed JSON, invalid UUID path params, DTO validation failures (`400` + field errors where applicable).
+4. **Handler error (business)** — not found, wrong project, quota exceeded, domain validation errors, special codes (example: `409` + `WRONG_ORGANIZATION`).
+5. **Handler error (internal)** — unexpected errors from mocked handlers → `500`.
+
+Add focused tests for branches that are hard to reach via DTO validation only (reload failures, multipart edge cases, webhook `Locals` payloads).
+
+### Test style
+
+- **Unit tests at the HTTP boundary**: Fiber `app.Test(req)` with mocked command/query handlers — no real DB, RabbitMQ, or Docker in handler tests.
+- Use `testutil.WithActiveProject`, `WithUserWithoutProject`, `WithLocal` (webhook payloads in `c.Locals`), `JSONRequest`, `MultipartImportRequest`, `DecodeJSON`.
+- Reuse stable UUIDs from `testutil` fixtures; do not duplicate IDs per package.
+- Split large handlers into multiple `_test.go` files by concern (example: `step/create_http_test.go`, `step/create_condition_test.go`).
+- Mocks implement port interfaces in `helpers_test.go` or at the top of the test package.
+
+### Webhook handlers
+
+- Middleware (or test middleware) sets verified payload on `c.Locals("payload", …)` before the handler runs.
+- Test each supported event type, unknown type, handler failure, and invalid payload.
+
+### Coverage
+
+- Target **100% statement coverage** on each `*_handler.go` file when adding or changing handlers.
+- Run: `go test ./internal/interfaces/http/handler/test/... -race -coverpkg=./internal/interfaces/http/handler/...`
+- Local shortcuts: `make tests`, `make coverage`, `make coverage-html` (via Docker `api` container).
+
+### CI
+
+- Workflow: `.github/workflows/tests.yml` on push/PR to `main` / `master`.
+- Tests with `-race`, coverage artifact, upload to Codecov (`codecov/codecov-action@v7`, flag `handler`).
+- Requires `CODECOV_TOKEN` repository secret for uploads.
+
 ## Do not
 
 - Import adapters from the application layer
@@ -155,3 +232,8 @@ Keep orchestration (enqueue next step, finalize, cleanup, realtime publish) on t
 - Split queues by event type prematurely
 - Skip payload validation at any input boundary
 - Expand scope beyond the request (no drive-by refactors)
+- Put handler tests next to production handler files — use `handler/test/<resource>/` only
+- Inject concrete `*application/...Handler` types into HTTP handlers — use `*_ports.go` interfaces
+- Skip handler HTTP tests when adding or changing an HTTP endpoint
+- Call the database, message broker, or external APIs in handler unit tests
+- Return `nil` from validation helpers after writing a `400` response — return `validation.ErrValidationFailed` and rely on `FiberErrorHandler`

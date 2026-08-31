@@ -361,6 +361,272 @@ func TestBillingWebhookHandler_Execute_HandlerError_SubscriptionNotLinked(t *tes
 	}
 }
 
+func TestBillingWebhookHandler_Execute_CheckoutCompleted_InvalidUserID(t *testing.T) {
+	checkout := &mockCheckoutCompletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{checkoutCompleted: checkout})
+
+	event := stripeEvent("checkout.session.completed", map[string]any{
+		"client_reference_id": "not-a-uuid",
+		"customer":            map[string]string{"id": "cus_123"},
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if checkout.called {
+		t.Fatal("checkout handler must not be called with invalid user id")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_CheckoutCompleted_WithoutCustomerOrSubscription(t *testing.T) {
+	checkout := &mockCheckoutCompletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{checkoutCompleted: checkout})
+
+	event := stripeEvent("checkout.session.completed", map[string]any{
+		"client_reference_id": testutil.TestUserID.String(),
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !checkout.called {
+		t.Fatal("expected checkout completed handler to be called")
+	}
+	if checkout.cmd.StripeCustomerID != "" || checkout.cmd.StripeSubscriptionID != "" {
+		t.Fatalf("expected empty customer/subscription ids, got customer=%q subscription=%q",
+			checkout.cmd.StripeCustomerID, checkout.cmd.StripeSubscriptionID)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_CheckoutCompleted_CustomerOnly(t *testing.T) {
+	checkout := &mockCheckoutCompletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{checkoutCompleted: checkout})
+
+	event := stripeEvent("checkout.session.completed", map[string]any{
+		"client_reference_id": testutil.TestUserID.String(),
+		"customer":            map[string]string{"id": "cus_123"},
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if checkout.cmd.StripeCustomerID != "cus_123" {
+		t.Fatalf("customer id: got %q", checkout.cmd.StripeCustomerID)
+	}
+	if checkout.cmd.StripeSubscriptionID != "" {
+		t.Fatalf("subscription id: got %q want empty", checkout.cmd.StripeSubscriptionID)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_CheckoutCompleted_SubscriptionOnly(t *testing.T) {
+	checkout := &mockCheckoutCompletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{checkoutCompleted: checkout})
+
+	event := stripeEvent("checkout.session.completed", map[string]any{
+		"client_reference_id": testutil.TestUserID.String(),
+		"subscription":        map[string]string{"id": "sub_123"},
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if checkout.cmd.StripeSubscriptionID != "sub_123" {
+		t.Fatalf("subscription id: got %q", checkout.cmd.StripeSubscriptionID)
+	}
+	if checkout.cmd.StripeCustomerID != "" {
+		t.Fatalf("customer id: got %q want empty", checkout.cmd.StripeCustomerID)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_SubscriptionUpdated_HandlerError(t *testing.T) {
+	updated := &mockSubscriptionUpdatedHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{subscriptionUpdated: updated})
+
+	event := stripeEvent("customer.subscription.updated", map[string]any{
+		"id":       "sub_123",
+		"customer": map[string]string{"id": "cus_123"},
+		"status":   "active",
+		"items": map[string]any{
+			"data": []map[string]any{
+				{
+					"price":                map[string]string{"id": "price_123"},
+					"current_period_start": 1704067200,
+					"current_period_end":   1706745600,
+				},
+			},
+		},
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_SubscriptionDeleted_UnmarshalError(t *testing.T) {
+	deleted := &mockSubscriptionDeletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{subscriptionDeleted: deleted})
+
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("customer.subscription.deleted"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if deleted.called {
+		t.Fatal("deleted handler must not be called on unmarshal error")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_SubscriptionDeleted_HandlerError(t *testing.T) {
+	deleted := &mockSubscriptionDeletedHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{subscriptionDeleted: deleted})
+
+	event := stripeEvent("customer.subscription.deleted", map[string]any{"id": "sub_123"})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentSucceeded_UnmarshalError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{upsertInvoice: upsert})
+
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("invoice.payment_succeeded"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if upsert.called {
+		t.Fatal("upsert handler must not be called on unmarshal error")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentSucceeded_UpsertError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{upsertInvoice: upsert})
+
+	event := stripeEvent("invoice.payment_succeeded", sampleInvoicePayload())
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentSucceeded_HandlerError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{}
+	succeeded := &mockInvoicePaymentSucceededHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{
+		upsertInvoice:           upsert,
+		invoicePaymentSucceeded: succeeded,
+	})
+
+	event := stripeEvent("invoice.payment_succeeded", sampleInvoicePayload())
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentFailed_UpsertError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{upsertInvoice: upsert})
+
+	event := stripeEvent("invoice.payment_failed", sampleInvoicePayload())
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentFailed_HandlerError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{}
+	failed := &mockInvoicePaymentFailedHandler{err: errors.New("database unavailable")}
+	h := newBillingWebhookHandler(billingWebhookMocks{
+		upsertInvoice:        upsert,
+		invoicePaymentFailed: failed,
+	})
+
+	event := stripeEvent("invoice.payment_failed", sampleInvoicePayload())
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_SubscriptionUpdated_UnmarshalError(t *testing.T) {
+	updated := &mockSubscriptionUpdatedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{subscriptionUpdated: updated})
+
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("customer.subscription.updated"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_CheckoutCompleted_StringCustomerAndSubscription(t *testing.T) {
+	checkout := &mockCheckoutCompletedHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{checkoutCompleted: checkout})
+
+	event := stripeEvent("checkout.session.completed", map[string]any{
+		"client_reference_id": testutil.TestUserID.String(),
+		"customer":            "cus_string",
+		"subscription":        "sub_string",
+	})
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !checkout.called {
+		t.Fatal("expected checkout completed handler to be called")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoicePaymentFailed_UnmarshalError(t *testing.T) {
+	upsert := &mockUpsertInvoiceHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{upsertInvoice: upsert})
+
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("invoice.payment_failed"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if upsert.called {
+		t.Fatal("upsert handler must not be called on unmarshal error")
+	}
+}
+
 func sampleInvoicePayload() map[string]any {
 	return map[string]any{
 		"id":       "in_123",
