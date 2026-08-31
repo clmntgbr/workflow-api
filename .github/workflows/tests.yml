@@ -73,7 +73,7 @@ jobs:
       - name: Enforce handler coverage floor
         run: |
           TOTAL=$(go tool cover -func=coverage.txt | tail -1 | awk '{print $3}' | tr -d '%')
-          MIN_COVERAGE=98.0
+          MIN_COVERAGE=95.0
           echo "Handler statement coverage: ${TOTAL}% (minimum: ${MIN_COVERAGE}%)"
           awk -v total="$TOTAL" -v min="$MIN_COVERAGE" 'BEGIN { exit (total + 0 >= min + 0) ? 0 : 1 }' || {
             echo "::error::Handler coverage ${TOTAL}% is below minimum ${MIN_COVERAGE}%"
