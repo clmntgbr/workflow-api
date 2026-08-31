@@ -42,6 +42,11 @@ func (w *Workflow) validateScheduleInterval() error {
 	return nil
 }
 
+// ScheduleIntervalMinutes returns the recurring schedule interval length in minutes.
+func ScheduleIntervalMinutes(value int, unit ScheduleUnit) int {
+	return toMinutes(value, unit)
+}
+
 func (w *Workflow) RecalculateNextRunAt(now time.Time) {
 	now = truncateToMinute(now)
 	switch w.ScheduleType {

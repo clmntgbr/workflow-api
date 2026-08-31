@@ -258,6 +258,9 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 		if err.Error() == "invalid status" || err.Error() == "use delete to mark a workflow as deleted" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
 		}
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if status, message := scheduleError(err); status != 0 {
 			return c.Status(status).JSON(fiber.Map{"message": message})
 		}

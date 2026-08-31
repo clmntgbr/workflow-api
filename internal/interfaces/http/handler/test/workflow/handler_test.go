@@ -393,6 +393,22 @@ func TestWorkflowHandler_Create_QuotaExceeded(t *testing.T) {
 	}
 }
 
+func TestWorkflowHandler_Create_ScheduleIntervalQuotaExceeded(t *testing.T) {
+	create := &mockCreateWorkflowHandler{err: cmdquota.ErrScheduleIntervalQuotaExceeded}
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows", activeProject(), h.Create)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows", validCreateWorkflowBody()))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
+	}
+}
+
 func TestWorkflowHandler_Create_ScheduleError(t *testing.T) {
 	create := &mockCreateWorkflowHandler{err: domainworkflow.ErrInvalidSchedule}
 	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
@@ -954,6 +970,27 @@ func TestWorkflowHandler_Update_ScheduleError(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestWorkflowHandler_Update_ScheduleIntervalQuotaExceeded(t *testing.T) {
+	view := sampleWorkflowView()
+	getByID := &mockGetWorkflowByIDHandler{
+		views: []*domainworkflow.WorkflowView{view},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateWorkflowHandler{err: cmdquota.ErrScheduleIntervalQuotaExceeded}
+	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/workflows/:id", activeProject(), h.Update)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
 

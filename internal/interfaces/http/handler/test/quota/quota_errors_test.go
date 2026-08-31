@@ -70,6 +70,11 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "schedule interval quota exceeded",
+			err:        cmdquota.ErrScheduleIntervalQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "nil error",
 			err:        nil,
 			wantStatus: 0,

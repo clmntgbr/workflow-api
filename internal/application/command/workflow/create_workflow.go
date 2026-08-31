@@ -61,6 +61,16 @@ func (h *CreateWorkflowHandler) Handle(
 	if err := h.assert.AssertWorkflowCreate(ctx, cmd.UserID, cmd.ProjectID); err != nil {
 		return nil, err
 	}
+	if err := h.assert.AssertScheduleInterval(
+		ctx,
+		cmd.UserID,
+		cmd.ProjectID,
+		cmd.ScheduleType,
+		cmd.ScheduleIntervalValue,
+		cmd.ScheduleIntervalUnit,
+	); err != nil {
+		return nil, err
+	}
 
 	w, err := domainworkflow.NewWorkflow(domainworkflow.NewWorkflowParams{
 		Name:                  cmd.Name,

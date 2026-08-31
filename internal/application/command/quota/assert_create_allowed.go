@@ -10,6 +10,7 @@ import (
 	domainstep "go-api/internal/domain/step"
 	domainuser "go-api/internal/domain/user"
 	domainvariable "go-api/internal/domain/variable"
+	domainworkflow "go-api/internal/domain/workflow"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +24,7 @@ var (
 	ErrWorkflowRunQuotaExceeded   = errors.New("workflow run quota exceeded for your current plan")
 	ErrConcurrentRunQuotaExceeded = errors.New("concurrent run quota exceeded for your current plan")
 	ErrProjectQuotaExceeded       = errors.New("project quota exceeded for your current plan")
+	ErrScheduleIntervalQuotaExceeded = errors.New("schedule interval is below the minimum allowed for your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
@@ -186,6 +188,38 @@ func (h *AssertCreateAllowedHandler) AssertAssertionCreate(
 	}
 	if int64(len(assertions)) >= int64(usage.Limits.MaxAssertionsPerWorkflow) {
 		return ErrAssertionQuotaExceeded
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertScheduleInterval(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+	scheduleType domainworkflow.ScheduleType,
+	intervalValue int,
+	intervalUnit domainworkflow.ScheduleUnit,
+) error {
+	if scheduleType != domainworkflow.ScheduleTypeRecurring {
+		return nil
+	}
+
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+
+	minMinutes := usage.Limits.MinScheduleIntervalMinutes
+	if minMinutes <= 0 {
+		return nil
+	}
+
+	intervalMinutes := domainworkflow.ScheduleIntervalMinutes(intervalValue, intervalUnit)
+	if intervalMinutes < minMinutes {
+		return ErrScheduleIntervalQuotaExceeded
 	}
 	return nil
 }

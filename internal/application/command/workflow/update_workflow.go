@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-api/internal/application/messaging"
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -33,13 +34,15 @@ type UpdateWorkflowCommand struct {
 type UpdateWorkflowHandler struct {
 	repo   domainworkflow.WorkflowWriteRepository
 	outbox port.OutboxRepository
+	assert *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewUpdateWorkflowHandler(
 	repo domainworkflow.WorkflowWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *UpdateWorkflowHandler {
-	return &UpdateWorkflowHandler{repo: repo, outbox: outbox}
+	return &UpdateWorkflowHandler{repo: repo, outbox: outbox, assert: assert}
 }
 
 func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCommand) error {
@@ -60,6 +63,17 @@ func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCo
 		}
 		if w == nil || w.Status == domainworkflow.StatusDeleted {
 			return errors.New("workflow not found")
+		}
+
+		if err := h.assert.AssertScheduleInterval(
+			txCtx,
+			cmd.UserID,
+			w.ProjectID,
+			cmd.ScheduleType,
+			cmd.ScheduleIntervalValue,
+			cmd.ScheduleIntervalUnit,
+		); err != nil {
+			return err
 		}
 
 		if err := w.ApplyUpdate(domainworkflow.UpdateWorkflowParams{
