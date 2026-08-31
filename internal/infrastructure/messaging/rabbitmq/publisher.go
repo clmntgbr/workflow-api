@@ -26,18 +26,22 @@ func (p *Publisher) Publish(ctx context.Context, envelope port.EventEnvelope) er
 	}
 
 	routingKey := envelope.Type
+	publishing := amqp.Publishing{
+		ContentType:  "application/json",
+		DeliveryMode: amqp.Persistent,
+		Type:         envelope.Type,
+		Body:         body,
+	}
+	if envelope.Priority > 0 {
+		publishing.Priority = envelope.Priority
+	}
 	err = p.channel.PublishWithContext(
 		ctx,
 		p.exchange,
 		routingKey,
 		false,
 		false,
-		amqp.Publishing{
-			ContentType:  "application/json",
-			DeliveryMode: amqp.Persistent,
-			Type:         envelope.Type,
-			Body:         body,
-		},
+		publishing,
 	)
 	if err != nil {
 		return fmt.Errorf("publish %s: %w", envelope.Type, err)

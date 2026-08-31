@@ -747,6 +747,51 @@ func TestWorkflowHandler_Update_Success(t *testing.T) {
 	}
 }
 
+func TestWorkflowHandler_Update_ManualScheduleAllowsZeroInterval(t *testing.T) {
+	view := sampleWorkflowView()
+	getByID := &mockGetWorkflowByIDHandler{
+		views: []*domainworkflow.WorkflowView{view, view},
+		errs:  []error{nil, nil},
+	}
+	update := &mockUpdateWorkflowHandler{}
+	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Put("/workflows/:id", activeProject(), h.Update)
+
+	body := map[string]any{
+		"name":                  "Login workflow",
+		"description":           "",
+		"status":                "active",
+		"scheduleType":          "none",
+		"scheduleIntervalValue": 0,
+		"scheduleIntervalUnit":  "",
+		"scheduleAt":            nil,
+		"scheduleTimezone":      "UTC",
+		"notificationsEnabled":  true,
+		"notifyOnSuccess":       false,
+		"notifyOnFailure":       true,
+		"notifyOnCancel":        false,
+	}
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), body))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d body=%v", resp.StatusCode, http.StatusOK, testutil.DecodeJSONMap(t, resp))
+	}
+	if !update.called {
+		t.Fatal("expected update handler to be called")
+	}
+	if update.cmd.ScheduleType != domainworkflow.ScheduleTypeNone {
+		t.Fatalf("schedule type: got %s", update.cmd.ScheduleType)
+	}
+	if update.cmd.ScheduleIntervalValue != 0 {
+		t.Fatalf("schedule interval value: got %d", update.cmd.ScheduleIntervalValue)
+	}
+}
+
 func TestWorkflowHandler_Update_Unauthorized(t *testing.T) {
 	update := &mockUpdateWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}

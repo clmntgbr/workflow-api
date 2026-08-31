@@ -26,7 +26,7 @@ type Container struct {
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
-	topology := rabbitmq.DefaultTopology(
+	topology := rabbitmq.ExecutorTopology(
 		env.RabbitMQExecutorExchange,
 		env.RabbitMQExecutorQueue,
 		env.RabbitMQExecutorRoutingKey,

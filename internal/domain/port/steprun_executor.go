@@ -12,6 +12,7 @@ type StepRunExecuteJob struct {
 	StepRunID     uuid.UUID
 	StepID        uuid.UUID
 	WorkflowRunID uuid.UUID
+	Priority      uint8
 }
 
 type StepRunExecutor interface {

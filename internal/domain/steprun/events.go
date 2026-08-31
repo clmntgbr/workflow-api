@@ -19,6 +19,7 @@ type StepRunQueued struct {
 	StepRunID     string    `json:"stepRunId"`
 	WorkflowRunID string    `json:"workflowRunId"`
 	StepID        string    `json:"stepId"`
+	ProjectID     string    `json:"projectId"`
 	Timestamp     time.Time `json:"timestamp"`
 }
 

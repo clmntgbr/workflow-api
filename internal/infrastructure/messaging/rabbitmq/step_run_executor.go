@@ -40,5 +40,6 @@ func (e *stepRunExecutor) Enqueue(ctx context.Context, job port.StepRunExecuteJo
 		AggregateID: job.StepRunID.String(),
 		OccurredAt:  time.Now().UTC().Format(time.RFC3339Nano),
 		Payload:     payload,
+		Priority:    job.Priority,
 	})
 }

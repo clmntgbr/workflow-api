@@ -11,6 +11,7 @@ type EventEnvelope struct {
 	AggregateID string          `json:"aggregateId"`
 	OccurredAt  string          `json:"occurredAt"`
 	Payload     json.RawMessage `json:"payload"`
+	Priority    uint8           `json:"-"`
 }
 
 type EventPublisher interface {

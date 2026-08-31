@@ -137,6 +137,7 @@ func (s *StepRun) Queue() {
 		StepRunID:     s.ID.String(),
 		WorkflowRunID: s.WorkflowRunID.String(),
 		StepID:        s.StepID.String(),
+		ProjectID:     s.ProjectID.String(),
 		Timestamp:     time.Now().UTC(),
 	})
 }

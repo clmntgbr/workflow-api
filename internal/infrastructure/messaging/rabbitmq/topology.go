@@ -6,6 +6,8 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+const MaxExecutorQueuePriority = 10
+
 type Topology struct {
 	Exchange       string
 	Queue          string
@@ -14,6 +16,7 @@ type Topology struct {
 	DLQ            string
 	DLX            string
 	RetryTTLMillis int32
+	MaxPriority    int
 }
 
 func DefaultTopology(exchange, queue, routingKey string, retryTTLMillis int) Topology {
@@ -31,6 +34,12 @@ func DefaultTopology(exchange, queue, routingKey string, retryTTLMillis int) Top
 	}
 }
 
+func ExecutorTopology(exchange, queue, routingKey string, retryTTLMillis int) Topology {
+	topology := DefaultTopology(exchange, queue, routingKey, retryTTLMillis)
+	topology.MaxPriority = MaxExecutorQueuePriority
+	return topology
+}
+
 func (t Topology) declare(ch *amqp.Channel) error {
 	if err := ch.ExchangeDeclare(t.Exchange, "topic", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("declare exchange %s: %w", t.Exchange, err)
@@ -42,6 +51,9 @@ func (t Topology) declare(ch *amqp.Channel) error {
 	mainArgs := amqp.Table{
 		"x-dead-letter-exchange":    t.DLX,
 		"x-dead-letter-routing-key": "retry",
+	}
+	if t.MaxPriority > 0 {
+		mainArgs["x-max-priority"] = int32(t.MaxPriority)
 	}
 	if _, err := ch.QueueDeclare(t.Queue, true, false, false, false, mainArgs); err != nil {
 		return fmt.Errorf("declare queue %s (delete existing queue if args changed): %w", t.Queue, err)

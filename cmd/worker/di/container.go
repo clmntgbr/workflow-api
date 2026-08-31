@@ -4,7 +4,9 @@ import (
 	"log"
 	"time"
 
+	cmdquota "go-api/internal/application/command/quota"
 	stepruncmd "go-api/internal/application/command/steprun"
+	querysubscription "go-api/internal/application/query/subscription"
 	eventassertion "go-api/internal/application/event/assertion"
 	eventactivitylog "go-api/internal/application/event/activitylog"
 	eventconnection "go-api/internal/application/event/connection"
@@ -61,7 +63,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		env.RabbitMQRetryTTLMS,
 	)
 
-	executorTopology := rabbitmq.DefaultTopology(
+	executorTopology := rabbitmq.ExecutorTopology(
 		env.RabbitMQExecutorExchange,
 		env.RabbitMQExecutorQueue,
 		env.RabbitMQExecutorRoutingKey,
@@ -92,6 +94,26 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
 	assertionReadRepo := read.NewAssertionReadRepository(db)
+	endpointReadRepo := read.NewEndpointReadRepository(db)
+	quotaReadRepo := read.NewQuotaReadRepository(db)
+	planReadRepo := read.NewPlanReadRepository(db, quotaReadRepo)
+	subscriptionReadRepo := read.NewSubscriptionReadRepository(db, planReadRepo)
+	getQuotaUsageHandler := querysubscription.NewGetQuotaUsageHandler(
+		userReadRepo,
+		subscriptionReadRepo,
+		projectReadRepo,
+		workflowReadRepo,
+		endpointReadRepo,
+		workflowRunReadRepo,
+	)
+	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
+		getQuotaUsageHandler,
+		stepReadRepo,
+		variableReadRepo,
+		assertionReadRepo,
+		projectReadRepo,
+		userReadRepo,
+	)
 	orchestrator := eventworkflowrun.NewOrchestrator(
 		workflowRunWriteRepo,
 		stepRunWriteRepo,
@@ -101,7 +123,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		assertionReadRepo,
 		outboxRepo,
 	)
-	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor)
+	enqueueStepRun := eventworkflowrun.NewEnqueueStepRunHandler(stepRunExecutor, assertCreateAllowedHandler)
 	publishUserRealtime := eventuser.NewPublishRealtimeHandler(realtimePublisher)
 	publishProjectRealtime := eventproject.NewPublishRealtimeHandler(realtimePublisher)
 	publishWorkflowRealtime := eventworkflow.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)

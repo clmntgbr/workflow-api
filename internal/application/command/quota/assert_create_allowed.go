@@ -298,6 +298,25 @@ func (h *AssertCreateAllowedHandler) InsightsAllowedForProject(
 	return h.InsightsAllowed(ctx, userID, projectID)
 }
 
+func (h *AssertCreateAllowedHandler) ExecutorPriorityForProject(
+	ctx context.Context,
+	projectID uuid.UUID,
+) (uint8, error) {
+	userID, err := h.resolveBillingUserID(ctx, projectID, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return NormalizeExecutorPriority(usage.Limits.ExecutorPriority), nil
+}
+
 func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(
 	ctx context.Context,
 	projectID uuid.UUID,
