@@ -21,6 +21,7 @@ type UserWriteRepository interface {
 type UserReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*UserView, error)
 	FindByClerkID(ctx context.Context, clerkID string) (*UserView, error)
+	FindBySubscriptionID(ctx context.Context, subscriptionID uuid.UUID) (*UserView, error)
 }
 
 type UserView struct {

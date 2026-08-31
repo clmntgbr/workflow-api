@@ -48,6 +48,24 @@ func (r *userReadRepository) FindByID(ctx context.Context, id uuid.UUID) (*domai
 	return toUserView(row), nil
 }
 
+func (r *userReadRepository) FindBySubscriptionID(
+	ctx context.Context,
+	subscriptionID uuid.UUID,
+) (*domainuser.UserView, error) {
+	var row userRow
+	err := r.db.WithContext(ctx).
+		Select("id", "clerk_id", "first_name", "last_name", "email", "banned", "active_project_id", "subscription_id", "created_at", "updated_at").
+		Where("subscription_id = ?", subscriptionID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toUserView(row), nil
+}
+
 func (r *userReadRepository) FindByClerkID(ctx context.Context, clerkID string) (*domainuser.UserView, error) {
 	var row userRow
 	err := r.db.WithContext(ctx).

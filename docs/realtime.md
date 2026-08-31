@@ -29,6 +29,8 @@ Requires authentication.
 | `assertion.*` | Assertion CRUD |
 | `workflowRun.*` | Run lifecycle |
 | `stepRun.*` | Step execution (HTTP and delay) |
+| `subscription.updated` | Subscription plan/status change (billing) |
+| `invoice.created` | New invoice (billing) |
 
 ## Code map
 

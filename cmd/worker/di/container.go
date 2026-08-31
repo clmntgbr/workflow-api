@@ -112,6 +112,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishAssertionRealtime := eventassertion.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
+	publishSubscriptionRealtime := eventsubscription.NewPublishRealtimeHandler(realtimePublisher, userReadRepo)
+	publishInvoiceRealtime := eventinvoice.NewPublishRealtimeHandler(realtimePublisher)
 	activityLogWriteRepo := write.NewActivityLogWriteRepository(db)
 	recordActivityLog := eventactivitylog.NewRecordHandler(activityLogWriteRepo, workflowReadRepo, workflowRunReadRepo, stepReadRepo, userReadRepo)
 	reg := registry.NewHandlerRegistry()
@@ -384,11 +386,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"subscription_updated",
 		eventsubscription.NewSubscriptionUpdatedHandler().Handle,
 	))
+	reg.Register(domainsubscription.EventTypeSubscriptionUpdated, dedup.With(
+		dedupRepo,
+		"publish_subscription_updated_realtime",
+		publishSubscriptionRealtime.OnUpdated,
+	))
 
 	reg.Register(domaininvoice.EventTypeInvoiceCreated, dedup.With(
 		dedupRepo,
 		"invoice_created",
 		eventinvoice.NewInvoiceCreatedHandler().Handle,
+	))
+	reg.Register(domaininvoice.EventTypeInvoiceCreated, dedup.With(
+		dedupRepo,
+		"publish_invoice_created_realtime",
+		publishInvoiceRealtime.OnCreated,
 	))
 	reg.Register(domaininvoice.EventTypeInvoiceUpdated, dedup.With(
 		dedupRepo,

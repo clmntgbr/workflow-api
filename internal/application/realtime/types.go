@@ -24,6 +24,8 @@ const (
 	EntityAssertion    = "assertion"
 	EntityWorkflowRun  = "workflowRun"
 	EntityStepRun      = "stepRun"
+	EntitySubscription = "subscription"
+	EntityInvoice      = "invoice"
 )
 
 func EventType(entity, action string) string {
