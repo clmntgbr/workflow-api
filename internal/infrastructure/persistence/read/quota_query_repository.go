@@ -12,29 +12,29 @@ import (
 )
 
 type quotaRow struct {
-	ID                         uuid.UUID
-	Name                       string
-	MaxProjectMembers     int
-	MaxProjects                int
-	MaxWorkflows               int
-	MaxStepsPerWorkflow        int
-	MaxEndpoints               int
-	MaxVariablesPerWorkflow    int
-	MaxAssertionsPerWorkflow   int
-	MaxWorkflowRunsPerMonth    int
-	MaxConcurrentRuns          int
-	MinScheduleIntervalMinutes int
-	RunHistoryRetentionDays    int
-	MaxStepTimeoutSeconds      int
-	MaxRetryCountPerStep       int
-	MaxRequestBodySizeKB       int
-	MaxResponseBodySizeKB      int
-	AllowsOpenAPIImport        bool
-	AllowsInsights             bool
-	AllowsDataExport           bool
-	ExecutorPriority           int
-	CreatedAt                  time.Time
-	UpdatedAt                  time.Time
+	ID                         uuid.UUID `gorm:"column:id"`
+	Name                       string    `gorm:"column:name"`
+	MaxProjectMembers          int       `gorm:"column:max_project_members"`
+	MaxProjects                int       `gorm:"column:max_projects"`
+	MaxWorkflows               int       `gorm:"column:max_workflows"`
+	MaxStepsPerWorkflow        int       `gorm:"column:max_steps_per_workflow"`
+	MaxEndpoints               int       `gorm:"column:max_endpoints"`
+	MaxVariablesPerWorkflow    int       `gorm:"column:max_variables_per_workflow"`
+	MaxAssertionsPerWorkflow   int       `gorm:"column:max_assertions_per_workflow"`
+	MaxWorkflowRunsPerMonth    int       `gorm:"column:max_workflow_runs_per_month"`
+	MaxConcurrentRuns          int       `gorm:"column:max_concurrent_runs"`
+	MinScheduleIntervalMinutes int       `gorm:"column:min_schedule_interval_minutes"`
+	RunHistoryRetentionDays    int       `gorm:"column:run_history_retention_days"`
+	MaxStepTimeoutSeconds      int       `gorm:"column:max_step_timeout_seconds"`
+	MaxRetryCountPerStep       int       `gorm:"column:max_retry_count_per_step"`
+	MaxRequestBodySizeKB       int       `gorm:"column:max_request_body_size_kb"`
+	MaxResponseBodySizeKB      int       `gorm:"column:max_response_body_size_kb"`
+	AllowsOpenAPIImport        bool      `gorm:"column:allows_openapi_import"`
+	AllowsInsights             bool      `gorm:"column:allows_insights"`
+	AllowsDataExport           bool      `gorm:"column:allows_data_export"`
+	ExecutorPriority           int       `gorm:"column:executor_priority"`
+	CreatedAt                  time.Time `gorm:"column:created_at"`
+	UpdatedAt                  time.Time `gorm:"column:updated_at"`
 }
 
 func (quotaRow) TableName() string { return "quotas" }
