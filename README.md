@@ -235,7 +235,9 @@ make migrate
 
 ## Testing
 
-Handler tests live under `internal/interfaces/http/handler/test/`, one subfolder per resource. Each HTTP handler depends on **port interfaces** (`*_ports.go`) so command/query handlers can be mocked. Shared helpers and stable UUIDs live in `internal/interfaces/http/testutil/` (`fixtures.go`, `http.go`).
+Handler HTTP tests live under `internal/interfaces/http/handler/test/` (one subfolder per resource), with shared helpers in `internal/interfaces/http/testutil/`.
+
+**Full guide:** [docs/handler-tests.md](docs/handler-tests.md) — layout, file naming, mocks/ports, scenarios, webhooks, coverage, and how to add a new handler.
 
 | Test package | Handler covered |
 |---|---|
@@ -256,8 +258,6 @@ Handler tests live under `internal/interfaces/http/handler/test/`, one subfolder
 | `test/billing_webhook/` | Stripe webhooks |
 | `test/user_webhook/` | Clerk webhooks |
 | `test/quota/` | Quota error mapping |
-
-Naming: `Test<Resource>Handler_<Method>_<Scenario>`. Typical scenarios: success, unauthorized / missing active project, invalid input, business error, internal error.
 
 **Locally** (no Docker):
 

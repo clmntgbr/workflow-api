@@ -159,10 +159,23 @@ Keep orchestration (enqueue next step, finalize, cleanup, realtime publish) on t
 - Keep production handlers free of test-only logic. Rare cross-package test hooks live in `test_exports.go` at the handler package root (suffix `ForTest`, used only when ports + HTTP are insufficient — example: multipart import read overrides).
 - Wire `validation.FiberErrorHandler` in the API app and in tests (`testutil.NewTestApp()`).
 - Map domain/application errors to consistent HTTP status codes at the handler boundary (quota helpers, not-found string checks, etc.).
+- **When adding a new handler or a new HTTP method on an existing handler**, add or extend handler HTTP tests in the **same change** (see [HTTP handler tests](#http-handler-tests)). Do not merge handler-only code without the matching test package updates.
 
 ## HTTP handler tests
 
 All handler HTTP tests live under `internal/interfaces/http/handler/test/`, **not** beside production handler files.
+
+**Full guide:** [`docs/handler-tests.md`](../../docs/handler-tests.md) — directory layout, file naming, mocks, scenarios, webhooks, coverage, CI.
+
+### When tests are required
+
+| Change | Required test work |
+|--------|-------------------|
+| **New `*_handler.go`** | Create `test/<resource>/` (or new files in it): `helpers_test.go` if needed, mocks for new ports in `*_ports.go`, scenarios for every public HTTP method. |
+| **New method on existing handler** | Add `Test<Resource>Handler_<Method>_<Scenario>` cases for that method (success + applicable error paths from [Scenarios](#scenarios-per-http-method-when-applicable)). |
+| **Changed handler behavior** | Update or add tests so the affected method stays fully covered. |
+
+Tests are part of the definition of done for any handler change — not a follow-up task.
 
 ### Layout
 
@@ -234,6 +247,6 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 - Expand scope beyond the request (no drive-by refactors)
 - Put handler tests next to production handler files — use `handler/test/<resource>/` only
 - Inject concrete `*application/...Handler` types into HTTP handlers — use `*_ports.go` interfaces
-- Skip handler HTTP tests when adding or changing an HTTP endpoint
+- Skip handler HTTP tests when adding or changing an HTTP endpoint — **including a new handler file or a new method on an existing handler**
 - Call the database, message broker, or external APIs in handler unit tests
 - Return `nil` from validation helpers after writing a `400` response — return `validation.ErrValidationFailed` and rely on `FiberErrorHandler`
