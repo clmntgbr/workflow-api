@@ -1,5 +1,8 @@
 # Workflow API
 
+[![Tests](https://github.com/clmntgbr/workflow-api/actions/workflows/tests.yml/badge.svg)](https://github.com/clmntgbr/workflow-api/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/clmntgbr/workflow-api/graph/badge.svg)](https://codecov.io/gh/clmntgbr/workflow-api)
+
 Backend for a visual HTTP workflow builder. Teams define reusable **endpoints**, compose them into **workflows** as a graph of **steps** and **connections**, inject **variables**, validate responses with **assertions**, and run workflows manually or on a schedule — with realtime collaboration across **projects**.
 
 This service is the source of truth for that graph and its execution: persistence, auth, ordering (`executionOrder` / `treeIndex`), orchestration, quotas, billing, and event fan-out.
@@ -182,7 +185,12 @@ make migrate
 | `make migrate` | Apply SQL + fail on model/DB drift |
 | `make migrate-check` | Schema drift check only |
 | `make lint` | golangci-lint --fix |
+| `make tests` | Handler HTTP tests (`handler/test/...`) |
+| `make coverage` | Handler tests + `coverage.out` |
+| `make coverage-html` | Coverage report → `coverage.html` |
 | `make shell` | Shell into the API container |
+
+Coverage is uploaded to [Codecov](https://codecov.io/gh/clmntgbr/workflow-api) on every push/PR to `main` (flag: `handler`). Add `CODECOV_TOKEN` in the repository secrets for CI upload.
 
 ## HTTP surface
 

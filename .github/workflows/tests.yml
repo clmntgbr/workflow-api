@@ -76,3 +76,13 @@ jobs:
           name: handler-coverage
           path: coverage.txt
           if-no-files-found: error
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.txt
+          flags: handler
+          name: handler
+          slug: clmntgbr/workflow-api
+          fail_ci_if_error: false
