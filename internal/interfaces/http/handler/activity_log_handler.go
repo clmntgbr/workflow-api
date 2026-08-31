@@ -27,6 +27,11 @@ func NewActivityLogHandler(
 }
 
 func (h *ActivityLogHandler) ListByWorkflow(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	projectID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -57,6 +62,8 @@ func (h *ActivityLogHandler) ListByWorkflow(c fiber.Ctx) error {
 	}
 
 	views, total, err := h.listByWorkflow.Handle(c.Context(), queryactivitylog.ListByWorkflowQuery{
+		UserID:     user.ID,
+		ProjectID:  projectID,
 		WorkflowID: workflowID,
 		Query:      query,
 	})

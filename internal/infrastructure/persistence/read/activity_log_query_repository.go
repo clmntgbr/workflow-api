@@ -47,6 +47,7 @@ func (r *activityLogReadRepository) FindByWorkflowID(
 	ctx context.Context,
 	workflowID uuid.UUID,
 	query paginate.PaginateQuery,
+	occurredAfter *time.Time,
 ) ([]domainactivitylog.View, int64, error) {
 	query.Normalize()
 	if query.SortBy == "" {
@@ -64,6 +65,9 @@ func (r *activityLogReadRepository) FindByWorkflowID(
 			workflowID,
 			workflowID,
 		)
+	if occurredAfter != nil {
+		base = base.Where("activity_logs.occurred_at >= ?", *occurredAfter)
+	}
 
 	paginated, total, err := Paginate(base, query)
 	if err != nil {

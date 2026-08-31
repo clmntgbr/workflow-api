@@ -68,8 +68,9 @@ func (r *workflowRunReadRepository) FindByID(
 func (r *workflowRunReadRepository) FindByWorkflowID(
 	ctx context.Context,
 	workflowID uuid.UUID,
-	query paginate.PaginateQuery,
+	filter domainworkflowrun.WorkflowRunListFilter,
 ) ([]domainworkflowrun.WorkflowRunView, int64, error) {
+	query := filter.Paginate
 	query.Normalize()
 	if query.SortBy == "" {
 		query.SortBy = "created_at"
@@ -81,6 +82,9 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	db := r.db.WithContext(ctx).
 		Table("workflow_runs").
 		Where("workflow_runs.workflow_id = ?", workflowID)
+	if filter.CreatedAfter != nil {
+		db = db.Where("workflow_runs.created_at >= ?", *filter.CreatedAfter)
+	}
 
 	db, total, err := Paginate(db, query)
 	if err != nil {

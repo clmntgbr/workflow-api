@@ -5,12 +5,14 @@ import (
 	"errors"
 	"time"
 
+	querysubscription "go-api/internal/application/query/subscription"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
 )
 
 type GetWorkflowRunAnalyticsQuery struct {
+	UserID     uuid.UUID
 	ProjectID  uuid.UUID
 	WorkflowID uuid.UUID
 	From       *time.Time
@@ -18,13 +20,15 @@ type GetWorkflowRunAnalyticsQuery struct {
 }
 
 type GetWorkflowRunAnalyticsHandler struct {
-	readRepo domainworkflowrun.WorkflowRunReadRepository
+	readRepo  domainworkflowrun.WorkflowRunReadRepository
+	retention querysubscription.RunHistoryCutoffResolver
 }
 
 func NewGetWorkflowRunAnalyticsHandler(
 	readRepo domainworkflowrun.WorkflowRunReadRepository,
+	retention querysubscription.RunHistoryCutoffResolver,
 ) *GetWorkflowRunAnalyticsHandler {
-	return &GetWorkflowRunAnalyticsHandler{readRepo: readRepo}
+	return &GetWorkflowRunAnalyticsHandler{readRepo: readRepo, retention: retention}
 }
 
 func (h *GetWorkflowRunAnalyticsHandler) Handle(
@@ -41,10 +45,16 @@ func (h *GetWorkflowRunAnalyticsHandler) Handle(
 		return nil, errors.New("from must be before to")
 	}
 
+	cutoff, err := h.retention.RunHistoryCutoff(ctx, q.UserID, q.ProjectID)
+	if err != nil {
+		return nil, errors.New("failed to resolve run history retention")
+	}
+	from := querysubscription.ClampTimeFrom(q.From, cutoff)
+
 	workflowID := q.WorkflowID
 	stats, err := h.readRepo.FindAnalyticsByProject(ctx, q.ProjectID, domainworkflowrun.WorkflowRunAnalyticsFilter{
 		WorkflowID: &workflowID,
-		From:       q.From,
+		From:       from,
 		To:         q.To,
 	})
 	if err != nil {

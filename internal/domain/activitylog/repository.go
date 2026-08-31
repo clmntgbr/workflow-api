@@ -2,6 +2,7 @@ package activitylog
 
 import (
 	"context"
+	"time"
 
 	"go-api/internal/domain/paginate"
 
@@ -17,5 +18,6 @@ type ReadRepository interface {
 		ctx context.Context,
 		workflowID uuid.UUID,
 		query paginate.PaginateQuery,
+		occurredAfter *time.Time,
 	) ([]View, int64, error)
 }

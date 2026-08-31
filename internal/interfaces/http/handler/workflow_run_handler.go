@@ -65,6 +65,11 @@ func NewWorkflowRunHandler(
 }
 
 func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -107,6 +112,7 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 	}
 
 	stats, err := h.analyticsHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunAnalyticsQuery{
+		UserID:     user.ID,
 		ProjectID:  orgID,
 		WorkflowID: workflowID,
 		From:       from,
@@ -250,6 +256,11 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 }
 
 func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -290,6 +301,8 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 	}
 
 	views, total, err := h.listByWorkflow.Handle(c.Context(), queryworkflowrun.ListWorkflowRunsByWorkflowQuery{
+		UserID:     user.ID,
+		ProjectID:  orgID,
 		WorkflowID: workflowID,
 		Query:      query,
 	})
@@ -325,6 +338,11 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 }
 
 func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
 	orgID, err := httpctx.GetActiveProjectID(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
@@ -351,7 +369,11 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
 	}
 
-	view, err := h.getByIDHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunByIDQuery{ID: id})
+	view, err := h.getByIDHandler.Handle(c.Context(), queryworkflowrun.GetWorkflowRunByIDQuery{
+		UserID:    user.ID,
+		ProjectID: orgID,
+		ID:        id,
+	})
 	if err != nil {
 		if err.Error() == "workflow run not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow run not found"})

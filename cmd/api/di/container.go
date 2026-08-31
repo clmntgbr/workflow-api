@@ -183,21 +183,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	deleteAssertionHandler := assertioncmd.NewDeleteAssertionHandler(assertionWriteRepo, outboxRepo)
 	getAssertionByIDHandler := queryassertion.NewGetAssertionByIDHandler(assertionReadRepo)
 	listAssertionsByStepHandler := queryassertion.NewListAssertionsByStepHandler(assertionReadRepo)
-	listActivityLogsByWorkflowHandler := queryactivitylog.NewListByWorkflowHandler(activityLogReadRepo)
 	searchAssertionPathsHandler := queryassertion.NewSearchAssertionPathsHandler(stepRunReadRepo)
-
-	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo)
-	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo)
-	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo)
-	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
-	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
-	latestStepRunStatusesHandler := querysteprun.NewGetLatestStepRunStatusesByStepIDsHandler(
-		stepRunReadRepo,
-		workflowRunReadRepo,
-	)
-	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
-
-	listActivePlansHandler := queryplan.NewListActivePlansHandler(planReadRepo)
 
 	subscriptionReadRepo := read.NewSubscriptionReadRepository(db, planReadRepo)
 	stripeSubscriptionGateway := infrastripe.NewSubscriptionGateway(env)
@@ -213,6 +199,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		endpointReadRepo,
 		workflowRunReadRepo,
 	)
+
+	listActivityLogsByWorkflowHandler := queryactivitylog.NewListByWorkflowHandler(activityLogReadRepo, getQuotaUsageHandler)
+	getWorkflowRunByIDHandler := queryworkflowrun.NewGetWorkflowRunByIDHandler(workflowRunReadRepo, getQuotaUsageHandler)
+	getWorkflowRunAnalyticsHandler := queryworkflowrun.NewGetWorkflowRunAnalyticsHandler(workflowRunReadRepo, getQuotaUsageHandler)
+	listWorkflowRunsHandler := queryworkflowrun.NewListWorkflowRunsByWorkflowHandler(workflowRunReadRepo, getQuotaUsageHandler)
+	listStepRunsHandler := querysteprun.NewListStepRunsByWorkflowRunHandler(stepRunReadRepo)
+	listStepRunsByIDsHandler := querysteprun.NewListStepRunsByWorkflowRunIDsHandler(stepRunReadRepo)
+	latestStepRunStatusesHandler := querysteprun.NewGetLatestStepRunStatusesByStepIDsHandler(
+		stepRunReadRepo,
+		workflowRunReadRepo,
+	)
+	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
+
+	listActivePlansHandler := queryplan.NewListActivePlansHandler(planReadRepo)
+
 	assertCreateAllowedHandler := cmdquota.NewAssertCreateAllowedHandler(
 		getQuotaUsageHandler,
 		stepReadRepo,

@@ -18,12 +18,17 @@ type WorkflowRunWriteRepository interface {
 	FindInProgressByWorkflowID(ctx context.Context, workflowID uuid.UUID) (*WorkflowRun, error)
 }
 
+type WorkflowRunListFilter struct {
+	Paginate     paginate.PaginateQuery
+	CreatedAfter *time.Time
+}
+
 type WorkflowRunReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*WorkflowRunView, error)
 	FindByWorkflowID(
 		ctx context.Context,
 		workflowID uuid.UUID,
-		query paginate.PaginateQuery,
+		filter WorkflowRunListFilter,
 	) ([]WorkflowRunView, int64, error)
 	FindInProgressByWorkflowID(ctx context.Context, workflowID uuid.UUID) (*WorkflowRunView, error)
 	FindAnalyticsByProject(

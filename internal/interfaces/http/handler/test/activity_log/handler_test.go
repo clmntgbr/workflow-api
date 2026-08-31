@@ -141,6 +141,12 @@ func TestActivityLogHandler_ListByWorkflow_Success(t *testing.T) {
 	if list.query.WorkflowID != testutil.TestWorkflowID {
 		t.Fatalf("workflow id: got %s", list.query.WorkflowID)
 	}
+	if list.query.UserID != testutil.TestUserID {
+		t.Fatalf("user id: got %s", list.query.UserID)
+	}
+	if list.query.ProjectID != testutil.TestProjectID {
+		t.Fatalf("project id: got %s", list.query.ProjectID)
+	}
 
 	var out struct {
 		Members []presenter.ActivityLogResponse `json:"members"`
@@ -152,6 +158,30 @@ func TestActivityLogHandler_ListByWorkflow_Success(t *testing.T) {
 	}
 	if out.Total != 1 {
 		t.Fatalf("total: got %d want 1", out.Total)
+	}
+}
+
+func TestActivityLogHandler_ListByWorkflow_Unauthorized(t *testing.T) {
+	list := &mockListByWorkflowHandler{}
+	h := newActivityLogHandler(list, nil)
+
+	app := testutil.NewTestApp()
+	app.Get("/workflows/:workflowId/activity-logs", h.ListByWorkflow)
+
+	req, err := testutil.JSONRequest(http.MethodGet, workflowListPath(), nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
+	if list.called {
+		t.Fatal("list handler must not be called without user")
 	}
 }
 

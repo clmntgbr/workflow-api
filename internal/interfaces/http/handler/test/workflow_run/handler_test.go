@@ -820,6 +820,12 @@ func TestWorkflowRunHandler_ListByWorkflow_Success(t *testing.T) {
 	if list.query.WorkflowID != testutil.TestWorkflowID {
 		t.Fatalf("workflow id: got %s", list.query.WorkflowID)
 	}
+	if list.query.UserID != testutil.TestUserID {
+		t.Fatalf("user id: got %s", list.query.UserID)
+	}
+	if list.query.ProjectID != testutil.TestProjectID {
+		t.Fatalf("project id: got %s", list.query.ProjectID)
+	}
 
 	var out struct {
 		Members []presenter.WorkflowRunListResponse `json:"members"`
@@ -1303,6 +1309,9 @@ func TestWorkflowRunHandler_Analytics_Success(t *testing.T) {
 	}
 	if analytics.query.ProjectID != testutil.TestProjectID {
 		t.Fatalf("project id: got %s", analytics.query.ProjectID)
+	}
+	if analytics.query.UserID != testutil.TestUserID {
+		t.Fatalf("user id: got %s", analytics.query.UserID)
 	}
 	if analytics.query.WorkflowID != testutil.TestWorkflowID {
 		t.Fatalf("workflow id: got %s", analytics.query.WorkflowID)
