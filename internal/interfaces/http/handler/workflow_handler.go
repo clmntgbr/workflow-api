@@ -19,25 +19,25 @@ import (
 )
 
 type WorkflowHandler struct {
-	createHandler     *workflowcmd.CreateWorkflowHandler
-	updateHandler     *workflowcmd.UpdateWorkflowHandler
-	activateHandler   *workflowcmd.ActivateWorkflowHandler
-	deactivateHandler *workflowcmd.DeactivateWorkflowHandler
-	deleteHandler     *workflowcmd.DeleteWorkflowHandler
-	getByIDHandler    *queryworkflow.GetWorkflowByIDHandler
-	listByOrgHandler  *queryworkflow.ListWorkflowsByProjectHandler
-	getProjectByIDHandler *queryproject.GetProjectByIDHandler
+	createHandler         workflowCreateHandler
+	updateHandler         workflowUpdateHandler
+	activateHandler       workflowActivateHandler
+	deactivateHandler     workflowDeactivateHandler
+	deleteHandler         workflowDeleteHandler
+	getByIDHandler        workflowGetByIDHandler
+	listByOrgHandler      workflowListByProjectHandler
+	getProjectByIDHandler workflowGetProjectByIDHandler
 }
 
 func NewWorkflowHandler(
-	createHandler *workflowcmd.CreateWorkflowHandler,
-	updateHandler *workflowcmd.UpdateWorkflowHandler,
-	activateHandler *workflowcmd.ActivateWorkflowHandler,
-	deactivateHandler *workflowcmd.DeactivateWorkflowHandler,
-	deleteHandler *workflowcmd.DeleteWorkflowHandler,
-	getByIDHandler *queryworkflow.GetWorkflowByIDHandler,
-	listByOrgHandler *queryworkflow.ListWorkflowsByProjectHandler,
-	getProjectByIDHandler *queryproject.GetProjectByIDHandler,
+	createHandler workflowCreateHandler,
+	updateHandler workflowUpdateHandler,
+	activateHandler workflowActivateHandler,
+	deactivateHandler workflowDeactivateHandler,
+	deleteHandler workflowDeleteHandler,
+	getByIDHandler workflowGetByIDHandler,
+	listByOrgHandler workflowListByProjectHandler,
+	getProjectByIDHandler workflowGetProjectByIDHandler,
 ) *WorkflowHandler {
 	return &WorkflowHandler{
 		createHandler:     createHandler,

@@ -235,7 +235,29 @@ make migrate
 
 ## Testing
 
-Handler tests live under `internal/interfaces/http/handler/test/`, one subfolder per resource. They use mocked command/query handlers and shared helpers from `internal/interfaces/http/testutil/`.
+Handler tests live under `internal/interfaces/http/handler/test/`, one subfolder per resource. Each HTTP handler depends on **port interfaces** (`*_ports.go`) so command/query handlers can be mocked. Shared helpers and stable UUIDs live in `internal/interfaces/http/testutil/` (`fixtures.go`, `http.go`).
+
+| Test package | Handler covered |
+|---|---|
+| `test/endpoint/` | Endpoints + OpenAPI import |
+| `test/user/` | Current user, active project |
+| `test/plan/` | Plans list |
+| `test/invoice/` | Invoices list |
+| `test/realtime/` | Centrifugo connection |
+| `test/activity_log/` | Workflow activity |
+| `test/project/` | Projects CRUD, members, activate |
+| `test/workflow/` | Workflows CRUD, activate/deactivate |
+| `test/connection/` | Step connections (incl. condition branches) |
+| `test/step/` | Steps (http / delay / condition) |
+| `test/variable/` | Workflow variables |
+| `test/assertion/` | Step assertions |
+| `test/workflow_run/` | Runs start/stop, list, detail, analytics |
+| `test/subscription/` | Subscription, quota, billing portal |
+| `test/billing_webhook/` | Stripe webhooks |
+| `test/user_webhook/` | Clerk webhooks |
+| `test/quota/` | Quota error mapping |
+
+Naming: `Test<Resource>Handler_<Method>_<Scenario>`. Typical scenarios: success, unauthorized / missing active project, invalid input, business error, internal error.
 
 **Locally** (no Docker):
 
@@ -250,8 +272,6 @@ go tool cover -html=coverage.out -o coverage.html
 **Via Docker** (same paths inside the `api` container): `make tests`, `make coverage`, `make coverage-html`.
 
 **CI** — [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on push/PR to `main` / `master`: tests with `-race`, coverage on `internal/interfaces/http/handler/...`, artifact upload, and [Codecov](https://codecov.io/gh/clmntgbr/workflow-api) (flag `handler`). Set the `CODECOV_TOKEN` repository secret for uploads.
-
-To add tests for another handler, create `handler/test/<resource>/` and follow the endpoint package as a template (`Test<Handler>_<Method>_<Scenario>` naming, five scenario types per endpoint where applicable).
 
 ## HTTP surface
 

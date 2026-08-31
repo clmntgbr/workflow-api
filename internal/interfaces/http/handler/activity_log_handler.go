@@ -12,13 +12,13 @@ import (
 )
 
 type ActivityLogHandler struct {
-	listByWorkflow     *queryactivitylog.ListByWorkflowHandler
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	listByWorkflow     activityLogListByWorkflowHandler
+	getWorkflowHandler activityLogGetWorkflowHandler
 }
 
 func NewActivityLogHandler(
-	listByWorkflow *queryactivitylog.ListByWorkflowHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	listByWorkflow activityLogListByWorkflowHandler,
+	getWorkflowHandler activityLogGetWorkflowHandler,
 ) *ActivityLogHandler {
 	return &ActivityLogHandler{
 		listByWorkflow:     listByWorkflow,

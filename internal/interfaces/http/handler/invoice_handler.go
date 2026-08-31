@@ -10,10 +10,10 @@ import (
 )
 
 type InvoiceHandler struct {
-	listInvoicesHandler *queryinvoice.ListInvoicesHandler
+	listInvoicesHandler invoiceListHandler
 }
 
-func NewInvoiceHandler(listInvoicesHandler *queryinvoice.ListInvoicesHandler) *InvoiceHandler {
+func NewInvoiceHandler(listInvoicesHandler invoiceListHandler) *InvoiceHandler {
 	return &InvoiceHandler{listInvoicesHandler: listInvoicesHandler}
 }
 

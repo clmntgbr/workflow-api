@@ -19,25 +19,25 @@ import (
 )
 
 type AssertionHandler struct {
-	createHandler      *assertioncmd.CreateAssertionHandler
-	updateHandler      *assertioncmd.UpdateAssertionHandler
-	deleteHandler      *assertioncmd.DeleteAssertionHandler
-	getByIDHandler     *queryassertion.GetAssertionByIDHandler
-	listByStep         *queryassertion.ListAssertionsByStepHandler
-	searchPaths        *queryassertion.SearchAssertionPathsHandler
-	getStepHandler     *querystep.GetStepByIDHandler
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	createHandler      assertionCreateHandler
+	updateHandler      assertionUpdateHandler
+	deleteHandler      assertionDeleteHandler
+	getByIDHandler     assertionGetByIDHandler
+	listByStep         assertionListByStepHandler
+	searchPaths        assertionSearchPathsHandler
+	getStepHandler     assertionGetStepHandler
+	getWorkflowHandler assertionGetWorkflowHandler
 }
 
 func NewAssertionHandler(
-	createHandler *assertioncmd.CreateAssertionHandler,
-	updateHandler *assertioncmd.UpdateAssertionHandler,
-	deleteHandler *assertioncmd.DeleteAssertionHandler,
-	getByIDHandler *queryassertion.GetAssertionByIDHandler,
-	listByStep *queryassertion.ListAssertionsByStepHandler,
-	searchPaths *queryassertion.SearchAssertionPathsHandler,
-	getStepHandler *querystep.GetStepByIDHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	createHandler assertionCreateHandler,
+	updateHandler assertionUpdateHandler,
+	deleteHandler assertionDeleteHandler,
+	getByIDHandler assertionGetByIDHandler,
+	listByStep assertionListByStepHandler,
+	searchPaths assertionSearchPathsHandler,
+	getStepHandler assertionGetStepHandler,
+	getWorkflowHandler assertionGetWorkflowHandler,
 ) *AssertionHandler {
 	return &AssertionHandler{
 		createHandler:      createHandler,

@@ -20,33 +20,33 @@ import (
 )
 
 type StepHandler struct {
-	createHandler              *stepcmd.CreateStepHandler
-	createDelayHandler         *stepcmd.CreateDelayStepHandler
-	createConditionHandler     *stepcmd.CreateConditionStepHandler
-	updateHandler              *stepcmd.UpdateStepHandler
-	updateDelayHandler         *stepcmd.UpdateDelayStepHandler
-	updateConditionHandler     *stepcmd.UpdateConditionStepHandler
-	updatePositionHandler      *stepcmd.UpdateStepPositionHandler
-	deleteHandler              *stepcmd.DeleteStepHandler
-	getByIDHandler             *querystep.GetStepByIDHandler
-	listByWorkflowHandler      *querystep.ListStepsByWorkflowHandler
-	latestStepRunStatusHandler *querysteprun.GetLatestStepRunStatusesByStepIDsHandler
-	getWorkflowHandler         *queryworkflow.GetWorkflowByIDHandler
+	createHandler              stepCreateHandler
+	createDelayHandler         stepCreateDelayHandler
+	createConditionHandler     stepCreateConditionHandler
+	updateHandler              stepUpdateHandler
+	updateDelayHandler         stepUpdateDelayHandler
+	updateConditionHandler     stepUpdateConditionHandler
+	updatePositionHandler      stepUpdatePositionHandler
+	deleteHandler              stepDeleteHandler
+	getByIDHandler             stepGetByIDHandler
+	listByWorkflowHandler      stepListByWorkflowHandler
+	latestStepRunStatusHandler stepLatestRunStatusHandler
+	getWorkflowHandler         stepGetWorkflowHandler
 }
 
 func NewStepHandler(
-	createHandler *stepcmd.CreateStepHandler,
-	createDelayHandler *stepcmd.CreateDelayStepHandler,
-	createConditionHandler *stepcmd.CreateConditionStepHandler,
-	updateHandler *stepcmd.UpdateStepHandler,
-	updateDelayHandler *stepcmd.UpdateDelayStepHandler,
-	updateConditionHandler *stepcmd.UpdateConditionStepHandler,
-	updatePositionHandler *stepcmd.UpdateStepPositionHandler,
-	deleteHandler *stepcmd.DeleteStepHandler,
-	getByIDHandler *querystep.GetStepByIDHandler,
-	listByWorkflowHandler *querystep.ListStepsByWorkflowHandler,
-	latestStepRunStatusHandler *querysteprun.GetLatestStepRunStatusesByStepIDsHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	createHandler stepCreateHandler,
+	createDelayHandler stepCreateDelayHandler,
+	createConditionHandler stepCreateConditionHandler,
+	updateHandler stepUpdateHandler,
+	updateDelayHandler stepUpdateDelayHandler,
+	updateConditionHandler stepUpdateConditionHandler,
+	updatePositionHandler stepUpdatePositionHandler,
+	deleteHandler stepDeleteHandler,
+	getByIDHandler stepGetByIDHandler,
+	listByWorkflowHandler stepListByWorkflowHandler,
+	latestStepRunStatusHandler stepLatestRunStatusHandler,
+	getWorkflowHandler stepGetWorkflowHandler,
 ) *StepHandler {
 	return &StepHandler{
 		createHandler:              createHandler,

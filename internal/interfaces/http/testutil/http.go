@@ -16,6 +16,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// WithLocal injects an arbitrary value into Fiber locals (webhook payloads, etc.).
+func WithLocal(key string, value any) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		c.Locals(key, value)
+		return c.Next()
+	}
+}
+
 func NewTestApp() *fiber.App {
 	return fiber.New(fiber.Config{
 		ErrorHandler: validation.FiberErrorHandler,

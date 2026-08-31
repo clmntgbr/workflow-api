@@ -16,23 +16,23 @@ import (
 )
 
 type ProjectHandler struct {
-	createHandler           *projectcmd.CreateProjectHandler
-	updateHandler           *projectcmd.UpdateProjectHandler
-	deleteHandler           *projectcmd.DeleteProjectHandler
-	removeMemberHandler     *projectcmd.RemoveProjectMemberHandler
-	getByIDHandler          *queryproject.GetProjectByIDHandler
-	listByUserHandler       *queryproject.ListProjectsByUserHandler
-	setActiveProjectHandler *usercmd.SetActiveProjectHandler
+	createHandler           projectCreateHandler
+	updateHandler           projectUpdateHandler
+	deleteHandler           projectDeleteHandler
+	removeMemberHandler     projectRemoveMemberHandler
+	getByIDHandler          projectGetByIDHandler
+	listByUserHandler       projectListByUserHandler
+	setActiveProjectHandler projectSetActiveHandler
 }
 
 func NewProjectHandler(
-	createHandler *projectcmd.CreateProjectHandler,
-	updateHandler *projectcmd.UpdateProjectHandler,
-	deleteHandler *projectcmd.DeleteProjectHandler,
-	removeMemberHandler *projectcmd.RemoveProjectMemberHandler,
-	getByIDHandler *queryproject.GetProjectByIDHandler,
-	listByUserHandler *queryproject.ListProjectsByUserHandler,
-	setActiveProjectHandler *usercmd.SetActiveProjectHandler,
+	createHandler projectCreateHandler,
+	updateHandler projectUpdateHandler,
+	deleteHandler projectDeleteHandler,
+	removeMemberHandler projectRemoveMemberHandler,
+	getByIDHandler projectGetByIDHandler,
+	listByUserHandler projectListByUserHandler,
+	setActiveProjectHandler projectSetActiveHandler,
 ) *ProjectHandler {
 	return &ProjectHandler{
 		createHandler:           createHandler,

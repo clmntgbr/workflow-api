@@ -26,29 +26,29 @@ import (
 )
 
 type WorkflowRunHandler struct {
-	startHandler        *workflowruncmd.StartWorkflowRunHandler
-	cancelHandler       *workflowruncmd.CancelWorkflowRunHandler
-	getByIDHandler      *queryworkflowrun.GetWorkflowRunByIDHandler
-	analyticsHandler    *queryworkflowrun.GetWorkflowRunAnalyticsHandler
-	listByWorkflow      *queryworkflowrun.ListWorkflowRunsByWorkflowHandler
-	listStepRuns        *querysteprun.ListStepRunsByWorkflowRunHandler
-	listStepRunsByIDs   *querysteprun.ListStepRunsByWorkflowRunIDsHandler
-	listInsightsByIDs   *queryinsight.ListInsightsByStepRunIDsHandler
-	getWorkflowHandler  *queryworkflow.GetWorkflowByIDHandler
-	listStepsByWorkflow *querystep.ListStepsByWorkflowHandler
+	startHandler        workflowRunStartHandler
+	cancelHandler       workflowRunCancelHandler
+	getByIDHandler      workflowRunGetByIDHandler
+	analyticsHandler    workflowRunAnalyticsHandler
+	listByWorkflow      workflowRunListByWorkflowHandler
+	listStepRuns        workflowRunListStepRunsHandler
+	listStepRunsByIDs   workflowRunListStepRunsByIDsHandler
+	listInsightsByIDs   workflowRunListInsightsByIDsHandler
+	getWorkflowHandler  workflowGetByIDHandler
+	listStepsByWorkflow workflowRunListStepsByWorkflowHandler
 }
 
 func NewWorkflowRunHandler(
-	startHandler *workflowruncmd.StartWorkflowRunHandler,
-	cancelHandler *workflowruncmd.CancelWorkflowRunHandler,
-	getByIDHandler *queryworkflowrun.GetWorkflowRunByIDHandler,
-	analyticsHandler *queryworkflowrun.GetWorkflowRunAnalyticsHandler,
-	listByWorkflow *queryworkflowrun.ListWorkflowRunsByWorkflowHandler,
-	listStepRuns *querysteprun.ListStepRunsByWorkflowRunHandler,
-	listStepRunsByIDs *querysteprun.ListStepRunsByWorkflowRunIDsHandler,
-	listInsightsByIDs *queryinsight.ListInsightsByStepRunIDsHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
-	listStepsByWorkflow *querystep.ListStepsByWorkflowHandler,
+	startHandler workflowRunStartHandler,
+	cancelHandler workflowRunCancelHandler,
+	getByIDHandler workflowRunGetByIDHandler,
+	analyticsHandler workflowRunAnalyticsHandler,
+	listByWorkflow workflowRunListByWorkflowHandler,
+	listStepRuns workflowRunListStepRunsHandler,
+	listStepRunsByIDs workflowRunListStepRunsByIDsHandler,
+	listInsightsByIDs workflowRunListInsightsByIDsHandler,
+	getWorkflowHandler workflowGetByIDHandler,
+	listStepsByWorkflow workflowRunListStepsByWorkflowHandler,
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
 		startHandler:        startHandler,

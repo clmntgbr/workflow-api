@@ -15,19 +15,19 @@ import (
 )
 
 type SubscriptionHandler struct {
-	getCurrentSubscriptionHandler *querysubscription.GetCurrentSubscriptionHandler
-	getQuotaUsageHandler          *querysubscription.GetQuotaUsageHandler
-	previewPlanChangeHandler      *querysubscription.PreviewPlanChangeHandler
-	createSubscriptionHandler     *cmdsubscription.CreateSubscriptionHandler
-	createBillingPortalHandler    *cmdsubscription.CreateBillingPortalHandler
+	getCurrentSubscriptionHandler subscriptionGetCurrentHandler
+	getQuotaUsageHandler          subscriptionGetQuotaHandler
+	previewPlanChangeHandler      subscriptionPreviewPlanChangeHandler
+	createSubscriptionHandler     subscriptionCreateHandler
+	createBillingPortalHandler    subscriptionCreateBillingPortalHandler
 }
 
 func NewSubscriptionHandler(
-	getCurrentSubscriptionHandler *querysubscription.GetCurrentSubscriptionHandler,
-	getQuotaUsageHandler *querysubscription.GetQuotaUsageHandler,
-	previewPlanChangeHandler *querysubscription.PreviewPlanChangeHandler,
-	createSubscriptionHandler *cmdsubscription.CreateSubscriptionHandler,
-	createBillingPortalHandler *cmdsubscription.CreateBillingPortalHandler,
+	getCurrentSubscriptionHandler subscriptionGetCurrentHandler,
+	getQuotaUsageHandler subscriptionGetQuotaHandler,
+	previewPlanChangeHandler subscriptionPreviewPlanChangeHandler,
+	createSubscriptionHandler subscriptionCreateHandler,
+	createBillingPortalHandler subscriptionCreateBillingPortalHandler,
 ) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		getCurrentSubscriptionHandler: getCurrentSubscriptionHandler,

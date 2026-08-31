@@ -21,12 +21,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	testUserID     = uuid.MustParse("01960000-0000-7000-8000-000000000001")
-	testProjectID  = uuid.MustParse("01960000-0000-7000-8000-000000000002")
-	testEndpointID = uuid.MustParse("01960000-0000-7000-8000-000000000003")
-)
-
 type mockCreateEndpointHandler struct {
 	called bool
 	cmd    endpointcmd.CreateEndpointCommand
@@ -189,7 +183,7 @@ func validUpdateEndpointBody() map[string]any {
 
 func sampleEndpointEntity() *domainendpoint.Endpoint {
 	return &domainendpoint.Endpoint{
-		ID:             testEndpointID,
+		ID:             testutil.TestEndpointID,
 		Name:           "Users API",
 		URL:            "https://api.example.com/users",
 		Method:         domainendpoint.MethodGET,
@@ -201,7 +195,7 @@ func sampleEndpointEntity() *domainendpoint.Endpoint {
 		RetryCount:     0,
 		RetryDelay:     10000,
 		Status:         domainendpoint.StatusActive,
-		ProjectID:      testProjectID,
+		ProjectID:      testutil.TestProjectID,
 		CreatedAt:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		UpdatedAt:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
@@ -233,7 +227,7 @@ func TestEndpointHandler_Create_Success(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+	app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", validCreateEndpointBody())
 	if err != nil {
@@ -250,11 +244,11 @@ func TestEndpointHandler_Create_Success(t *testing.T) {
 	if !create.called {
 		t.Fatal("expected create handler to be called")
 	}
-	if create.cmd.UserID != testUserID {
-		t.Fatalf("user id: got %s want %s", create.cmd.UserID, testUserID)
+	if create.cmd.UserID != testutil.TestUserID {
+		t.Fatalf("user id: got %s want %s", create.cmd.UserID, testutil.TestUserID)
 	}
-	if create.cmd.ProjectID != testProjectID {
-		t.Fatalf("project id: got %s want %s", create.cmd.ProjectID, testProjectID)
+	if create.cmd.ProjectID != testutil.TestProjectID {
+		t.Fatalf("project id: got %s want %s", create.cmd.ProjectID, testutil.TestProjectID)
 	}
 	if create.cmd.Name != "Users API" {
 		t.Fatalf("name: got %q", create.cmd.Name)
@@ -265,8 +259,8 @@ func TestEndpointHandler_Create_Success(t *testing.T) {
 
 	var out presenter.EndpointDetailResponse
 	testutil.DecodeJSON(t, resp, &out)
-	if out.ID != testEndpointID.String() {
-		t.Fatalf("response id: got %s want %s", out.ID, testEndpointID)
+	if out.ID != testutil.TestEndpointID.String() {
+		t.Fatalf("response id: got %s want %s", out.ID, testutil.TestEndpointID)
 	}
 	if out.Name != "Users API" {
 		t.Fatalf("response name: got %q", out.Name)
@@ -374,7 +368,7 @@ func TestEndpointHandler_Create_InvalidData(t *testing.T) {
 			h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 			app := testutil.NewTestApp()
-			app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+			app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 			req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", tc.body)
 			if err != nil {
@@ -409,7 +403,7 @@ func TestEndpointHandler_Create_HandlerError(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+	app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", validCreateEndpointBody())
 	if err != nil {
@@ -433,7 +427,7 @@ func TestEndpointHandler_Create_HandlerError_QuotaExceeded(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+	app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", validCreateEndpointBody())
 	if err != nil {
@@ -458,9 +452,9 @@ func TestEndpointHandler_GetByID_Success(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.GetByID)
 
-	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -478,7 +472,7 @@ func TestEndpointHandler_GetByID_Success(t *testing.T) {
 
 	var out presenter.EndpointDetailResponse
 	testutil.DecodeJSON(t, resp, &out)
-	if out.ID != testEndpointID.String() {
+	if out.ID != testutil.TestEndpointID.String() {
 		t.Fatalf("response id: got %s", out.ID)
 	}
 }
@@ -490,7 +484,7 @@ func TestEndpointHandler_GetByID_Unauthorized(t *testing.T) {
 	app := testutil.NewTestApp()
 	app.Get("/endpoints/:id", h.GetByID)
 
-	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -512,7 +506,7 @@ func TestEndpointHandler_GetByID_InvalidID(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.GetByID)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/not-a-uuid", nil)
 	if err != nil {
@@ -539,9 +533,9 @@ func TestEndpointHandler_GetByID_HandlerError_NotFound(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.GetByID)
 
-	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -565,9 +559,9 @@ func TestEndpointHandler_GetByID_HandlerError_WrongProject(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.GetByID)
 
-	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -591,9 +585,9 @@ func TestEndpointHandler_Update_Success(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -608,10 +602,10 @@ func TestEndpointHandler_Update_Success(t *testing.T) {
 	if !update.called {
 		t.Fatal("expected update handler to be called")
 	}
-	if update.cmd.ID != testEndpointID {
+	if update.cmd.ID != testutil.TestEndpointID {
 		t.Fatalf("endpoint id: got %s", update.cmd.ID)
 	}
-	if update.cmd.UserID != testUserID {
+	if update.cmd.UserID != testutil.TestUserID {
 		t.Fatalf("user id: got %s", update.cmd.UserID)
 	}
 	if getByID.calls != 2 {
@@ -627,7 +621,7 @@ func TestEndpointHandler_Update_Unauthorized(t *testing.T) {
 	app := testutil.NewTestApp()
 	app.Put("/endpoints/:id", h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -650,7 +644,7 @@ func TestEndpointHandler_Update_InvalidID(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
 	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/bad-id", validUpdateEndpointBody())
 	if err != nil {
@@ -679,12 +673,12 @@ func TestEndpointHandler_Update_InvalidData(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
 	body := validUpdateEndpointBody()
 	delete(body, "status")
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), body)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -711,9 +705,9 @@ func TestEndpointHandler_Update_HandlerError_NotFound(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -732,9 +726,9 @@ func TestEndpointHandler_Delete_Success(t *testing.T) {
 	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
+	app.Delete("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Delete)
 
-	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -749,10 +743,10 @@ func TestEndpointHandler_Delete_Success(t *testing.T) {
 	if !deleteH.called {
 		t.Fatal("expected delete handler to be called")
 	}
-	if deleteH.cmd.ID != testEndpointID {
+	if deleteH.cmd.ID != testutil.TestEndpointID {
 		t.Fatalf("endpoint id: got %s", deleteH.cmd.ID)
 	}
-	if deleteH.cmd.ProjectID != testProjectID {
+	if deleteH.cmd.ProjectID != testutil.TestProjectID {
 		t.Fatalf("project id: got %s", deleteH.cmd.ProjectID)
 	}
 }
@@ -764,7 +758,7 @@ func TestEndpointHandler_Delete_Unauthorized(t *testing.T) {
 	app := testutil.NewTestApp()
 	app.Delete("/endpoints/:id", h.Delete)
 
-	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -786,7 +780,7 @@ func TestEndpointHandler_Delete_InvalidID(t *testing.T) {
 	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
+	app.Delete("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Delete)
 
 	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/not-a-uuid", nil)
 	if err != nil {
@@ -810,9 +804,9 @@ func TestEndpointHandler_Delete_HandlerError_NotFound(t *testing.T) {
 	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
+	app.Delete("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Delete)
 
-	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -835,7 +829,7 @@ func TestEndpointHandler_ListByProject_Success(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
+	app.Get("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ListByProject)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints?page=1&limit=10", nil)
 	if err != nil {
@@ -852,7 +846,7 @@ func TestEndpointHandler_ListByProject_Success(t *testing.T) {
 	if !list.called {
 		t.Fatal("expected list handler to be called")
 	}
-	if list.query.ProjectID != testProjectID {
+	if list.query.ProjectID != testutil.TestProjectID {
 		t.Fatalf("project id: got %s", list.query.ProjectID)
 	}
 
@@ -898,7 +892,7 @@ func TestEndpointHandler_ListByProject_HandlerError_InvalidMethodFilter(t *testi
 	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
+	app.Get("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ListByProject)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints?method=FOO", nil)
 	if err != nil {
@@ -919,7 +913,7 @@ func TestEndpointHandler_ListByProject_HandlerError_Internal(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
+	app.Get("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ListByProject)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints", nil)
 	if err != nil {
@@ -940,7 +934,7 @@ func TestEndpointHandler_Create_InvalidRequestBody(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+	app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 	req, err := http.NewRequest(http.MethodPost, "/endpoints", bytes.NewBufferString("not-json"))
 	if err != nil {
@@ -965,7 +959,7 @@ func TestEndpointHandler_Create_MissingActiveProject(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithUserWithoutProject(testUserID), h.Create)
+	app.Post("/endpoints", testutil.WithUserWithoutProject(testutil.TestUserID), h.Create)
 
 	req, err := testutil.JSONRequest(http.MethodPost, "/endpoints", validCreateEndpointBody())
 	if err != nil {
@@ -989,7 +983,7 @@ func TestEndpointHandler_Create_InvalidURLQuery(t *testing.T) {
 	h := newEndpointHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.Create)
+	app.Post("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Create)
 
 	body := validCreateEndpointBody()
 	body["url"] = "https://api.example.com/users?bad%"
@@ -1019,9 +1013,9 @@ func TestEndpointHandler_GetByID_HandlerError_Internal(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.GetByID)
+	app.Get("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.GetByID)
 
-	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1041,9 +1035,9 @@ func TestEndpointHandler_Update_MissingActiveProject(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithUserWithoutProject(testUserID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithUserWithoutProject(testutil.TestUserID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1070,9 +1064,9 @@ func TestEndpointHandler_Update_InvalidRequestBody(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := http.NewRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), bytes.NewBufferString("not-json"))
+	req, err := http.NewRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), bytes.NewBufferString("not-json"))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1099,9 +1093,9 @@ func TestEndpointHandler_Update_GetExisting_InternalError(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1129,9 +1123,9 @@ func TestEndpointHandler_Update_HandlerError_WrongProject(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1158,12 +1152,12 @@ func TestEndpointHandler_Update_InvalidMethod(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
 	body := validUpdateEndpointBody()
 	body["method"] = "INVALID"
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), body)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1190,12 +1184,12 @@ func TestEndpointHandler_Update_InvalidStatus(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
 	body := validUpdateEndpointBody()
 	body["status"] = "deleted"
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), body)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1222,12 +1216,12 @@ func TestEndpointHandler_Update_InvalidURLQuery(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
 	body := validUpdateEndpointBody()
 	body["url"] = "https://api.example.com/users?bad%"
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), body)
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), body)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1254,9 +1248,9 @@ func TestEndpointHandler_Update_HandlerError_InvalidStatus(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1280,9 +1274,9 @@ func TestEndpointHandler_Update_HandlerError_Internal(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1306,9 +1300,9 @@ func TestEndpointHandler_Update_ReloadFailure(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1330,9 +1324,9 @@ func TestEndpointHandler_Delete_MissingActiveProject(t *testing.T) {
 	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/endpoints/:id", testutil.WithUserWithoutProject(testUserID), h.Delete)
+	app.Delete("/endpoints/:id", testutil.WithUserWithoutProject(testutil.TestUserID), h.Delete)
 
-	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1358,9 +1352,9 @@ func TestEndpointHandler_Update_GetExisting_NotFound(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1387,9 +1381,9 @@ func TestEndpointHandler_Update_HandlerError_UseDelete(t *testing.T) {
 	h := newEndpointHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Update)
+	app.Put("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Update)
 
-	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testEndpointID.String(), validUpdateEndpointBody())
+	req, err := testutil.JSONRequest(http.MethodPut, "/endpoints/"+testutil.TestEndpointID.String(), validUpdateEndpointBody())
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -1408,7 +1402,7 @@ func TestEndpointHandler_ListByProject_InvalidQuery(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/endpoints", testutil.WithActiveProject(testUserID, testProjectID), h.ListByProject)
+	app.Get("/endpoints", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ListByProject)
 
 	req, err := testutil.JSONRequest(http.MethodGet, "/endpoints?page=not-a-number", nil)
 	if err != nil {
@@ -1432,9 +1426,9 @@ func TestEndpointHandler_Delete_HandlerError_Internal(t *testing.T) {
 	h := newEndpointHandler(nil, nil, deleteH, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/endpoints/:id", testutil.WithActiveProject(testUserID, testProjectID), h.Delete)
+	app.Delete("/endpoints/:id", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.Delete)
 
-	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testEndpointID.String(), nil)
+	req, err := testutil.JSONRequest(http.MethodDelete, "/endpoints/"+testutil.TestEndpointID.String(), nil)
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}

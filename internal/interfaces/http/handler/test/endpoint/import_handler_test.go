@@ -40,7 +40,7 @@ func TestEndpointHandler_ImportFromOpenAPI_Success(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -61,11 +61,11 @@ func TestEndpointHandler_ImportFromOpenAPI_Success(t *testing.T) {
 	if !importH.called {
 		t.Fatal("expected import handler to be called")
 	}
-	if importH.cmd.UserID != testUserID {
-		t.Fatalf("user id: got %s want %s", importH.cmd.UserID, testUserID)
+	if importH.cmd.UserID != testutil.TestUserID {
+		t.Fatalf("user id: got %s want %s", importH.cmd.UserID, testutil.TestUserID)
 	}
-	if importH.cmd.ProjectID != testProjectID {
-		t.Fatalf("project id: got %s want %s", importH.cmd.ProjectID, testProjectID)
+	if importH.cmd.ProjectID != testutil.TestProjectID {
+		t.Fatalf("project id: got %s want %s", importH.cmd.ProjectID, testutil.TestProjectID)
 	}
 	if importH.cmd.BaseURL != "https://api.example.com" {
 		t.Fatalf("base url: got %q", importH.cmd.BaseURL)
@@ -114,7 +114,7 @@ func TestEndpointHandler_ImportFromOpenAPI_MissingActiveProject(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithUserWithoutProject(testUserID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithUserWithoutProject(testutil.TestUserID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -142,7 +142,7 @@ func TestEndpointHandler_ImportFromOpenAPI_MissingFile(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -172,7 +172,7 @@ func TestEndpointHandler_ImportFromOpenAPI_MissingPayload(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -208,7 +208,7 @@ func TestEndpointHandler_ImportFromOpenAPI_InvalidPayloadJSON(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -237,7 +237,7 @@ func TestEndpointHandler_ImportFromOpenAPI_InvalidPayloadValidation(t *testing.T
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	payload := validImportPayload()
 	delete(payload, "baseUrl")
@@ -268,7 +268,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_NoOperations(t *testing.
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -293,7 +293,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_TooManyOperations(t *tes
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -318,7 +318,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_InvalidEndpointURL(t *te
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -343,7 +343,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_InvalidOpenAPI(t *testin
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -371,7 +371,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_Internal(t *testing.T) {
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",
@@ -396,7 +396,7 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_QuotaExceeded(t *testing
 	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
 
 	app := testutil.NewTestApp()
-	app.Post("/endpoints/import", testutil.WithActiveProject(testUserID, testProjectID), h.ImportFromOpenAPI)
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
 
 	req, err := testutil.MultipartImportRequest(
 		"/endpoints/import",

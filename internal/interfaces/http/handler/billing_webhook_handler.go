@@ -18,21 +18,21 @@ import (
 
 type BillingWebhookHandler struct {
 	mu                             sync.Mutex
-	checkoutCompletedHandler       *cmdsubscription.CheckoutCompletedHandler
-	subscriptionUpdatedHandler     *cmdsubscription.SubscriptionUpdatedHandler
-	subscriptionDeletedHandler     *cmdsubscription.SubscriptionDeletedHandler
-	invoicePaymentSucceededHandler *cmdsubscription.InvoicePaymentSucceededHandler
-	invoicePaymentFailedHandler    *cmdsubscription.InvoicePaymentFailedHandler
-	upsertInvoiceHandler           *cmdsubscription.UpsertInvoiceHandler
+	checkoutCompletedHandler       billingCheckoutCompletedHandler
+	subscriptionUpdatedHandler     billingSubscriptionUpdatedHandler
+	subscriptionDeletedHandler     billingSubscriptionDeletedHandler
+	invoicePaymentSucceededHandler billingInvoicePaymentSucceededHandler
+	invoicePaymentFailedHandler    billingInvoicePaymentFailedHandler
+	upsertInvoiceHandler           billingUpsertInvoiceHandler
 }
 
 func NewBillingWebhookHandler(
-	checkoutCompletedHandler *cmdsubscription.CheckoutCompletedHandler,
-	subscriptionUpdatedHandler *cmdsubscription.SubscriptionUpdatedHandler,
-	subscriptionDeletedHandler *cmdsubscription.SubscriptionDeletedHandler,
-	invoicePaymentSucceededHandler *cmdsubscription.InvoicePaymentSucceededHandler,
-	invoicePaymentFailedHandler *cmdsubscription.InvoicePaymentFailedHandler,
-	upsertInvoiceHandler *cmdsubscription.UpsertInvoiceHandler,
+	checkoutCompletedHandler billingCheckoutCompletedHandler,
+	subscriptionUpdatedHandler billingSubscriptionUpdatedHandler,
+	subscriptionDeletedHandler billingSubscriptionDeletedHandler,
+	invoicePaymentSucceededHandler billingInvoicePaymentSucceededHandler,
+	invoicePaymentFailedHandler billingInvoicePaymentFailedHandler,
+	upsertInvoiceHandler billingUpsertInvoiceHandler,
 ) *BillingWebhookHandler {
 	return &BillingWebhookHandler{
 		checkoutCompletedHandler:       checkoutCompletedHandler,

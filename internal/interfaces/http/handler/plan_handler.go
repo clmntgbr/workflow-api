@@ -8,10 +8,10 @@ import (
 )
 
 type PlanHandler struct {
-	listActive *queryplan.ListActivePlansHandler
+	listActive planListActiveHandler
 }
 
-func NewPlanHandler(listActive *queryplan.ListActivePlansHandler) *PlanHandler {
+func NewPlanHandler(listActive planListActiveHandler) *PlanHandler {
 	return &PlanHandler{listActive: listActive}
 }
 

@@ -32,6 +32,7 @@ import (
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
 	infraClerk "go-api/internal/infrastructure/clerk"
+	"go-api/internal/infrastructure/centrifugo"
 	"go-api/internal/infrastructure/config"
 	infraopenapi "go-api/internal/infrastructure/openapi"
 	"go-api/internal/infrastructure/persistence/outbox"
@@ -455,6 +456,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			createBillingPortalHandler,
 		),
 		InvoiceHandler:  httphandler.NewInvoiceHandler(listInvoicesHandler),
-		RealtimeHandler: httphandler.NewRealtimeHandler(env),
+		RealtimeHandler: httphandler.NewRealtimeHandler(centrifugo.NewConnectionInfoCreator(env)),
 	}
 }

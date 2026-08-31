@@ -13,16 +13,16 @@ import (
 )
 
 type UserHandler struct {
-	getUserByIDHandler           *queryuser.GetUserByIDHandler
-	setActiveProjectHandler *usercmd.SetActiveProjectHandler
+	getUserByIDHandler      userGetByIDHandler
+	setActiveProjectHandler userSetActiveProjectHandler
 }
 
 func NewUserHandler(
-	getUserByIDHandler *queryuser.GetUserByIDHandler,
-	setActiveProjectHandler *usercmd.SetActiveProjectHandler,
+	getUserByIDHandler userGetByIDHandler,
+	setActiveProjectHandler userSetActiveProjectHandler,
 ) *UserHandler {
 	return &UserHandler{
-		getUserByIDHandler:           getUserByIDHandler,
+		getUserByIDHandler:      getUserByIDHandler,
 		setActiveProjectHandler: setActiveProjectHandler,
 	}
 }
@@ -65,7 +65,7 @@ func (h *UserHandler) SetActiveProject(c fiber.Ctx) error {
 	}
 
 	err = h.setActiveProjectHandler.Handle(c.Context(), usercmd.SetActiveProjectCommand{
-		UserID:         user.ID,
+		UserID:    user.ID,
 		ProjectID: orgID,
 	})
 	if err != nil {

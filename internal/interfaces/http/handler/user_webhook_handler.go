@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 
 	usercmd "go-api/internal/application/command/user"
@@ -11,18 +12,20 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+var errUserNotFound = errors.New("user not found")
+
 type UserWebhookHandler struct {
-	getUserByExternalIDHandler    *usercmd.GetUserByExternalIDHandler
-	createUserHandler             *usercmd.CreateUserHandler
-	updateUserHandler             *usercmd.UpdateUserHandler
-	deleteUserByExternalIDHandler *usercmd.DeleteUserByExternalIDHandler
+	getUserByExternalIDHandler    userWebhookGetByExternalIDHandler
+	createUserHandler             userWebhookCreateUserHandler
+	updateUserHandler             userWebhookUpdateUserHandler
+	deleteUserByExternalIDHandler userWebhookDeleteByExternalIDHandler
 }
 
 func NewUserWebhookHandler(
-	getUserByExternalIDHandler *usercmd.GetUserByExternalIDHandler,
-	createUserHandler *usercmd.CreateUserHandler,
-	updateUserHandler *usercmd.UpdateUserHandler,
-	deleteUserByExternalIDHandler *usercmd.DeleteUserByExternalIDHandler,
+	getUserByExternalIDHandler userWebhookGetByExternalIDHandler,
+	createUserHandler userWebhookCreateUserHandler,
+	updateUserHandler userWebhookUpdateUserHandler,
+	deleteUserByExternalIDHandler userWebhookDeleteByExternalIDHandler,
 ) *UserWebhookHandler {
 	return &UserWebhookHandler{
 		getUserByExternalIDHandler:    getUserByExternalIDHandler,
@@ -65,7 +68,14 @@ func (h *UserWebhookHandler) Execute(c fiber.Ctx) error {
 			return err
 		}
 		if err := h.updateUser(c, data); err != nil {
-			return err
+			if errors.Is(err, errUserNotFound) {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+					"message": "User not found",
+				})
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": "Failed to update user",
+			})
 		}
 		return c.SendStatus(fiber.StatusNoContent)
 
@@ -119,14 +129,10 @@ func (h *UserWebhookHandler) updateUser(c fiber.Ctx, data dto.ClerkUserUpdated) 
 	user, err := h.getUserByExternalIDHandler.Handle(c.Context(), data.ID)
 	if err != nil {
 		log.Printf("Error finding user by Clerk ID %s: %v", data.ID, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Failed to find user",
-		})
+		return err
 	}
 	if user == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"message": "User not found",
-		})
+		return errUserNotFound
 	}
 
 	if err := h.updateUserHandler.Handle(c.Context(), usercmd.UpdateUserCommand{
@@ -137,9 +143,7 @@ func (h *UserWebhookHandler) updateUser(c fiber.Ctx, data dto.ClerkUserUpdated) 
 		Banned:    *data.Banned,
 	}); err != nil {
 		log.Printf("Error updating user with Clerk ID %s: %v", data.ID, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Failed to update user",
-		})
+		return err
 	}
 	return nil
 }

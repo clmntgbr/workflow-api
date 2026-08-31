@@ -19,27 +19,27 @@ import (
 )
 
 type VariableHandler struct {
-	createHandler      *variablecmd.CreateVariableHandler
-	updateHandler      *variablecmd.UpdateVariableHandler
-	deleteHandler      *variablecmd.DeleteVariableHandler
-	getByIDHandler     *queryvariable.GetVariableByIDHandler
-	listByWorkflow     *queryvariable.ListVariablesByWorkflowHandler
-	listAvailable      *queryvariable.ListAvailableVariablesHandler
-	searchPaths        *queryvariable.SearchVariablePathsHandler
-	getStepHandler     *querystep.GetStepByIDHandler
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	createHandler      variableCreateHandler
+	updateHandler      variableUpdateHandler
+	deleteHandler      variableDeleteHandler
+	getByIDHandler     variableGetByIDHandler
+	listByWorkflow     variableListByWorkflowHandler
+	listAvailable      variableListAvailableHandler
+	searchPaths        variableSearchPathsHandler
+	getStepHandler     variableGetStepHandler
+	getWorkflowHandler variableGetWorkflowHandler
 }
 
 func NewVariableHandler(
-	createHandler *variablecmd.CreateVariableHandler,
-	updateHandler *variablecmd.UpdateVariableHandler,
-	deleteHandler *variablecmd.DeleteVariableHandler,
-	getByIDHandler *queryvariable.GetVariableByIDHandler,
-	listByWorkflow *queryvariable.ListVariablesByWorkflowHandler,
-	listAvailable *queryvariable.ListAvailableVariablesHandler,
-	searchPaths *queryvariable.SearchVariablePathsHandler,
-	getStepHandler *querystep.GetStepByIDHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	createHandler variableCreateHandler,
+	updateHandler variableUpdateHandler,
+	deleteHandler variableDeleteHandler,
+	getByIDHandler variableGetByIDHandler,
+	listByWorkflow variableListByWorkflowHandler,
+	listAvailable variableListAvailableHandler,
+	searchPaths variableSearchPathsHandler,
+	getStepHandler variableGetStepHandler,
+	getWorkflowHandler variableGetWorkflowHandler,
 ) *VariableHandler {
 	return &VariableHandler{
 		createHandler:      createHandler,

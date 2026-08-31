@@ -1,19 +1,17 @@
 package handler
 
 import (
-	"go-api/internal/infrastructure/centrifugo"
-	"go-api/internal/infrastructure/config"
 	httpctx "go-api/internal/interfaces/http/context"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 type RealtimeHandler struct {
-	env *config.Config
+	connectionCreator realtimeConnectionCreator
 }
 
-func NewRealtimeHandler(env *config.Config) *RealtimeHandler {
-	return &RealtimeHandler{env: env}
+func NewRealtimeHandler(connectionCreator realtimeConnectionCreator) *RealtimeHandler {
+	return &RealtimeHandler{connectionCreator: connectionCreator}
 }
 
 func (h *RealtimeHandler) GetConnection(c fiber.Ctx) error {
@@ -24,7 +22,7 @@ func (h *RealtimeHandler) GetConnection(c fiber.Ctx) error {
 		})
 	}
 
-	info, err := centrifugo.NewConnectionInfo(h.env, user.ID)
+	info, err := h.connectionCreator.CreateConnectionInfo(user.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to create realtime connection",

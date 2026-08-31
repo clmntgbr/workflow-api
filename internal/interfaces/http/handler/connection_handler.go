@@ -17,17 +17,17 @@ import (
 )
 
 type ConnectionHandler struct {
-	createHandler      *conncmd.CreateConnectionHandler
-	deleteHandler      *conncmd.DeleteConnectionHandler
-	listByWorkflow     *queryconn.ListConnectionsByWorkflowHandler
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler
+	createHandler      connectionCreateHandler
+	deleteHandler      connectionDeleteHandler
+	listByWorkflow     connectionListByWorkflowHandler
+	getWorkflowHandler connectionGetWorkflowHandler
 }
 
 func NewConnectionHandler(
-	createHandler *conncmd.CreateConnectionHandler,
-	deleteHandler *conncmd.DeleteConnectionHandler,
-	listByWorkflow *queryconn.ListConnectionsByWorkflowHandler,
-	getWorkflowHandler *queryworkflow.GetWorkflowByIDHandler,
+	createHandler connectionCreateHandler,
+	deleteHandler connectionDeleteHandler,
+	listByWorkflow connectionListByWorkflowHandler,
+	getWorkflowHandler connectionGetWorkflowHandler,
 ) *ConnectionHandler {
 	return &ConnectionHandler{
 		createHandler:      createHandler,
