@@ -198,6 +198,28 @@ func (m *mockListStepsByWorkflowHandler) Handle(
 	return m.views, m.err
 }
 
+type mockInsightsAllowedChecker struct {
+	called    bool
+	userID    uuid.UUID
+	projectID uuid.UUID
+	allowed   bool
+	err       error
+}
+
+func (m *mockInsightsAllowedChecker) InsightsAllowed(
+	_ context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+) (bool, error) {
+	m.called = true
+	m.userID = userID
+	m.projectID = projectID
+	if m.err != nil {
+		return false, m.err
+	}
+	return m.allowed, nil
+}
+
 func newWorkflowRunHandler(
 	start *mockStartWorkflowRunHandler,
 	cancel *mockCancelWorkflowRunHandler,
@@ -209,6 +231,7 @@ func newWorkflowRunHandler(
 	listInsights *mockListInsightsByStepRunIDsHandler,
 	getWorkflow *mockGetWorkflowByIDHandler,
 	listSteps *mockListStepsByWorkflowHandler,
+	insightsAllowed *mockInsightsAllowedChecker,
 ) *handler.WorkflowRunHandler {
 	if start == nil {
 		start = &mockStartWorkflowRunHandler{}
@@ -240,10 +263,13 @@ func newWorkflowRunHandler(
 	if listSteps == nil {
 		listSteps = &mockListStepsByWorkflowHandler{}
 	}
+	if insightsAllowed == nil {
+		insightsAllowed = &mockInsightsAllowedChecker{allowed: true}
+	}
 	return handler.NewWorkflowRunHandler(
 		start, cancel, getByID, analytics, list,
 		listStepRuns, listStepRunsByIDs, listInsights,
-		getWorkflow, listSteps,
+		getWorkflow, listSteps, insightsAllowed,
 	)
 }
 
@@ -348,7 +374,7 @@ func mustJSONRequest(t *testing.T, method, path string, body any) *http.Request 
 func TestWorkflowRunHandler_StartWorkflow_Success(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{result: sampleWorkflowRunEntity()}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -380,7 +406,7 @@ func TestWorkflowRunHandler_StartWorkflow_Success(t *testing.T) {
 func TestWorkflowRunHandler_StartWorkflow_WithContext(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{result: sampleWorkflowRunEntity()}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -400,7 +426,7 @@ func TestWorkflowRunHandler_StartWorkflow_WithContext(t *testing.T) {
 
 func TestWorkflowRunHandler_StartWorkflow_Unauthorized(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{}
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", h.StartWorkflow)
@@ -419,7 +445,7 @@ func TestWorkflowRunHandler_StartWorkflow_Unauthorized(t *testing.T) {
 
 func TestWorkflowRunHandler_StartWorkflow_MissingActiveProject(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{}
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", testutil.WithUserWithoutProject(testutil.TestUserID), h.StartWorkflow)
@@ -438,7 +464,7 @@ func TestWorkflowRunHandler_StartWorkflow_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowRunHandler_StartWorkflow_InvalidWorkflowID(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{}
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -458,7 +484,7 @@ func TestWorkflowRunHandler_StartWorkflow_InvalidWorkflowID(t *testing.T) {
 func TestWorkflowRunHandler_StartWorkflow_WorkflowNotFound(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("workflow not found"))
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -480,7 +506,7 @@ func TestWorkflowRunHandler_StartWorkflow_WrongProject(t *testing.T) {
 	view.ProjectID = otherProjectID
 	start := &mockStartWorkflowRunHandler{}
 	getWorkflow := workflowGetter(view, nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -500,7 +526,7 @@ func TestWorkflowRunHandler_StartWorkflow_WrongProject(t *testing.T) {
 func TestWorkflowRunHandler_StartWorkflow_GetWorkflowInternalError(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("database unavailable"))
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -517,7 +543,7 @@ func TestWorkflowRunHandler_StartWorkflow_GetWorkflowInternalError(t *testing.T)
 func TestWorkflowRunHandler_StartWorkflow_HandlerError_WorkflowNotFound(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{err: domainworkflowrun.ErrWorkflowNotFound}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -534,7 +560,7 @@ func TestWorkflowRunHandler_StartWorkflow_HandlerError_WorkflowNotFound(t *testi
 func TestWorkflowRunHandler_StopWorkflow_GetWorkflowInternalError(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("database unavailable"))
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -554,7 +580,7 @@ func TestWorkflowRunHandler_StopWorkflow_GetWorkflowInternalError(t *testing.T) 
 func TestWorkflowRunHandler_StartWorkflow_AlreadyInProgress(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{err: domainworkflowrun.ErrAlreadyInProgress}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -575,7 +601,7 @@ func TestWorkflowRunHandler_StartWorkflow_AlreadyInProgress(t *testing.T) {
 func TestWorkflowRunHandler_StartWorkflow_QuotaExceeded(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{err: cmdquota.ErrWorkflowRunQuotaExceeded}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -592,7 +618,7 @@ func TestWorkflowRunHandler_StartWorkflow_QuotaExceeded(t *testing.T) {
 func TestWorkflowRunHandler_StartWorkflow_HandlerError_Internal(t *testing.T) {
 	start := &mockStartWorkflowRunHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
@@ -609,7 +635,7 @@ func TestWorkflowRunHandler_StartWorkflow_HandlerError_Internal(t *testing.T) {
 func TestWorkflowRunHandler_StopWorkflow_Success(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{result: sampleWorkflowRunEntity()}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -637,7 +663,7 @@ func TestWorkflowRunHandler_StopWorkflow_Success(t *testing.T) {
 
 func TestWorkflowRunHandler_StopWorkflow_Unauthorized(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{}
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", h.StopWorkflow)
@@ -656,7 +682,7 @@ func TestWorkflowRunHandler_StopWorkflow_Unauthorized(t *testing.T) {
 
 func TestWorkflowRunHandler_StopWorkflow_MissingActiveProject(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{}
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", testutil.WithUserWithoutProject(testutil.TestUserID), h.StopWorkflow)
@@ -675,7 +701,7 @@ func TestWorkflowRunHandler_StopWorkflow_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowRunHandler_StopWorkflow_InvalidWorkflowID(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{}
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -695,7 +721,7 @@ func TestWorkflowRunHandler_StopWorkflow_InvalidWorkflowID(t *testing.T) {
 func TestWorkflowRunHandler_StopWorkflow_WorkflowNotFound(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("workflow not found"))
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -717,7 +743,7 @@ func TestWorkflowRunHandler_StopWorkflow_WrongProject(t *testing.T) {
 	view.ProjectID = otherProjectID
 	cancel := &mockCancelWorkflowRunHandler{}
 	getWorkflow := workflowGetter(view, nil)
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -737,7 +763,7 @@ func TestWorkflowRunHandler_StopWorkflow_WrongProject(t *testing.T) {
 func TestWorkflowRunHandler_StopWorkflow_NoRunInProgress(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{err: domainworkflowrun.ErrNoRunInProgress}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -758,7 +784,7 @@ func TestWorkflowRunHandler_StopWorkflow_NoRunInProgress(t *testing.T) {
 func TestWorkflowRunHandler_StopWorkflow_CancelWorkflowNotFound(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{err: domainworkflowrun.ErrWorkflowNotFound}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -775,7 +801,7 @@ func TestWorkflowRunHandler_StopWorkflow_CancelWorkflowNotFound(t *testing.T) {
 func TestWorkflowRunHandler_StopWorkflow_HandlerError_Internal(t *testing.T) {
 	cancel := &mockCancelWorkflowRunHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
@@ -799,7 +825,7 @@ func TestWorkflowRunHandler_ListByWorkflow_Success(t *testing.T) {
 		views: []domainsteprun.StepRunView{sampleStepRunView()},
 	}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, listStepRunsByIDs, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, listStepRunsByIDs, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -842,7 +868,7 @@ func TestWorkflowRunHandler_ListByWorkflow_Success(t *testing.T) {
 
 func TestWorkflowRunHandler_ListByWorkflow_MissingActiveProject(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{}
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", testutil.WithUserWithoutProject(testutil.TestUserID), h.ListByWorkflow)
@@ -861,7 +887,7 @@ func TestWorkflowRunHandler_ListByWorkflow_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowRunHandler_ListByWorkflow_InvalidWorkflowID(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{}
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -881,7 +907,7 @@ func TestWorkflowRunHandler_ListByWorkflow_InvalidWorkflowID(t *testing.T) {
 func TestWorkflowRunHandler_ListByWorkflow_WorkflowNotFound(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("workflow not found"))
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -903,7 +929,7 @@ func TestWorkflowRunHandler_ListByWorkflow_WrongProject(t *testing.T) {
 	view.ProjectID = otherProjectID
 	list := &mockListWorkflowRunsByWorkflowHandler{}
 	getWorkflow := workflowGetter(view, nil)
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -923,7 +949,7 @@ func TestWorkflowRunHandler_ListByWorkflow_WrongProject(t *testing.T) {
 func TestWorkflowRunHandler_ListByWorkflow_InvalidQuery(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -943,7 +969,7 @@ func TestWorkflowRunHandler_ListByWorkflow_InvalidQuery(t *testing.T) {
 func TestWorkflowRunHandler_ListByWorkflow_HandlerError_Internal(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -965,7 +991,7 @@ func TestWorkflowRunHandler_ListByWorkflow_StepRunsError_Internal(t *testing.T) 
 	}
 	listStepRunsByIDs := &mockListStepRunsByWorkflowRunIDsHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, listStepRunsByIDs, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, listStepRunsByIDs, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -986,7 +1012,7 @@ func TestWorkflowRunHandler_GetByID_Success(t *testing.T) {
 	listInsights := &mockListInsightsByStepRunIDsHandler{views: []domaininsight.InsightView{sampleInsightView()}}
 	listSteps := &mockListStepsByWorkflowHandler{views: []domainstep.StepView{sampleStepView()}}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, listSteps)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, listSteps, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1013,9 +1039,47 @@ func TestWorkflowRunHandler_GetByID_Success(t *testing.T) {
 	}
 }
 
+func TestWorkflowRunHandler_GetByID_InsightsNotAllowed(t *testing.T) {
+	runView := sampleWorkflowRunView()
+	getByID := &mockGetWorkflowRunByIDHandler{view: runView}
+	listStepRuns := &mockListStepRunsByWorkflowRunHandler{views: []domainsteprun.StepRunView{sampleStepRunView()}}
+	listInsights := &mockListInsightsByStepRunIDsHandler{views: []domaininsight.InsightView{sampleInsightView()}}
+	listSteps := &mockListStepsByWorkflowHandler{views: []domainstep.StepView{sampleStepView()}}
+	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
+	insightsAllowed := &mockInsightsAllowedChecker{allowed: false}
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, listSteps, insightsAllowed)
+
+	app := testutil.NewTestApp()
+	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
+	app.Get("/workflows/:workflowId/runs/:id", activeProject(), h.GetByID)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, path, nil))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !insightsAllowed.called {
+		t.Fatal("expected insights allowed check")
+	}
+	if listInsights.called {
+		t.Fatal("insights must not be loaded when plan disallows insights")
+	}
+
+	var out presenter.WorkflowRunDetailResponse
+	testutil.DecodeJSON(t, resp, &out)
+	if len(out.StepRuns) != 1 {
+		t.Fatalf("step runs length: got %d want 1", len(out.StepRuns))
+	}
+	if len(out.StepRuns[0].Insights) != 0 {
+		t.Fatalf("insights length: got %d want 0", len(out.StepRuns[0].Insights))
+	}
+}
+
 func TestWorkflowRunHandler_GetByID_MissingActiveProject(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{}
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1035,7 +1099,7 @@ func TestWorkflowRunHandler_GetByID_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowRunHandler_GetByID_InvalidWorkflowID(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{}
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/bad-id/runs/" + testutil.TestWorkflowRunID.String()
@@ -1056,7 +1120,7 @@ func TestWorkflowRunHandler_GetByID_InvalidWorkflowID(t *testing.T) {
 func TestWorkflowRunHandler_GetByID_InvalidRunID(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/bad-id"
@@ -1077,7 +1141,7 @@ func TestWorkflowRunHandler_GetByID_InvalidRunID(t *testing.T) {
 func TestWorkflowRunHandler_GetByID_WorkflowNotFound(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("workflow not found"))
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1100,7 +1164,7 @@ func TestWorkflowRunHandler_GetByID_WrongProject(t *testing.T) {
 	view.ProjectID = otherProjectID
 	getByID := &mockGetWorkflowRunByIDHandler{}
 	getWorkflow := workflowGetter(view, nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1121,7 +1185,7 @@ func TestWorkflowRunHandler_GetByID_WrongProject(t *testing.T) {
 func TestWorkflowRunHandler_GetByID_RunNotFound(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{err: errors.New("workflow run not found")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1141,7 +1205,7 @@ func TestWorkflowRunHandler_GetByID_RunWrongWorkflow(t *testing.T) {
 	runView.WorkflowID = uuid.New()
 	getByID := &mockGetWorkflowRunByIDHandler{view: runView}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1159,7 +1223,7 @@ func TestWorkflowRunHandler_GetByID_RunWrongWorkflow(t *testing.T) {
 func TestWorkflowRunHandler_GetByID_GetRunInternalError(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1179,7 +1243,7 @@ func TestWorkflowRunHandler_GetByID_StepRunsError_Internal(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{view: runView}
 	listStepRuns := &mockListStepRunsByWorkflowRunHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1200,7 +1264,7 @@ func TestWorkflowRunHandler_GetByID_InsightsError_Internal(t *testing.T) {
 	listStepRuns := &mockListStepRunsByWorkflowRunHandler{views: []domainsteprun.StepRunView{sampleStepRunView()}}
 	listInsights := &mockListInsightsByStepRunIDsHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1222,7 +1286,7 @@ func TestWorkflowRunHandler_GetByID_StepsError_Internal(t *testing.T) {
 	listInsights := &mockListInsightsByStepRunIDsHandler{views: []domaininsight.InsightView{sampleInsightView()}}
 	listSteps := &mockListStepsByWorkflowHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, listSteps)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, listStepRuns, nil, listInsights, getWorkflow, listSteps, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1240,7 +1304,7 @@ func TestWorkflowRunHandler_GetByID_StepsError_Internal(t *testing.T) {
 func TestWorkflowRunHandler_ListByWorkflow_GetWorkflowInternalError(t *testing.T) {
 	list := &mockListWorkflowRunsByWorkflowHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("database unavailable"))
-	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, nil, list, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs", activeProject(), h.ListByWorkflow)
@@ -1257,7 +1321,7 @@ func TestWorkflowRunHandler_ListByWorkflow_GetWorkflowInternalError(t *testing.T
 func TestWorkflowRunHandler_GetByID_GetWorkflowInternalError(t *testing.T) {
 	getByID := &mockGetWorkflowRunByIDHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("database unavailable"))
-	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, getByID, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	path := "/workflows/" + testutil.TestWorkflowID.String() + "/runs/" + testutil.TestWorkflowRunID.String()
@@ -1289,7 +1353,7 @@ func TestWorkflowRunHandler_Analytics_Success(t *testing.T) {
 		},
 	}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1326,7 +1390,7 @@ func TestWorkflowRunHandler_Analytics_Success(t *testing.T) {
 
 func TestWorkflowRunHandler_Analytics_MissingActiveProject(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", testutil.WithUserWithoutProject(testutil.TestUserID), h.Analytics)
@@ -1346,7 +1410,7 @@ func TestWorkflowRunHandler_Analytics_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowRunHandler_Analytics_InvalidWorkflowID(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1366,7 +1430,7 @@ func TestWorkflowRunHandler_Analytics_InvalidWorkflowID(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_WorkflowNotFound(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("workflow not found"))
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1389,7 +1453,7 @@ func TestWorkflowRunHandler_Analytics_WrongProject(t *testing.T) {
 	view.ProjectID = otherProjectID
 	analytics := &mockWorkflowRunAnalyticsHandler{}
 	getWorkflow := workflowGetter(view, nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1410,7 +1474,7 @@ func TestWorkflowRunHandler_Analytics_WrongProject(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_InvalidFromDate(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1431,7 +1495,7 @@ func TestWorkflowRunHandler_Analytics_InvalidFromDate(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_InvalidToDate(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1452,7 +1516,7 @@ func TestWorkflowRunHandler_Analytics_InvalidToDate(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_FromAfterTo(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{err: errors.New("from must be before to")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1470,7 +1534,7 @@ func TestWorkflowRunHandler_Analytics_FromAfterTo(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_HandlerError_Internal(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{err: errors.New("database unavailable")}
 	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)
@@ -1488,7 +1552,7 @@ func TestWorkflowRunHandler_Analytics_HandlerError_Internal(t *testing.T) {
 func TestWorkflowRunHandler_Analytics_GetWorkflowInternalError(t *testing.T) {
 	analytics := &mockWorkflowRunAnalyticsHandler{}
 	getWorkflow := workflowGetter(nil, errors.New("database unavailable"))
-	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil)
+	h := newWorkflowRunHandler(nil, nil, nil, analytics, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId/runs/analytics", activeProject(), h.Analytics)

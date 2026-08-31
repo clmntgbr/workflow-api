@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	cmdquota "go-api/internal/application/command/quota"
 	domainstep "go-api/internal/domain/step"
 	"go-api/internal/interfaces/http/presenter"
 	"go-api/internal/interfaces/http/testutil"
@@ -313,5 +314,30 @@ func TestStepHandler_UpdateHTTP_UpdateInternalError(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+}
+
+func TestStepHandler_UpdateHTTP_StepTimeoutQuotaExceeded(t *testing.T) {
+	getByID := &mockGetStepByIDHandler{
+		views: []*domainstep.StepView{sampleHTTPStepView()},
+		errs:  []error{nil},
+	}
+	update := &mockUpdateStepHandler{err: cmdquota.ErrStepTimeoutQuotaExceeded}
+	h := newStepHandler(stepMocks{getByID: getByID, update: update})
+
+	app := testutil.NewTestApp()
+	app.Put(stepItemRoute(), activeProject(), h.Update)
+
+	resp, err := app.Test(mustJSONRequest(
+		t,
+		http.MethodPut,
+		stepItemPath(testutil.TestStepID),
+		validUpdateHTTPStepBody(),
+	))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }

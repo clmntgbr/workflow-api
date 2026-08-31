@@ -25,6 +25,9 @@ var (
 	ErrConcurrentRunQuotaExceeded = errors.New("concurrent run quota exceeded for your current plan")
 	ErrProjectQuotaExceeded       = errors.New("project quota exceeded for your current plan")
 	ErrScheduleIntervalQuotaExceeded = errors.New("schedule interval is below the minimum allowed for your current plan")
+	ErrStepTimeoutQuotaExceeded   = errors.New("step timeout exceeds the maximum allowed for your current plan")
+	ErrRetryCountQuotaExceeded    = errors.New("retry count exceeds the maximum allowed for your current plan")
+	ErrOpenAPIImportNotAllowed    = errors.New("OpenAPI import is not available on your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
@@ -222,6 +225,77 @@ func (h *AssertCreateAllowedHandler) AssertScheduleInterval(
 		return ErrScheduleIntervalQuotaExceeded
 	}
 	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertStepHTTPConfig(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+	timeoutMs int,
+	retryCount int,
+) error {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+
+	if usage.Limits.MaxStepTimeoutSeconds > 0 {
+		maxTimeoutMs := usage.Limits.MaxStepTimeoutSeconds * 1000
+		if timeoutMs > maxTimeoutMs {
+			return ErrStepTimeoutQuotaExceeded
+		}
+	}
+	if usage.Limits.MaxRetryCountPerStep > 0 && retryCount > usage.Limits.MaxRetryCountPerStep {
+		return ErrRetryCountQuotaExceeded
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertOpenAPIImportAllowed(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+) error {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+	if !usage.Limits.AllowsOpenAPIImport {
+		return ErrOpenAPIImportNotAllowed
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) InsightsAllowed(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+) (bool, error) {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return usage.Limits.AllowsInsights, nil
+}
+
+func (h *AssertCreateAllowedHandler) InsightsAllowedForProject(
+	ctx context.Context,
+	projectID uuid.UUID,
+) (bool, error) {
+	userID, err := h.resolveBillingUserID(ctx, projectID, nil)
+	if err != nil {
+		return false, err
+	}
+	return h.InsightsAllowed(ctx, userID, projectID)
 }
 
 func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(

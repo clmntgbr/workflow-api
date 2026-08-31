@@ -36,6 +36,7 @@ type WorkflowRunHandler struct {
 	listInsightsByIDs   workflowRunListInsightsByIDsHandler
 	getWorkflowHandler  workflowGetByIDHandler
 	listStepsByWorkflow workflowRunListStepsByWorkflowHandler
+	insightsAllowed     workflowRunInsightsAllowedChecker
 }
 
 func NewWorkflowRunHandler(
@@ -49,6 +50,7 @@ func NewWorkflowRunHandler(
 	listInsightsByIDs workflowRunListInsightsByIDsHandler,
 	getWorkflowHandler workflowGetByIDHandler,
 	listStepsByWorkflow workflowRunListStepsByWorkflowHandler,
+	insightsAllowed workflowRunInsightsAllowedChecker,
 ) *WorkflowRunHandler {
 	return &WorkflowRunHandler{
 		startHandler:        startHandler,
@@ -61,6 +63,7 @@ func NewWorkflowRunHandler(
 		listInsightsByIDs:   listInsightsByIDs,
 		getWorkflowHandler:  getWorkflowHandler,
 		listStepsByWorkflow: listStepsByWorkflow,
+		insightsAllowed:     insightsAllowed,
 	}
 }
 
@@ -391,9 +394,16 @@ func (h *WorkflowRunHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list step runs"})
 	}
 
-	insightsByStepRunID, err := h.loadInsightsByStepRuns(c, stepRuns)
+	insightsByStepRunID := map[uuid.UUID][]domaininsight.InsightView{}
+	insightsAllowed, err := h.insightsAllowed.InsightsAllowed(c.Context(), user.ID, orgID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to resolve insights access"})
+	}
+	if insightsAllowed {
+		insightsByStepRunID, err = h.loadInsightsByStepRuns(c, stepRuns)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list insights"})
+		}
 	}
 
 	stepsByID, err := h.loadStepsByWorkflow(c, view.WorkflowID)

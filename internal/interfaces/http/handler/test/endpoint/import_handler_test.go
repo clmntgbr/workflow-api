@@ -415,3 +415,28 @@ func TestEndpointHandler_ImportFromOpenAPI_HandlerError_QuotaExceeded(t *testing
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
+
+func TestEndpointHandler_ImportFromOpenAPI_HandlerError_OpenAPINotAllowed(t *testing.T) {
+	importH := &mockImportEndpointHandler{err: cmdquota.ErrOpenAPIImportNotAllowed}
+	h := newEndpointHandler(nil, nil, nil, nil, nil, importH)
+
+	app := testutil.NewTestApp()
+	app.Post("/endpoints/import", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ImportFromOpenAPI)
+
+	req, err := testutil.MultipartImportRequest(
+		"/endpoints/import",
+		[]byte(minimalOpenAPISpec),
+		validImportPayload(),
+	)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
+	}
+}

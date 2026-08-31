@@ -412,6 +412,9 @@ func (h *StepHandler) Update(c fiber.Ctx) error {
 		RetryDelay:     *req.RetryDelay,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if err.Error() == "step not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Step not found"})
 		}

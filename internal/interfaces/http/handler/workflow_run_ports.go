@@ -12,6 +12,8 @@ import (
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
+
+	"github.com/google/uuid"
 )
 
 type workflowRunStartHandler interface {
@@ -40,6 +42,10 @@ type workflowRunListStepRunsHandler interface {
 
 type workflowRunListStepRunsByIDsHandler interface {
 	Handle(ctx context.Context, q querysteprun.ListStepRunsByWorkflowRunIDsQuery) ([]domainsteprun.StepRunView, error)
+}
+
+type workflowRunInsightsAllowedChecker interface {
+	InsightsAllowed(ctx context.Context, userID uuid.UUID, projectID uuid.UUID) (bool, error)
 }
 
 type workflowRunListInsightsByIDsHandler interface {

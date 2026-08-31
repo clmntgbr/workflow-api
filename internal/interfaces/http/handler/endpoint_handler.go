@@ -269,6 +269,9 @@ func (h *EndpointHandler) Update(c fiber.Ctx) error {
 		Status:         status,
 	})
 	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
 		if err.Error() == "endpoint not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Endpoint not found"})
 		}

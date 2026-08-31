@@ -130,7 +130,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
 	listWorkflowsByProjectHandler := queryworkflow.NewListWorkflowsByProjectHandler(workflowReadRepo)
 
-	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo)
 	deleteEndpointHandler := endpointcmd.NewDeleteEndpointHandler(endpointWriteRepo, outboxRepo)
 	getEndpointByIDHandler := queryendpoint.NewGetEndpointByIDHandler(endpointReadRepo)
 	listEndpointsByOrgHandler := queryendpoint.NewListEndpointsByProjectHandler(endpointReadRepo)
@@ -151,7 +150,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	)
 	listConnsByWorkflowHandler := queryconn.NewListConnectionsByWorkflowHandler(connReadRepo)
 
-	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo)
 	updateDelayStepHandler := stepcmd.NewUpdateDelayStepHandler(stepWriteRepo, outboxRepo)
 	updateConditionStepHandler := stepcmd.NewUpdateConditionStepHandler(stepWriteRepo, outboxRepo)
 	updateStepPositionHandler := stepcmd.NewUpdateStepPositionHandler(
@@ -222,6 +220,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		projectReadRepo,
 		userReadRepo,
 	)
+
+	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo, assertCreateAllowedHandler)
+	updateStepHandler := stepcmd.NewUpdateStepHandler(stepWriteRepo, outboxRepo, assertCreateAllowedHandler)
 
 	createVariableHandler := variablecmd.NewCreateVariableHandler(
 		variableWriteRepo,
@@ -440,6 +441,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			listInsightsByIDsHandler,
 			getWorkflowByIDHandler,
 			listStepsByWorkflowHandler,
+			assertCreateAllowedHandler,
 		),
 		VariableHandler: httphandler.NewVariableHandler(
 			createVariableHandler,

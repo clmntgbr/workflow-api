@@ -26,14 +26,19 @@ type ExecuteJob struct {
 	WorkflowRunID string `json:"workflowRunId"`
 }
 
+type insightsAllowedChecker interface {
+	InsightsAllowedForProject(ctx context.Context, projectID uuid.UUID) (bool, error)
+}
+
 type ExecuteHandler struct {
-	stepRunRepo   domainsteprun.StepRunWriteRepository
-	http          port.HTTPExecutor
-	start         *stepruncmd.StartStepRunHandler
-	succeed       *stepruncmd.SucceedStepRunHandler
-	fail          *stepruncmd.FailStepRunHandler
-	increment     *stepruncmd.IncrementStepRunAttemptHandler
-	createInsight *insightcmd.CreateInsightHandler
+	stepRunRepo      domainsteprun.StepRunWriteRepository
+	http             port.HTTPExecutor
+	start            *stepruncmd.StartStepRunHandler
+	succeed          *stepruncmd.SucceedStepRunHandler
+	fail             *stepruncmd.FailStepRunHandler
+	increment        *stepruncmd.IncrementStepRunAttemptHandler
+	createInsight    *insightcmd.CreateInsightHandler
+	insightsAllowed  insightsAllowedChecker
 }
 
 func NewExecuteHandler(
@@ -44,15 +49,17 @@ func NewExecuteHandler(
 	fail *stepruncmd.FailStepRunHandler,
 	increment *stepruncmd.IncrementStepRunAttemptHandler,
 	createInsight *insightcmd.CreateInsightHandler,
+	insightsAllowed insightsAllowedChecker,
 ) *ExecuteHandler {
 	return &ExecuteHandler{
-		stepRunRepo:   stepRunRepo,
-		http:          httpClient,
-		start:         start,
-		succeed:       succeed,
-		fail:          fail,
-		increment:     increment,
-		createInsight: createInsight,
+		stepRunRepo:     stepRunRepo,
+		http:            httpClient,
+		start:           start,
+		succeed:         succeed,
+		fail:            fail,
+		increment:       increment,
+		createInsight:   createInsight,
+		insightsAllowed: insightsAllowed,
 	}
 }
 
@@ -270,12 +277,17 @@ func (h *ExecuteHandler) saveInsight(
 	errMsg string,
 	errType string,
 ) error {
+	allowed, err := h.insightsAllowed.InsightsAllowedForProject(ctx, run.ProjectID)
+	if err != nil || !allowed {
+		return nil
+	}
+
 	totalAttempts := 1
 	if run.RetryOnFailure && run.RetryCount > 0 {
 		totalAttempts = run.RetryCount
 	}
 
-	_, err := h.createInsight.Handle(ctx, insightcmd.CreateInsightCommand{
+	_, err = h.createInsight.Handle(ctx, insightcmd.CreateInsightCommand{
 		StepRunID:         run.ID,
 		StartTime:         timing.StartTime,
 		EndTime:           timing.EndTime,

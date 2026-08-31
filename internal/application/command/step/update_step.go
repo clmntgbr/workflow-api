@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/application/messaging"
 	"go-api/internal/domain/httpquery"
 	"go-api/internal/domain/port"
@@ -33,15 +34,18 @@ type UpdateStepCommand struct {
 type UpdateStepHandler struct {
 	stepRepo domainstep.StepWriteRepository
 	outbox   port.OutboxRepository
+	assert   *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewUpdateStepHandler(
 	stepRepo domainstep.StepWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *UpdateStepHandler {
 	return &UpdateStepHandler{
 		stepRepo: stepRepo,
 		outbox:   outbox,
+		assert:   assert,
 	}
 }
 
@@ -71,6 +75,10 @@ func (h *UpdateStepHandler) Handle(
 	}
 	if s.Type != domainstep.TypeHTTP {
 		return nil, errors.New("only HTTP steps can be updated with HTTP configuration")
+	}
+
+	if err := h.assert.AssertStepHTTPConfig(ctx, cmd.UserID, cmd.ProjectID, cmd.Timeout, cmd.RetryCount); err != nil {
+		return nil, err
 	}
 
 	s.ApplyConfigUpdate(domainstep.UpdateStepConfigParams{

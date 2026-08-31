@@ -80,6 +80,13 @@ func (h *ImportEndpointsFromOpenAPIHandler) Handle(
 		return nil, errors.New("invalid status")
 	}
 
+	if err := h.assert.AssertOpenAPIImportAllowed(ctx, cmd.UserID, cmd.ProjectID); err != nil {
+		return nil, err
+	}
+	if err := h.assert.AssertStepHTTPConfig(ctx, cmd.UserID, cmd.ProjectID, cmd.Timeout, cmd.RetryCount); err != nil {
+		return nil, err
+	}
+
 	operations, err := h.parser.Parse(ctx, cmd.Spec)
 	if err != nil {
 		return nil, err

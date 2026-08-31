@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/application/messaging"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/httpquery"
@@ -32,13 +33,15 @@ type UpdateEndpointCommand struct {
 type UpdateEndpointHandler struct {
 	repo   domainendpoint.EndpointWriteRepository
 	outbox port.OutboxRepository
+	assert *cmdquota.AssertCreateAllowedHandler
 }
 
 func NewUpdateEndpointHandler(
 	repo domainendpoint.EndpointWriteRepository,
 	outbox port.OutboxRepository,
+	assert *cmdquota.AssertCreateAllowedHandler,
 ) *UpdateEndpointHandler {
-	return &UpdateEndpointHandler{repo: repo, outbox: outbox}
+	return &UpdateEndpointHandler{repo: repo, outbox: outbox, assert: assert}
 }
 
 func (h *UpdateEndpointHandler) Handle(ctx context.Context, cmd UpdateEndpointCommand) error {
@@ -65,6 +68,10 @@ func (h *UpdateEndpointHandler) Handle(ctx context.Context, cmd UpdateEndpointCo
 		}
 		if e == nil || e.Status == domainendpoint.StatusDeleted {
 			return errors.New("endpoint not found")
+		}
+
+		if err := h.assert.AssertStepHTTPConfig(txCtx, cmd.UserID, e.ProjectID, cmd.Timeout, cmd.RetryCount); err != nil {
+			return err
 		}
 
 		e.ApplyUpdate(domainendpoint.UpdateEndpointParams{

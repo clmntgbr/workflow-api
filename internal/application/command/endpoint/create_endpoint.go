@@ -66,6 +66,9 @@ func (h *CreateEndpointHandler) Handle(
 	if err := h.assert.AssertEndpointCreate(ctx, cmd.UserID, cmd.ProjectID, 1); err != nil {
 		return nil, err
 	}
+	if err := h.assert.AssertStepHTTPConfig(ctx, cmd.UserID, cmd.ProjectID, cmd.Timeout, cmd.RetryCount); err != nil {
+		return nil, err
+	}
 
 	e := domainendpoint.NewEndpoint(domainendpoint.NewEndpointParams{
 		Name:           cmd.Name,

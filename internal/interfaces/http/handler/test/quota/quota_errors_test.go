@@ -75,6 +75,21 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "step timeout quota exceeded",
+			err:        cmdquota.ErrStepTimeoutQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "retry count quota exceeded",
+			err:        cmdquota.ErrRetryCountQuotaExceeded,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "openapi import not allowed",
+			err:        cmdquota.ErrOpenAPIImportNotAllowed,
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "nil error",
 			err:        nil,
 			wantStatus: 0,
