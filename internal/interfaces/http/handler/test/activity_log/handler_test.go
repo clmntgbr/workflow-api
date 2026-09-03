@@ -10,6 +10,7 @@ import (
 	queryactivitylog "go-api/internal/application/query/activitylog"
 	queryworkflow "go-api/internal/application/query/workflow"
 	domainactivitylog "go-api/internal/domain/activitylog"
+	"go-api/internal/domain/paginate"
 	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/interfaces/http/handler"
 	"go-api/internal/interfaces/http/presenter"
@@ -336,6 +337,54 @@ func TestActivityLogHandler_ListByWorkflow_HandlerError_Internal(t *testing.T) {
 			}
 			if tc.wantCalled && !list.called {
 				t.Fatal("expected list handler to be called")
+			}
+		})
+	}
+}
+
+// Pagination must be normalized before the query handler runs, otherwise an
+// unbounded limit reaches the repository.
+func TestActivityLogHandler_ListByWorkflow_NormalizesPaginationBeforeHandler(t *testing.T) {
+	tests := []struct {
+		name      string
+		query     string
+		wantPage  int
+		wantLimit int
+	}{
+		{name: "defaults", query: "", wantPage: 1, wantLimit: paginate.DefaultLimit},
+		{name: "limit above maximum", query: "?limit=5000", wantPage: 1, wantLimit: paginate.DefaultLimit},
+		{name: "negative page", query: "?page=-3", wantPage: 1, wantLimit: paginate.DefaultLimit},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			getWorkflow := &mockGetWorkflowByIDHandler{
+				views: []*domainworkflow.WorkflowView{sampleWorkflowView()},
+				errs:  []error{nil},
+			}
+			list := &mockListByWorkflowHandler{}
+			h := newActivityLogHandler(list, getWorkflow)
+
+			app := testutil.NewTestApp()
+			app.Get("/workflows/:workflowId/activity-logs", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.ListByWorkflow)
+
+			req, err := testutil.JSONRequest(http.MethodGet, workflowListPath()+tc.query, nil)
+			if err != nil {
+				t.Fatalf("build request: %v", err)
+			}
+
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("perform request: %v", err)
+			}
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+			}
+			if list.query.Query.Page != tc.wantPage {
+				t.Fatalf("page: got %d want %d", list.query.Query.Page, tc.wantPage)
+			}
+			if list.query.Query.Limit != tc.wantLimit {
+				t.Fatalf("limit: got %d want %d", list.query.Query.Limit, tc.wantLimit)
 			}
 		})
 	}

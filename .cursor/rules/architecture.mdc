@@ -148,7 +148,7 @@ return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 - Prefer the shared GORM `Paginate(db, query)` helper; it returns the scoped query and the total.
 - Offset comes from `query.Offset()` — it is a **method**, not a field. Passing `query.Offset` binds a func value.
 - Raw SQL must use named parameters (`@name`) rather than `?`. Postgres operators containing `?` (`jsonb ?`, `?|`, `?&`) are otherwise rewritten as bind placeholders and produce a syntax error at runtime.
-- Any repository method built on `db.Raw` needs a test that executes it against a real database; handler tests mock the query handler and cannot catch SQL defects.
+- Raw SQL is not covered by automated tests: handler tests mock the query handler and there is no integration test suite. Any new or modified `db.Raw` query must be executed manually against a real database (example: `psql` on the `compose.dev.yaml` instance) before merging.
 
 ## Payload validation (mandatory with exceptions)
 
@@ -293,7 +293,8 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 
 - Target **100% statement coverage** on each `*_handler.go` file when adding or changing handlers.
 - Before replicating the test pattern on a new resource, run `go tool cover -func=coverage.out` on the reference handler and fix uncovered branches — a large test count does not guarantee full coverage.
-- **CI floor:** handler statement coverage must stay ≥ **98%** (enforced in `.github/workflows/tests.yml`; Codecov flag `handler` uses the same target in `codecov.yml`).
+- **CI floor:** total handler statement coverage must stay ≥ **95%** (enforced by `MIN_COVERAGE` in `.github/workflows/tests.yml`, and by the Codecov `project` status for flag `handler` in `codecov.yml`).
+- **Patch requirement:** Codecov also enforces `patch` at **100%** with a 0% threshold on flag `handler` — every line a PR adds or changes in `internal/interfaces/http/handler/` must be covered. The 95% floor applies to the project total and does not exempt new code.
 - Run: `go test ./internal/interfaces/http/handler/test/... -race -coverpkg=./internal/interfaces/http/handler/...`
 - Local shortcuts: `make tests`, `make coverage`, `make coverage-html` (via Docker `api` container).
 

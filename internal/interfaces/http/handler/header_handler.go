@@ -30,22 +30,19 @@ func (h *HeaderHandler) Suggest(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	var queryParams struct {
-		paginate.PaginateQuery
-		Search string `query:"search"`
-	}
-	if err := c.Bind().Query(&queryParams); err != nil {
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
 			"errors":  err.Error(),
 		})
 	}
-	queryParams.Normalize()
+	query.Normalize()
 
 	suggestions, total, err := h.suggestHandler.Handle(c.Context(), queryheader.SuggestHeadersQuery{
 		ProjectID: projectID,
-		Search:    queryParams.Search,
-		Paginate:  queryParams.PaginateQuery,
+		Search:    query.Search,
+		Paginate:  query,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to fetch header suggestions"})
@@ -54,7 +51,7 @@ func (h *HeaderHandler) Suggest(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 		presenter.NewHeaderSuggestionsResponse(suggestions),
 		int(total),
-		queryParams.PaginateQuery,
+		query,
 	))
 }
 
@@ -64,25 +61,20 @@ func (h *HeaderHandler) SuggestValues(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	key := c.Query("key", "") // Optional now
-
-	var queryParams struct {
-		paginate.PaginateQuery
-		Search string `query:"search"`
-	}
-	if err := c.Bind().Query(&queryParams); err != nil {
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
 			"errors":  err.Error(),
 		})
 	}
-	queryParams.Normalize()
+	query.Normalize()
 
 	suggestions, total, err := h.suggestValueHandler.Handle(c.Context(), queryheader.SuggestHeaderValuesQuery{
 		ProjectID: projectID,
-		Key:       key, // Can be empty to search all
-		Search:    queryParams.Search,
-		Paginate:  queryParams.PaginateQuery,
+		Key:       c.Query("key", ""),
+		Search:    query.Search,
+		Paginate:  query,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to fetch header value suggestions"})
@@ -91,6 +83,6 @@ func (h *HeaderHandler) SuggestValues(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 		presenter.NewHeaderValueSuggestionsResponse(suggestions),
 		int(total),
-		queryParams.PaginateQuery,
+		query,
 	))
 }

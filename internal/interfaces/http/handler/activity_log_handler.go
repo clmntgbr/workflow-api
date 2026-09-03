@@ -60,6 +60,7 @@ func (h *ActivityLogHandler) ListByWorkflow(c fiber.Ctx) error {
 			"errors":  err.Error(),
 		})
 	}
+	query.Normalize()
 
 	views, total, err := h.listByWorkflow.Handle(c.Context(), queryactivitylog.ListByWorkflowQuery{
 		UserID:     user.ID,
@@ -71,6 +72,5 @@ func (h *ActivityLogHandler) ListByWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list activity logs"})
 	}
 
-	query.Normalize()
 	return c.JSON(presenter.NewActivityLogPaginateResponse(views, total, query))
 }
