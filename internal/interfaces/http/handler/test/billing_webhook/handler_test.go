@@ -339,8 +339,8 @@ func TestBillingWebhookHandler_Execute_HandlerError_Internal(t *testing.T) {
 	}
 
 	body := testutil.DecodeJSONMap(t, resp)
-	if body["error"] != "failed to process event" {
-		t.Fatalf("error message: got %v", body["error"])
+	if body["message"] != "failed to process event" {
+		t.Fatalf("error message: got %v", body["message"])
 	}
 }
 
@@ -356,8 +356,8 @@ func TestBillingWebhookHandler_Execute_HandlerError_SubscriptionNotLinked(t *tes
 	}
 
 	body := testutil.DecodeJSONMap(t, resp)
-	if body["error"] != "subscription not linked yet" {
-		t.Fatalf("error message: got %v", body["error"])
+	if body["message"] != "subscription not linked yet" {
+		t.Fatalf("error message: got %v", body["message"])
 	}
 }
 

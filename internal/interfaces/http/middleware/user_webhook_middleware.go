@@ -34,14 +34,14 @@ func (m *UserWebhookMiddleware) Protected() fiber.Handler {
 
 		if err := wh.Verify(payload, headers); err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid signature",
+				"message": "invalid signature",
 			})
 		}
 
 		var clerkEvent dto.ClerkEvent
 		if err := json.Unmarshal(payload, &clerkEvent); err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid payload",
+				"message": "invalid payload",
 			})
 		}
 

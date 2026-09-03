@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 
 	cmdsubscription "go-api/internal/application/command/subscription"
 	querysubscription "go-api/internal/application/query/subscription"
@@ -189,9 +190,9 @@ func (h *SubscriptionHandler) CreateSubscription(c fiber.Ctx) error {
 				"message": err.Error(),
 			})
 		default:
+			log.Printf("subscription: change plan failed for user %s: %v", user.ID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": "Internal server error",
-				"errors":  err.Error(),
 			})
 		}
 	}
@@ -225,9 +226,9 @@ func (h *SubscriptionHandler) CreateBillingPortal(c fiber.Ctx) error {
 				"message": err.Error(),
 			})
 		default:
+			log.Printf("subscription: billing portal failed for user %s: %v", user.ID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": "Internal server error",
-				"errors":  err.Error(),
 			})
 		}
 	}

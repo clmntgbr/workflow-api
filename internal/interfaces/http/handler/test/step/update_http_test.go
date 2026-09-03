@@ -242,28 +242,44 @@ func TestStepHandler_UpdateHTTP_InvalidBody(t *testing.T) {
 }
 
 func TestStepHandler_UpdateHTTP_InvalidURL(t *testing.T) {
-	getByID := &mockGetStepByIDHandler{
-		views: []*domainstep.StepView{sampleHTTPStepView()},
-		errs:  []error{nil},
+	tests := []struct {
+		name string
+		url  string
+	}{
+		// Rejected by url.Parse in ResolveURLAndQuery.
+		{name: "malformed", url: "://bad-url"},
+		// Parses fine as a relative reference; only the `url` validator tag
+		// rejects it, matching how endpoint URLs are validated.
+		{name: "no scheme", url: "api.example.com/users"},
+		{name: "relative path", url: "/users"},
 	}
-	update := &mockUpdateStepHandler{}
-	h := newStepHandler(stepMocks{getByID: getByID, update: update})
 
-	app := testutil.NewTestApp()
-	app.Put(stepItemRoute(), activeProject(), h.Update)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			getByID := &mockGetStepByIDHandler{
+				views: []*domainstep.StepView{sampleHTTPStepView()},
+				errs:  []error{nil},
+			}
+			update := &mockUpdateStepHandler{}
+			h := newStepHandler(stepMocks{getByID: getByID, update: update})
 
-	body := validUpdateHTTPStepBody()
-	body["url"] = "://bad-url"
+			app := testutil.NewTestApp()
+			app.Put(stepItemRoute(), activeProject(), h.Update)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, stepItemPath(testutil.TestStepID), body))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if update.called {
-		t.Fatal("update handler must not be called with invalid url")
+			body := validUpdateHTTPStepBody()
+			body["url"] = tc.url
+
+			resp, err := app.Test(mustJSONRequest(t, http.MethodPut, stepItemPath(testutil.TestStepID), body))
+			if err != nil {
+				t.Fatalf("perform request: %v", err)
+			}
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+			}
+			if update.called {
+				t.Fatal("update handler must not be called with invalid url")
+			}
+		})
 	}
 }
 

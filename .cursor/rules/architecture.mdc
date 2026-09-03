@@ -162,6 +162,20 @@ return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 - Reject invalid payloads with consistent `400` responses and clear field-level errors.
 - Validate event payloads before processing in consumers (schema/version required).
 - Never trust external provider payloads (webhooks, queues, third-party APIs); validate and sanitize first.
+- Always validate through `validation.Struct` / `validation.BindBody`. Never instantiate a local `validator.New()` in a handler: it loses the JSON tag names and the custom validators registered in `validation.init()`, and returning its error raw produces a plain-text `500` instead of a field-level `400`.
+
+## Error envelope
+
+One shape for every error response, on every endpoint including webhooks:
+
+```json
+{ "message": "Human readable summary", "errors": { "field": "reason" }, "code": "MACHINE_CODE" }
+```
+
+- `message` is **mandatory** and is the only key clients can rely on. Never `{"error": …}`, never a bare string, never a nested `{"success": false, "data": {…}}`.
+- `errors` is optional and reserved for **field-level validation** failures; `validation.Struct` fills it. Do not use it to carry a single global error.
+- `code` is optional, for machine-readable business cases (example: `WRONG_ORGANIZATION`).
+- **Never put an internal error string in the response.** `err.Error()` may expose driver, SQL, or provider details. Log it server-side and return a generic `message`. Sentinel errors whose text is a deliberate part of the contract may be surfaced, but only on `4xx`.
 
 ## Outbox
 
@@ -319,6 +333,8 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 - Skip handler HTTP tests when adding or changing an HTTP endpoint — **including a new handler file or a new method on an existing handler**
 - Call the database, message broker, or external APIs in handler unit tests
 - Return `nil` from validation helpers after writing a `400` response — return `validation.ErrValidationFailed` and rely on `FiberErrorHandler`
+- Instantiate a local `validator.New()` in a handler — use `validation.Struct` / `validation.BindBody`
+- Return an error envelope keyed on anything other than `message`, or leak `err.Error()` into a `5xx` response
 - Return an ad-hoc pagination envelope from a handler — use `paginate.NewPaginateResponse`
 - Call `PaginateQuery.Normalize()` after invoking the application handler
 - Redeclare a field already provided by the embedded `PaginateQuery`

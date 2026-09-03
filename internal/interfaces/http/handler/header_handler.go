@@ -34,7 +34,6 @@ func (h *HeaderHandler) Suggest(c fiber.Ctx) error {
 	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
-			"errors":  err.Error(),
 		})
 	}
 	query.Normalize()
@@ -65,7 +64,6 @@ func (h *HeaderHandler) SuggestValues(c fiber.Ctx) error {
 	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
-			"errors":  err.Error(),
 		})
 	}
 	query.Normalize()

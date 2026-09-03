@@ -432,6 +432,28 @@ func TestUserWebhookHandler_Execute_UnknownEventType(t *testing.T) {
 	}
 }
 
+// An invalid payload is a 400, not a 500: it will never succeed on replay, so
+// Clerk must stop retrying it.
+func assertValidationFailed(t *testing.T, resp *http.Response, wantField string) {
+	t.Helper()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+
+	body := testutil.DecodeJSONMap(t, resp)
+	if body["message"] != "Validation failed" {
+		t.Fatalf("message: got %v want %q", body["message"], "Validation failed")
+	}
+
+	fieldErrors, ok := body["errors"].(map[string]any)
+	if !ok {
+		t.Fatalf("errors: got %T want map", body["errors"])
+	}
+	if _, found := fieldErrors[wantField]; !found {
+		t.Fatalf("errors: missing field %q, got %v", wantField, fieldErrors)
+	}
+}
+
 func TestUserWebhookHandler_Execute_UserCreated_ValidationError(t *testing.T) {
 	h := newUserWebhookHandler(userWebhookMocks{})
 
@@ -439,9 +461,7 @@ func TestUserWebhookHandler_Execute_UserCreated_ValidationError(t *testing.T) {
 	delete(data, "banned")
 
 	resp := executeWebhook(t, h, clerkEvent("user.created", data))
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
-	}
+	assertValidationFailed(t, resp, "banned")
 }
 
 func TestUserWebhookHandler_Execute_UserUpdated_ValidationError(t *testing.T) {
@@ -451,16 +471,12 @@ func TestUserWebhookHandler_Execute_UserUpdated_ValidationError(t *testing.T) {
 	delete(data, "id")
 
 	resp := executeWebhook(t, h, clerkEvent("user.updated", data))
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
-	}
+	assertValidationFailed(t, resp, "id")
 }
 
 func TestUserWebhookHandler_Execute_UserDeleted_ValidationError(t *testing.T) {
 	h := newUserWebhookHandler(userWebhookMocks{})
 
 	resp := executeWebhook(t, h, clerkEvent("user.deleted", map[string]string{}))
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
-	}
+	assertValidationFailed(t, resp, "id")
 }

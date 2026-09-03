@@ -98,7 +98,6 @@ func (h *WorkflowRunHandler) Analytics(c fiber.Ctx) error {
 	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
-			"errors":  err.Error(),
 		})
 	}
 	if err := validation.Struct(c, &query); err != nil {
@@ -289,7 +288,6 @@ func (h *WorkflowRunHandler) ListByWorkflow(c fiber.Ctx) error {
 	if err := c.Bind().Query(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
-			"errors":  err.Error(),
 		})
 	}
 

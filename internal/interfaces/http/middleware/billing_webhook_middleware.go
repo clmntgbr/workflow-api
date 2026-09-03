@@ -26,7 +26,7 @@ func (m *BillingWebhookMiddleware) Protected() fiber.Handler {
 		if m.secret == "" {
 			log.Printf("stripe webhook: secret is not configured")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "stripe webhook secret is not configured",
+				"message": "stripe webhook secret is not configured",
 			})
 		}
 
@@ -35,14 +35,14 @@ func (m *BillingWebhookMiddleware) Protected() fiber.Handler {
 		if signature == "" {
 			log.Printf("stripe webhook: missing Stripe-Signature header")
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "missing stripe signature",
+				"message": "missing stripe signature",
 			})
 		}
 
 		if err := webhook.ValidatePayload(payload, signature, m.secret); err != nil {
 			log.Printf("stripe webhook: invalid signature: %v", err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid signature",
+				"message": "invalid signature",
 			})
 		}
 
@@ -50,7 +50,7 @@ func (m *BillingWebhookMiddleware) Protected() fiber.Handler {
 		if err := json.Unmarshal(payload, &event); err != nil {
 			log.Printf("stripe webhook: invalid payload: %v", err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid payload",
+				"message": "invalid payload",
 			})
 		}
 

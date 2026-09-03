@@ -2,9 +2,11 @@ package dto
 
 import "go-api/internal/domain/httpquery"
 
+// Bounds are range checks rather than `required`: (0,0) is a legitimate canvas
+// position and `required` rejects the zero value on a float.
 type PositionRequest struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
+	X float64 `json:"x" validate:"min=-1000000,max=1000000"`
+	Y float64 `json:"y" validate:"min=-1000000,max=1000000"`
 }
 
 type CreateStepRequest struct {
@@ -35,7 +37,7 @@ type UpdateStepPositionRequest struct {
 type UpdateStepRequest struct {
 	Name           string            `json:"name" validate:"required,min=1,max=255"`
 	Description    string            `json:"description" validate:"omitempty,max=2000"`
-	URL            string            `json:"url" validate:"required,max=2048"`
+	URL            string            `json:"url" validate:"required,url,max=2048"`
 	Method         string            `json:"method" validate:"required,http_method"`
 	Headers        map[string]string `json:"headers" validate:"omitempty"`
 	Query          httpquery.Params  `json:"query" validate:"omitempty"`

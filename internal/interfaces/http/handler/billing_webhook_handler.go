@@ -59,11 +59,11 @@ func (h *BillingWebhookHandler) Execute(c fiber.Ctx) error {
 		log.Printf("stripe webhook: failed event id=%s type=%s: %v", event.ID, event.Type, err)
 		if errors.Is(err, cmdsubscription.ErrStripeSubscriptionNotLinked) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-				"error": "subscription not linked yet",
+				"message": "subscription not linked yet",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to process event",
+			"message": "failed to process event",
 		})
 	}
 

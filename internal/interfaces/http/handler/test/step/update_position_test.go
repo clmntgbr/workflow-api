@@ -150,6 +150,78 @@ func TestStepHandler_UpdatePosition_InvalidBody(t *testing.T) {
 	}
 }
 
+// (0,0) must stay valid: the position tags are bounds, not `required`.
+func TestStepHandler_UpdatePosition_ZeroOriginIsValid(t *testing.T) {
+	updatePosition := &mockUpdateStepPositionHandler{result: sampleHTTPStepEntity()}
+	h := newStepHandler(stepMocks{updatePosition: updatePosition})
+
+	app := testutil.NewTestApp()
+	app.Put(stepPositionRoute(), activeProject(), h.UpdatePosition)
+
+	resp, err := app.Test(mustJSONRequest(
+		t,
+		http.MethodPut,
+		stepPositionPath(testutil.TestStepID),
+		map[string]any{"position": map[string]any{"x": 0.0, "y": 0.0}},
+	))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !updatePosition.called {
+		t.Fatal("expected update position handler to be called for origin position")
+	}
+}
+
+func TestStepHandler_UpdatePosition_OutOfBounds(t *testing.T) {
+	tests := []struct {
+		name      string
+		position  map[string]any
+		wantField string
+	}{
+		{name: "x too small", position: map[string]any{"x": -2000000.0, "y": 0.0}, wantField: "x"},
+		{name: "x too large", position: map[string]any{"x": 2000000.0, "y": 0.0}, wantField: "x"},
+		{name: "y too large", position: map[string]any{"x": 0.0, "y": 2000000.0}, wantField: "y"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updatePosition := &mockUpdateStepPositionHandler{}
+			h := newStepHandler(stepMocks{updatePosition: updatePosition})
+
+			app := testutil.NewTestApp()
+			app.Put(stepPositionRoute(), activeProject(), h.UpdatePosition)
+
+			resp, err := app.Test(mustJSONRequest(
+				t,
+				http.MethodPut,
+				stepPositionPath(testutil.TestStepID),
+				map[string]any{"position": tc.position},
+			))
+			if err != nil {
+				t.Fatalf("perform request: %v", err)
+			}
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+			}
+			if updatePosition.called {
+				t.Fatal("update position handler must not be called on validation error")
+			}
+
+			body := testutil.DecodeJSONMap(t, resp)
+			fieldErrors, ok := body["errors"].(map[string]any)
+			if !ok {
+				t.Fatalf("errors: got %T want map", body["errors"])
+			}
+			if _, found := fieldErrors[tc.wantField]; !found {
+				t.Fatalf("errors: missing field %q, got %v", tc.wantField, fieldErrors)
+			}
+		})
+	}
+}
+
 func TestStepHandler_UpdatePosition_NotFound(t *testing.T) {
 	updatePosition := &mockUpdateStepPositionHandler{err: errors.New("step not found")}
 	h := newStepHandler(stepMocks{updatePosition: updatePosition})

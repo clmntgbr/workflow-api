@@ -327,7 +327,6 @@ func (h *EndpointHandler) ListByProject(c fiber.Ctx) error {
 	if err := c.Bind().Query(&listQuery); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid query parameters",
-			"errors":  err.Error(),
 		})
 	}
 
