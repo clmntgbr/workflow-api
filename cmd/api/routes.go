@@ -39,6 +39,7 @@ func setupAPIRoutes(app *fiber.App, container *di.Container) {
 	setupProjectRoutes(api, container)
 	setupWorkflowRoutes(api, container)
 	setupEndpointRoutes(api, container)
+	setupHeaderRoutes(api, container)
 	setupStepRoutes(api, container)
 	setupConnectionRoutes(api, container)
 	setupVariableRoutes(api, container)
@@ -84,6 +85,12 @@ func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/endpoints/:id", container.EndpointHandler.GetByID)
 	api.Put("/endpoints/:id", container.EndpointHandler.Update)
 	api.Delete("/endpoints/:id", container.EndpointHandler.Delete)
+}
+
+func setupHeaderRoutes(api fiber.Router, container *di.Container) {
+	api.Use(container.AuthenticateMiddleware.Protected())
+	api.Get("/headers/suggest", container.HeaderHandler.Suggest)
+	api.Get("/headers/suggest-values", container.HeaderHandler.SuggestValues)
 }
 
 func setupStepRoutes(api fiber.Router, container *di.Container) {

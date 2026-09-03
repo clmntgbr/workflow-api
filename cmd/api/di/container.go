@@ -20,6 +20,7 @@ import (
 	queryactivitylog "go-api/internal/application/query/activitylog"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
+	queryheader "go-api/internal/application/query/header"
 	queryinsight "go-api/internal/application/query/insight"
 	queryinvoice "go-api/internal/application/query/invoice"
 	queryplan "go-api/internal/application/query/plan"
@@ -65,6 +66,7 @@ type Container struct {
 	SubscriptionHandler      *httphandler.SubscriptionHandler
 	InvoiceHandler           *httphandler.InvoiceHandler
 	RealtimeHandler          *httphandler.RealtimeHandler
+	HeaderHandler            *httphandler.HeaderHandler
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -95,6 +97,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	assertionWriteRepo := write.NewAssertionWriteRepository(db)
 	assertionReadRepo := read.NewAssertionReadRepository(db)
 	activityLogReadRepo := read.NewActivityLogReadRepository(db)
+	headerReadRepo := read.NewHeaderReadRepository(db)
 	quotaReadRepo := read.NewQuotaReadRepository(db)
 	planWriteRepo := write.NewPlanWriteRepository(db)
 	planReadRepo := read.NewPlanReadRepository(db, quotaReadRepo)
@@ -360,6 +363,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	)
 	listInvoicesHandler := queryinvoice.NewListInvoicesHandler(invoiceReadRepo)
 
+	suggestHeadersHandler := queryheader.NewSuggestHeadersHandler(headerReadRepo)
+	suggestHeaderValuesHandler := queryheader.NewSuggestHeaderValuesHandler(headerReadRepo)
+
 	return &Container{
 		AuthenticateMiddleware: middleware.NewAuthenticateMiddleware(
 			validateTokenHandler,
@@ -478,5 +484,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		InvoiceHandler:  httphandler.NewInvoiceHandler(listInvoicesHandler),
 		RealtimeHandler: httphandler.NewRealtimeHandler(centrifugo.NewConnectionInfoCreator(env)),
+		HeaderHandler:   httphandler.NewHeaderHandler(suggestHeadersHandler, suggestHeaderValuesHandler),
 	}
 }
