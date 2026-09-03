@@ -82,7 +82,73 @@ migrations/               *.sql (schema source of truth)
 - Package: `internal/application/query/<aggregate>/`
 - Return dedicated views when possible (not write-side aggregates).
 - Read repos may use optimized SQL against the same tables.
-- List endpoints should bind pagination/filter query structs, normalize defaults, and return a typed paginated response.
+- List endpoints are paginated — see [Pagination](#pagination).
+
+## Pagination
+
+Every collection endpoint uses the same query struct, the same response shape, and the same
+normalization order. There is one pagination contract for the whole API.
+
+### Response shape (mandatory)
+
+- Return `paginate.PaginateResponse`, always built with `paginate.NewPaginateResponse(members, total, query)`.
+- Never hand-roll an envelope in a handler (no `fiber.Map{"items": …}`, no `{"success": …, "data": …}`, no bare array).
+- `total` is the count **before** `LIMIT`/`OFFSET`; `NewPaginateResponse` derives `totalPages` from it.
+- Presenter mappers must allocate with `make([]T, 0, len(views))` so an empty page serializes as `[]`, not `null`.
+
+### Query binding
+
+- Bind `paginate.PaginateQuery` directly, or embed it in an anonymous struct when the endpoint takes extra filters.
+- Never redeclare a field `PaginateQuery` already provides (`page`, `limit`, `sortBy`, `orderBy`, `search`) — an outer field shadows the embedded one and silently splits the value in two.
+- Extra filters are plain fields on the wrapper struct, passed to the application layer alongside the normalized query.
+
+### Normalization order (mandatory)
+
+`Normalize()` runs **before** the application handler is called, never after. Calling it afterwards
+only fixes the numbers echoed in the response while the repository already ran with unclamped values.
+
+To apply a resource-specific default, capture emptiness before normalizing:
+
+```go
+var listQuery struct {
+	paginate.PaginateQuery
+	Method []string `query:"method"`
+}
+if err := c.Bind().Query(&listQuery); err != nil {
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		"message": "Invalid query parameters",
+		"errors":  err.Error(),
+	})
+}
+
+sortBy, orderBy := listQuery.SortBy, listQuery.OrderBy
+listQuery.Normalize()
+if sortBy == "" {
+	listQuery.SortBy = "created_at"
+}
+if orderBy == "" {
+	listQuery.OrderBy = paginate.OrderByDesc
+}
+
+views, total, err := h.listHandler.Handle(c.Context(), query.ListXxxQuery{
+	ProjectID: projectID,
+	Query:     listQuery.PaginateQuery,
+	Methods:   listQuery.Method,
+})
+// …
+return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
+	presenter.NewXxxListResponseFromViews(views),
+	int(total),
+	listQuery.PaginateQuery,
+))
+```
+
+### Read repositories
+
+- Prefer the shared GORM `Paginate(db, query)` helper; it returns the scoped query and the total.
+- Offset comes from `query.Offset()` — it is a **method**, not a field. Passing `query.Offset` binds a func value.
+- Raw SQL must use named parameters (`@name`) rather than `?`. Postgres operators containing `?` (`jsonb ?`, `?|`, `?&`) are otherwise rewritten as bind placeholders and produce a syntax error at runtime.
+- Any repository method built on `db.Raw` needs a test that executes it against a real database; handler tests mock the query handler and cannot catch SQL defects.
 
 ## Payload validation (mandatory with exceptions)
 
@@ -252,3 +318,7 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 - Skip handler HTTP tests when adding or changing an HTTP endpoint — **including a new handler file or a new method on an existing handler**
 - Call the database, message broker, or external APIs in handler unit tests
 - Return `nil` from validation helpers after writing a `400` response — return `validation.ErrValidationFailed` and rely on `FiberErrorHandler`
+- Return an ad-hoc pagination envelope from a handler — use `paginate.NewPaginateResponse`
+- Call `PaginateQuery.Normalize()` after invoking the application handler
+- Redeclare a field already provided by the embedded `PaginateQuery`
+- Use `?` placeholders in raw SQL that also contains a Postgres `?` operator — use named parameters

@@ -30,33 +30,50 @@ func setupHealthChecks(app *fiber.App) {
 }
 
 func setupAPIRoutes(app *fiber.App, container *di.Container) {
-	api := app.Group("/api")
+	public := app.Group("/api")
 
-	setupPlanRoutes(api, container)
-	setupSubscriptionRoutes(api, container)
-	setupInvoiceRoutes(api, container)
-	setupUserRoutes(api, container)
-	setupProjectRoutes(api, container)
-	setupWorkflowRoutes(api, container)
-	setupEndpointRoutes(api, container)
-	setupHeaderRoutes(api, container)
-	setupStepRoutes(api, container)
-	setupConnectionRoutes(api, container)
-	setupVariableRoutes(api, container)
-	setupAssertionRoutes(api, container)
-	setupActivityLogRoutes(api, container)
-	setupWorkflowRunRoutes(api, container)
-	setupRealtimeRoutes(api, container)
+	setupPlanRoutes(public, container)
+
+	protected := public.Group("", container.AuthenticateMiddleware.Protected())
+
+	setupSubscriptionRoutes(protected, container)
+	setupInvoiceRoutes(protected, container)
+	setupUserRoutes(protected, container)
+	setupProjectRoutes(protected, container)
+	setupWorkflowRoutes(protected, container)
+	setupEndpointRoutes(protected, container)
+	setupHeaderRoutes(protected, container)
+	setupStepRoutes(protected, container)
+	setupConnectionRoutes(protected, container)
+	setupVariableRoutes(protected, container)
+	setupAssertionRoutes(protected, container)
+	setupActivityLogRoutes(protected, container)
+	setupWorkflowRunRoutes(protected, container)
+	setupRealtimeRoutes(protected, container)
+}
+
+func setupPlanRoutes(public fiber.Router, container *di.Container) {
+	public.Get("/plans", container.PlanHandler.List)
+}
+
+func setupSubscriptionRoutes(api fiber.Router, container *di.Container) {
+	api.Get("/subscription", container.SubscriptionHandler.GetSubscription)
+	api.Get("/quota", container.SubscriptionHandler.GetQuota)
+	api.Post("/subscriptions", container.SubscriptionHandler.CreateSubscription)
+	api.Post("/subscriptions/preview", container.SubscriptionHandler.PreviewSubscription)
+	api.Get("/subscriptions/portal", container.SubscriptionHandler.CreateBillingPortal)
+}
+
+func setupInvoiceRoutes(api fiber.Router, container *di.Container) {
+	api.Get("/invoices", container.InvoiceHandler.GetInvoices)
 }
 
 func setupUserRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/users/me", container.UserHandler.GetUser)
 	api.Put("/users/me/active-project", container.UserHandler.SetActiveProject)
 }
 
 func setupProjectRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/projects", container.ProjectHandler.List)
 	api.Post("/projects", container.ProjectHandler.Create)
 	api.Get("/projects/:id", container.ProjectHandler.GetByID)
@@ -67,7 +84,6 @@ func setupProjectRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows", container.WorkflowHandler.Create)
 	api.Get("/workflows", container.WorkflowHandler.ListByProject)
 	api.Get("/workflows/:id", container.WorkflowHandler.GetByID)
@@ -78,7 +94,6 @@ func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupEndpointRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/endpoints", container.EndpointHandler.Create)
 	api.Post("/endpoints/import", container.EndpointHandler.ImportFromOpenAPI)
 	api.Get("/endpoints", container.EndpointHandler.ListByProject)
@@ -88,13 +103,11 @@ func setupEndpointRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupHeaderRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/headers/suggest", container.HeaderHandler.Suggest)
 	api.Get("/headers/suggest-values", container.HeaderHandler.SuggestValues)
 }
 
 func setupStepRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows/:workflowId/steps", container.StepHandler.Create)
 	api.Get("/workflows/:workflowId/steps", container.StepHandler.ListByWorkflow)
 	api.Get("/workflows/:workflowId/steps/:id", container.StepHandler.GetByID)
@@ -104,14 +117,12 @@ func setupStepRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupConnectionRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows/:workflowId/connections", container.ConnectionHandler.Create)
 	api.Get("/workflows/:workflowId/connections", container.ConnectionHandler.ListByWorkflow)
 	api.Delete("/workflows/:workflowId/connections/:id", container.ConnectionHandler.Delete)
 }
 
 func setupVariableRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows/:workflowId/variables", container.VariableHandler.Create)
 	api.Get("/workflows/:workflowId/variables", container.VariableHandler.List)
 	api.Get("/workflows/:workflowId/steps/:stepId/variables", container.VariableHandler.ListAvailable)
@@ -122,7 +133,6 @@ func setupVariableRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupAssertionRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Post("/workflows/:workflowId/steps/:stepId/assertions", container.AssertionHandler.Create)
 	api.Get("/workflows/:workflowId/steps/:stepId/assertions", container.AssertionHandler.ListByStep)
 	api.Get("/workflows/:workflowId/steps/:stepId/assertion-paths", container.AssertionHandler.SearchPaths)
@@ -132,12 +142,10 @@ func setupAssertionRoutes(api fiber.Router, container *di.Container) {
 }
 
 func setupActivityLogRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/workflows/:workflowId/activity", container.ActivityLogHandler.ListByWorkflow)
 }
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
-	api.Use(container.AuthenticateMiddleware.Protected())
 	api.Get("/workflows/:workflowId/runs/analytics", container.WorkflowRunHandler.Analytics)
 	api.Post("/workflows/:id/start", container.WorkflowRunHandler.StartWorkflow)
 	api.Post("/workflows/:id/stop", container.WorkflowRunHandler.StopWorkflow)
@@ -145,25 +153,6 @@ func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/workflows/:workflowId/runs/:id", container.WorkflowRunHandler.GetByID)
 }
 
-func setupPlanRoutes(api fiber.Router, container *di.Container) {
-	api.Get("/plans", container.PlanHandler.List)
-}
-
-func setupSubscriptionRoutes(api fiber.Router, container *di.Container) {
-	auth := container.AuthenticateMiddleware.Protected()
-	api.Get("/subscription", auth, container.SubscriptionHandler.GetSubscription)
-	api.Get("/quota", auth, container.SubscriptionHandler.GetQuota)
-	api.Post("/subscriptions", auth, container.SubscriptionHandler.CreateSubscription)
-	api.Post("/subscriptions/preview", auth, container.SubscriptionHandler.PreviewSubscription)
-	api.Get("/subscriptions/portal", auth, container.SubscriptionHandler.CreateBillingPortal)
-}
-
-func setupInvoiceRoutes(api fiber.Router, container *di.Container) {
-	auth := container.AuthenticateMiddleware.Protected()
-	api.Get("/invoices", auth, container.InvoiceHandler.GetInvoices)
-}
-
 func setupRealtimeRoutes(api fiber.Router, container *di.Container) {
-	auth := container.AuthenticateMiddleware.Protected()
-	api.Get("/realtime/connection", auth, container.RealtimeHandler.GetConnection)
+	api.Get("/realtime/connection", container.RealtimeHandler.GetConnection)
 }

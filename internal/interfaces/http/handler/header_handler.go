@@ -51,15 +51,11 @@ func (h *HeaderHandler) Suggest(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to fetch header suggestions"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"data": fiber.Map{
-			"items": presenter.NewHeaderSuggestionsResponse(suggestions),
-			"page":  queryParams.Page,
-			"limit": queryParams.Limit,
-			"total": total,
-		},
-	})
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
+		presenter.NewHeaderSuggestionsResponse(suggestions),
+		int(total),
+		queryParams.PaginateQuery,
+	))
 }
 
 func (h *HeaderHandler) SuggestValues(c fiber.Ctx) error {
@@ -92,13 +88,9 @@ func (h *HeaderHandler) SuggestValues(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to fetch header value suggestions"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"data": fiber.Map{
-			"items": presenter.NewHeaderValueSuggestionsResponse(suggestions),
-			"page":  queryParams.Page,
-			"limit": queryParams.Limit,
-			"total": total,
-		},
-	})
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
+		presenter.NewHeaderValueSuggestionsResponse(suggestions),
+		int(total),
+		queryParams.PaginateQuery,
+	))
 }
