@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 )
@@ -44,6 +45,14 @@ func main() {
 
 	app.Use(logger.New(logger.Config{
 		Format: "[${ip}]:${port} ${status} - ${method} ${path}\n",
+		Next: func(c fiber.Ctx) bool {
+			switch c.Path() {
+			case healthcheck.LivenessEndpoint, healthcheck.ReadinessEndpoint, healthcheck.StartupEndpoint:
+				return true
+			default:
+				return false
+			}
+		},
 	}))
 
 	app.Use(func(c fiber.Ctx) error {
