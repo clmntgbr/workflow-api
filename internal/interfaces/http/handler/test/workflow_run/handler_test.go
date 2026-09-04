@@ -377,7 +377,7 @@ func TestWorkflowRunHandler_StartWorkflow_Success(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -409,7 +409,7 @@ func TestWorkflowRunHandler_StartWorkflow_WithContext(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	body := map[string]any{"context": map[string]any{"orderId": "123"}}
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", body))
@@ -429,7 +429,7 @@ func TestWorkflowRunHandler_StartWorkflow_Unauthorized(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -448,7 +448,7 @@ func TestWorkflowRunHandler_StartWorkflow_MissingActiveProject(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", testutil.WithUserWithoutProject(testutil.TestUserID), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", testutil.WithUserWithoutProject(testutil.TestUserID), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -467,7 +467,7 @@ func TestWorkflowRunHandler_StartWorkflow_InvalidWorkflowID(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/not-a-uuid/start", nil))
 	if err != nil {
@@ -487,7 +487,7 @@ func TestWorkflowRunHandler_StartWorkflow_WorkflowNotFound(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -509,7 +509,7 @@ func TestWorkflowRunHandler_StartWorkflow_WrongProject(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -529,7 +529,7 @@ func TestWorkflowRunHandler_StartWorkflow_GetWorkflowInternalError(t *testing.T)
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -546,7 +546,7 @@ func TestWorkflowRunHandler_StartWorkflow_HandlerError_WorkflowNotFound(t *testi
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -563,7 +563,7 @@ func TestWorkflowRunHandler_StopWorkflow_GetWorkflowInternalError(t *testing.T) 
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -583,7 +583,7 @@ func TestWorkflowRunHandler_StartWorkflow_AlreadyInProgress(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -604,7 +604,7 @@ func TestWorkflowRunHandler_StartWorkflow_QuotaExceeded(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -621,7 +621,7 @@ func TestWorkflowRunHandler_StartWorkflow_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/start", activeProject(), h.StartWorkflow)
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", nil))
 	if err != nil {
@@ -638,7 +638,7 @@ func TestWorkflowRunHandler_StopWorkflow_Success(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -666,7 +666,7 @@ func TestWorkflowRunHandler_StopWorkflow_Unauthorized(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -685,7 +685,7 @@ func TestWorkflowRunHandler_StopWorkflow_MissingActiveProject(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", testutil.WithUserWithoutProject(testutil.TestUserID), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", testutil.WithUserWithoutProject(testutil.TestUserID), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -704,7 +704,7 @@ func TestWorkflowRunHandler_StopWorkflow_InvalidWorkflowID(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/bad-id/stop", nil))
 	if err != nil {
@@ -724,7 +724,7 @@ func TestWorkflowRunHandler_StopWorkflow_WorkflowNotFound(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -746,7 +746,7 @@ func TestWorkflowRunHandler_StopWorkflow_WrongProject(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -766,7 +766,7 @@ func TestWorkflowRunHandler_StopWorkflow_NoRunInProgress(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -787,7 +787,7 @@ func TestWorkflowRunHandler_StopWorkflow_CancelWorkflowNotFound(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {
@@ -804,7 +804,7 @@ func TestWorkflowRunHandler_StopWorkflow_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowRunHandler(nil, cancel, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/stop", activeProject(), h.StopWorkflow)
+	app.Post("/workflows/:workflowId/stop", activeProject(), h.StopWorkflow)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/stop", nil))
 	if err != nil {

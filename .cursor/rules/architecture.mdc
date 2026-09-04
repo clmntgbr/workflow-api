@@ -22,6 +22,13 @@ cmd/*/di → interfaces/http → application/{command,query,event,registry} → 
 - Wire concrete implementations only in `cmd/*/di`
 - HTTP handlers call Command/Query handlers directly — no generic `CommandBus` by default
 
+### Provider-specific code at the HTTP boundary
+
+`interfaces/http` may import `infrastructure` only in the two cases below. Everywhere else, depend on a port.
+
+- **Never** type a `<resource>_ports.go` interface on an infrastructure struct. A ports file exists to decouple; using a concrete adapter type there defeats its purpose and drags the vendor into every test. Define a neutral type in `domain/port` and map it in the adapter (example: `port.RealtimeConnection`).
+- **Webhook adapters may speak the provider's dialect.** A provider webhook handler and its signature-verification middleware legitimately import the vendor SDK to deserialize and authenticate the payload — that is the whole job. The constraint is containment: the vendor type must be translated into a command or a domain type inside the handler and must never reach `application` or `domain`.
+
 ## Package layout
 
 ```
@@ -69,6 +76,7 @@ migrations/               *.sql (schema source of truth)
 - `DomainEvent` must expose at least: `EventID()`, `EventType()`, `AggregateID()`, `OccurredAt()`.
 - `eventId` is generated when the event is recorded on the aggregate, not at publish time.
 - Domain entities stay free of DDL/GORM schema tags; persistence models live under `infrastructure/persistence`.
+- The prohibition targets **persistence** tags (`gorm:`, DDL) only. Domain event structs **may** carry `json:` tags: an event's serialized form is part of its published contract, not a storage concern, and the tags keep the wire format stable when a Go field is renamed.
 
 ## Commands (write)
 
@@ -86,13 +94,17 @@ migrations/               *.sql (schema source of truth)
 
 ## Pagination
 
-Every collection endpoint uses the same query struct, the same response shape, and the same
-normalization order. There is one pagination contract for the whole API.
+Searchable or unbounded collections use the same query struct, the same response shape, and the same
+normalization order. There is one pagination contract for those endpoints.
 
-### Response shape (mandatory)
+**Bare arrays are allowed** when the client needs the complete set in one shot: a catalog (`GET /plans`)
+or a graph/editor resource (`steps`, `connections`, workflow `variables`, step `assertions`, available
+variables for a step). Do not wrap those in `PaginateResponse`.
+
+### Response shape (mandatory for paginated collections)
 
 - Return `paginate.PaginateResponse`, always built with `paginate.NewPaginateResponse(members, total, query)`.
-- Never hand-roll an envelope in a handler (no `fiber.Map{"items": …}`, no `{"success": …, "data": …}`, no bare array).
+- Never hand-roll an envelope in a handler (no `fiber.Map{"items": …}`, no `{"success": …, "data": …}`).
 - `total` is the count **before** `LIMIT`/`OFFSET`; `NewPaginateResponse` derives `totalPages` from it.
 - Presenter mappers must allocate with `make([]T, 0, len(views))` so an empty page serializes as `[]`, not `null`.
 
@@ -145,7 +157,7 @@ return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 
 ### Read repositories
 
-- Prefer the shared GORM `Paginate(db, query)` helper; it returns the scoped query and the total.
+- Prefer the shared GORM `Paginate(db, query)` helper in `infrastructure/persistence/read`; it returns the scoped query and the total. Do not duplicate it in `write`.
 - Offset comes from `query.Offset()` — it is a **method**, not a field. Passing `query.Offset` binds a func value.
 - Raw SQL must use named parameters (`@name`) rather than `?`. Postgres operators containing `?` (`jsonb ?`, `?|`, `?&`) are otherwise rewritten as bind placeholders and produce a syntax error at runtime.
 - Raw SQL is not covered by automated tests: handler tests mock the query handler and there is no integration test suite. Any new or modified `db.Raw` query must be executed manually against a real database (example: `psql` on the `compose.dev.yaml` instance) before merging.
@@ -235,9 +247,28 @@ Keep orchestration (enqueue next step, finalize, cleanup, realtime publish) on t
 
 - Handlers call application command/query handlers **directly** — no generic bus.
 - One file per resource: `<resource>_handler.go`.
+- Only four filename suffixes are allowed in the handler package root, all prefixed by the resource: `<resource>_handler.go`, `<resource>_ports.go`, `<resource>_helpers.go` (unexported helpers shared by that resource's methods), `<resource>_test_exports.go`. A file that fits none of these belongs elsewhere.
 - Inject dependencies through **port interfaces** defined in `<resource>_ports.go` (unexported `…Handler` interfaces per command/query port). Concrete application handlers satisfy these interfaces; DI in `cmd/api/di` stays unchanged.
 - Keep production handlers free of test-only logic. Rare cross-package test hooks live in `<resource>_test_exports.go` at the handler package root (suffix `ForTest`, one file per resource when needed — example: `endpoint_test_exports.go`, `billing_webhook_test_exports.go`). Keep these files small; never add business logic.
 - Wire `validation.FiberErrorHandler` in the API app and in tests (`testutil.NewTestApp()`).
+
+### Route registration and auth posture
+
+A route's authentication must be visible from where it is registered, never inferred from registration order.
+
+- Build **one** `protected` group carrying the auth middleware, and pass that router to every setup function that needs it:
+
+```go
+public := app.Group("/api")
+setupPlanRoutes(public, container) // explicitly public
+
+protected := public.Group("", container.AuthenticateMiddleware.Protected())
+setupUserRoutes(protected, container)
+setupWorkflowRoutes(protected, container)
+```
+
+- Never call `api.Use(auth)` inside a per-resource setup function. `Use` applies to the shared group, so N such calls run the middleware N times on every protected request — full JWT verification and user lookup each time — and silently make earlier-registered routes public.
+- A setup function receives an already-scoped router and only registers paths. It never decides its own auth.
 - Map domain/application errors to consistent HTTP status codes at the handler boundary (quota helpers, not-found string checks, etc.).
 - **When adding a new handler or a new HTTP method on an existing handler**, add or extend handler HTTP tests in the **same change** (see [HTTP handler tests](#http-handler-tests)). Do not merge handler-only code without the matching test package updates.
 
@@ -335,6 +366,9 @@ Add focused tests for branches that are hard to reach via DTO validation only (r
 - Return `nil` from validation helpers after writing a `400` response — return `validation.ErrValidationFailed` and rely on `FiberErrorHandler`
 - Instantiate a local `validator.New()` in a handler — use `validation.Struct` / `validation.BindBody`
 - Return an error envelope keyed on anything other than `message`, or leak `err.Error()` into a `5xx` response
+- Call `Use(auth)` inside a per-resource route setup, or let a route's auth posture depend on registration order
+- Type a `*_ports.go` interface on an infrastructure struct
+- Add a file to the handler package root that is not `<resource>_{handler,ports,helpers,test_exports}.go`
 - Return an ad-hoc pagination envelope from a handler — use `paginate.NewPaginateResponse`
 - Call `PaginateQuery.Normalize()` after invoking the application handler
 - Redeclare a field already provided by the embedded `PaginateQuery`

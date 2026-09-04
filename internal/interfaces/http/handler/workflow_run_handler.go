@@ -143,7 +143,7 @@ func parseRFC3339Nullable(value string) (*time.Time, error) {
 }
 
 func (h *WorkflowRunHandler) StartWorkflow(c fiber.Ctx) error {
-	return h.startWorkflowRun(c, c.Params("id"))
+	return h.startWorkflowRun(c, c.Params("workflowId"))
 }
 
 func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
@@ -157,7 +157,7 @@ func (h *WorkflowRunHandler) StopWorkflow(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	workflowID, err := uuid.Parse(c.Params("id"))
+	workflowID, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}

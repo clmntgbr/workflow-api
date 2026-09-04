@@ -29,7 +29,7 @@ Creating endpoints may return `403` when plan quota is exceeded (`endpoint quota
 
 | Layer | Location |
 |-------|----------|
-| HTTP | `internal/interfaces/http/handler/endpoint_handler.go`, `endpoint_import_read.go` |
+| HTTP | `internal/interfaces/http/handler/endpoint_handler.go`, `endpoint_helpers.go` |
 | Test exports | `endpoint_test_exports.go` (multipart read hooks) |
 | Commands | `internal/application/command/endpoint/` |
 | Queries | `internal/application/query/endpoint/` |

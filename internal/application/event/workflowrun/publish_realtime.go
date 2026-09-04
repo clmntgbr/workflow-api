@@ -3,7 +3,6 @@ package workflowrun
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
@@ -16,9 +15,8 @@ import (
 )
 
 type PublishRealtimeHandler struct {
-	realtime     port.RealtimePublisher
+	publisher    *realtime.Publisher
 	workflowRepo domainworkflow.WorkflowReadRepository
-	projectRepo  domainproject.ProjectReadRepository
 }
 
 func NewPublishRealtimeHandler(
@@ -27,9 +25,8 @@ func NewPublishRealtimeHandler(
 	projectRepo domainproject.ProjectReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
-		realtime:     realtimePublisher,
+		publisher:    realtime.NewPublisher(realtimePublisher, projectRepo),
 		workflowRepo: workflowRepo,
-		projectRepo:  projectRepo,
 	}
 }
 
@@ -92,28 +89,13 @@ func (h *PublishRealtimeHandler) publishForWorkflow(
 		return messaging.NonRetryable(errWorkflowNotFound)
 	}
 
-	org, err := h.projectRepo.FindByID(ctx, workflow.ProjectID)
-	if err != nil {
-		return messaging.Retryable(err)
-	}
-	if org == nil {
-		return messaging.NonRetryable(errProjectNotFound)
-	}
-
-	eventType := realtime.EventType(realtime.EntityWorkflowRun, action)
-	for _, memberID := range org.MemberIDs {
-		if err := h.realtime.PublishToUser(ctx, memberID, eventType, payload); err != nil {
-			log.Printf(
-				"centrifugo publish failed type=%s workflowId=%s userId=%s: %v",
-				eventType,
-				workflowIDRaw,
-				memberID.String(),
-				err,
-			)
-			return messaging.Retryable(err)
-		}
-	}
-	return nil
+	return h.publisher.ToProjectMembers(
+		ctx,
+		realtime.EntityWorkflowRun,
+		action,
+		workflow.ProjectID.String(),
+		payload,
+	)
 }
 
 type workflowNotFoundError struct{}
@@ -123,11 +105,3 @@ func (workflowNotFoundError) Error() string {
 }
 
 var errWorkflowNotFound error = workflowNotFoundError{}
-
-type projectNotFoundError struct{}
-
-func (projectNotFoundError) Error() string {
-	return "project not found for workflow run realtime publish"
-}
-
-var errProjectNotFound error = projectNotFoundError{}

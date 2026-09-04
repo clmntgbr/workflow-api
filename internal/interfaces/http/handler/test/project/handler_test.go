@@ -12,6 +12,7 @@ import (
 	cmdquota "go-api/internal/application/command/quota"
 	usercmd "go-api/internal/application/command/user"
 	queryproject "go-api/internal/application/query/project"
+	"go-api/internal/domain/paginate"
 	domainproject "go-api/internal/domain/project"
 	"go-api/internal/interfaces/http/handler"
 	"go-api/internal/interfaces/http/presenter"
@@ -75,9 +76,9 @@ func (m *mockRemoveMemberHandler) Handle(_ context.Context, cmd projectcmd.Remov
 }
 
 type mockGetProjectByIDHandler struct {
-	calls  int
-	views  []*domainproject.ProjectView
-	errs   []error
+	calls int
+	views []*domainproject.ProjectView
+	errs  []error
 }
 
 func (m *mockGetProjectByIDHandler) Handle(
@@ -99,16 +100,17 @@ type mockListProjectsByUserHandler struct {
 	called bool
 	query  queryproject.ListProjectsByUserQuery
 	views  []domainproject.ProjectView
+	total  int64
 	err    error
 }
 
 func (m *mockListProjectsByUserHandler) Handle(
 	_ context.Context,
 	q queryproject.ListProjectsByUserQuery,
-) ([]domainproject.ProjectView, error) {
+) ([]domainproject.ProjectView, int64, error) {
 	m.called = true
 	m.query = q
-	return m.views, m.err
+	return m.views, m.total, m.err
 }
 
 type mockSetActiveProjectHandler struct {
@@ -187,13 +189,13 @@ func validUpdateProjectBody() map[string]any {
 
 func TestProjectHandler_List_Success(t *testing.T) {
 	view := sampleProjectView()
-	list := &mockListProjectsByUserHandler{views: []domainproject.ProjectView{*view}}
+	list := &mockListProjectsByUserHandler{views: []domainproject.ProjectView{*view}, total: 1}
 	h := newProjectHandler(nil, nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/projects", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.List)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/projects", nil))
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/projects?page=2&limit=10&search=my", nil))
 	if err != nil {
 		t.Fatalf("perform request: %v", err)
 	}
@@ -205,6 +207,55 @@ func TestProjectHandler_List_Success(t *testing.T) {
 	}
 	if list.query.UserID != testutil.TestUserID {
 		t.Fatalf("user id: got %s", list.query.UserID)
+	}
+	if list.query.Query.Page != 2 || list.query.Query.Limit != 10 {
+		t.Fatalf("paginate: got page=%d limit=%d", list.query.Query.Page, list.query.Query.Limit)
+	}
+	if list.query.Query.Search != "my" {
+		t.Fatalf("search: got %q want %q", list.query.Query.Search, "my")
+	}
+
+	var out struct {
+		Members    []presenter.ProjectDetailResponse `json:"members"`
+		Total      int                               `json:"total"`
+		Page       int                               `json:"page"`
+		Limit      int                               `json:"limit"`
+		TotalPages int                               `json:"totalPages"`
+	}
+	testutil.DecodeJSON(t, resp, &out)
+	if len(out.Members) != 1 {
+		t.Fatalf("members length: got %d want 1", len(out.Members))
+	}
+	if out.Members[0].ID != testutil.TestProjectID.String() {
+		t.Fatalf("member id: got %s", out.Members[0].ID)
+	}
+	if out.Total != 1 || out.Page != 2 || out.Limit != 10 || out.TotalPages != 1 {
+		t.Fatalf("envelope: got total=%d page=%d limit=%d totalPages=%d", out.Total, out.Page, out.Limit, out.TotalPages)
+	}
+}
+
+func TestProjectHandler_List_NormalizesPaginationBeforeHandler(t *testing.T) {
+	list := &mockListProjectsByUserHandler{}
+	h := newProjectHandler(nil, nil, nil, nil, nil, list, nil)
+
+	app := testutil.NewTestApp()
+	app.Get("/projects", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.List)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/projects?limit=5000&page=0", nil))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if list.query.Query.Limit != paginate.DefaultLimit {
+		t.Fatalf("limit: got %d want %d", list.query.Query.Limit, paginate.DefaultLimit)
+	}
+	if list.query.Query.Page != 1 {
+		t.Fatalf("page: got %d want 1", list.query.Query.Page)
+	}
+	if list.query.Query.OrderBy != paginate.OrderByAsc {
+		t.Fatalf("orderBy: got %q want %q", list.query.Query.OrderBy, paginate.OrderByAsc)
 	}
 }
 
@@ -224,6 +275,25 @@ func TestProjectHandler_List_Unauthorized(t *testing.T) {
 	}
 	if list.called {
 		t.Fatal("list handler must not be called without user")
+	}
+}
+
+func TestProjectHandler_List_InvalidQuery(t *testing.T) {
+	list := &mockListProjectsByUserHandler{}
+	h := newProjectHandler(nil, nil, nil, nil, nil, list, nil)
+
+	app := testutil.NewTestApp()
+	app.Get("/projects", testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID), h.List)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/projects?page=not-a-number", nil))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if list.called {
+		t.Fatal("list handler must not be called with invalid query")
 	}
 }
 

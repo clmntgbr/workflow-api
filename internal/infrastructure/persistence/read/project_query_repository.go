@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"go-api/internal/domain/paginate"
 	domainproject "go-api/internal/domain/project"
 
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ type projectRow struct {
 func (projectRow) TableName() string { return "projects" }
 
 type userProjectRow struct {
-	UserID         uuid.UUID
+	UserID    uuid.UUID
 	ProjectID uuid.UUID
 }
 
@@ -93,6 +94,53 @@ func (r *projectReadRepository) FindByUserID(
 		views = append(views, *toProjectView(row, memberIDs))
 	}
 	return views, nil
+}
+
+func (r *projectReadRepository) FindPageByUserID(
+	ctx context.Context,
+	userID uuid.UUID,
+	query paginate.PaginateQuery,
+) ([]domainproject.ProjectView, int64, error) {
+	switch query.SortBy {
+	case "", "created_at":
+		query.SortBy = "projects.created_at"
+	case "updated_at":
+		query.SortBy = "projects.updated_at"
+	case "name":
+		query.SortBy = "projects.name"
+	default:
+		query.SortBy = "projects.created_at"
+	}
+
+	db := r.db.WithContext(ctx).
+		Model(&projectRow{}).
+		Joins("INNER JOIN user_projects ON user_projects.project_id = projects.id").
+		Where("user_projects.user_id = ?", userID)
+
+	if query.Search != "" {
+		db = db.Where("projects.name ILIKE ?", "%"+query.Search+"%")
+	}
+
+	db, total, err := Paginate(db, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var rows []projectRow
+	if err := db.Select("projects.id", "projects.name", "projects.created_at", "projects.updated_at").
+		Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	views := make([]domainproject.ProjectView, 0, len(rows))
+	for _, row := range rows {
+		memberIDs, err := r.loadMemberIDs(ctx, row.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		views = append(views, *toProjectView(row, memberIDs))
+	}
+	return views, total, nil
 }
 
 func (r *projectReadRepository) loadMemberIDs(ctx context.Context, projectID uuid.UUID) ([]uuid.UUID, error) {

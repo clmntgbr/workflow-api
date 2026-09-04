@@ -434,7 +434,7 @@ func TestWorkflowHandler_GetByID_Success(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -466,7 +466,7 @@ func TestWorkflowHandler_GetByID_WrongProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -493,7 +493,7 @@ func TestWorkflowHandler_GetByID_Unauthorized(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", h.GetByID)
+	app.Get("/workflows/:workflowId", h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -512,7 +512,7 @@ func TestWorkflowHandler_GetByID_MissingActiveProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", testutil.WithUserWithoutProject(testutil.TestUserID), h.GetByID)
+	app.Get("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -531,7 +531,7 @@ func TestWorkflowHandler_GetByID_InvalidID(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/not-a-uuid", nil))
 	if err != nil {
@@ -553,7 +553,7 @@ func TestWorkflowHandler_GetByID_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -572,7 +572,7 @@ func TestWorkflowHandler_GetByID_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -601,7 +601,7 @@ func TestWorkflowHandler_GetByID_WrongProjectNotMember(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -626,7 +626,7 @@ func TestWorkflowHandler_GetByID_WrongProjectLookupFailed(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
-	app.Get("/workflows/:id", activeProject(), h.GetByID)
+	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -727,7 +727,7 @@ func TestWorkflowHandler_Update_Success(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -757,7 +757,7 @@ func TestWorkflowHandler_Update_ManualScheduleAllowsZeroInterval(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	body := map[string]any{
 		"name":                  "Login workflow",
@@ -798,7 +798,7 @@ func TestWorkflowHandler_Update_Unauthorized(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", h.Update)
+	app.Put("/workflows/:workflowId", h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -818,7 +818,7 @@ func TestWorkflowHandler_Update_MissingActiveProject(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", testutil.WithUserWithoutProject(testutil.TestUserID), h.Update)
+	app.Put("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -838,7 +838,7 @@ func TestWorkflowHandler_Update_InvalidID(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/bad-id", validUpdateWorkflowBody()))
 	if err != nil {
@@ -863,7 +863,7 @@ func TestWorkflowHandler_Update_WrongProject(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -887,7 +887,7 @@ func TestWorkflowHandler_Update_InvalidRequestBody(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	req, err := http.NewRequest(http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), bytes.NewBufferString("not-json"))
 	if err != nil {
@@ -917,7 +917,7 @@ func TestWorkflowHandler_Update_InvalidStatus(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	body := validUpdateWorkflowBody()
 	body["status"] = "invalid"
@@ -944,7 +944,7 @@ func TestWorkflowHandler_Update_HandlerError_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -965,7 +965,7 @@ func TestWorkflowHandler_Update_HandlerError_InvalidStatus(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -986,7 +986,7 @@ func TestWorkflowHandler_Update_HandlerError_UseDelete(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1007,7 +1007,7 @@ func TestWorkflowHandler_Update_ScheduleError(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1028,7 +1028,7 @@ func TestWorkflowHandler_Update_ScheduleIntervalQuotaExceeded(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1049,7 +1049,7 @@ func TestWorkflowHandler_Update_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1070,7 +1070,7 @@ func TestWorkflowHandler_Update_ReloadFailure(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1093,7 +1093,7 @@ func TestWorkflowHandler_Update_GetExisting_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1114,7 +1114,7 @@ func TestWorkflowHandler_Activate_Success(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", activeProject(), h.Activate)
+	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1136,7 +1136,7 @@ func TestWorkflowHandler_Activate_Unauthorized(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", h.Activate)
+	app.Post("/workflows/:workflowId/activate", h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1155,7 +1155,7 @@ func TestWorkflowHandler_Activate_InvalidID(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", activeProject(), h.Activate)
+	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/bad-id/activate", nil))
 	if err != nil {
@@ -1174,7 +1174,7 @@ func TestWorkflowHandler_Activate_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", activeProject(), h.Activate)
+	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1190,7 +1190,7 @@ func TestWorkflowHandler_Activate_InvalidStatusTransition(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", activeProject(), h.Activate)
+	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1206,7 +1206,7 @@ func TestWorkflowHandler_Activate_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", activeProject(), h.Activate)
+	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1223,7 +1223,7 @@ func TestWorkflowHandler_Deactivate_Success(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", activeProject(), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1242,7 +1242,7 @@ func TestWorkflowHandler_Deactivate_Unauthorized(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1261,7 +1261,7 @@ func TestWorkflowHandler_Deactivate_InvalidID(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", activeProject(), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/bad-id/deactivate", nil))
 	if err != nil {
@@ -1280,7 +1280,7 @@ func TestWorkflowHandler_Deactivate_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", activeProject(), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1296,7 +1296,7 @@ func TestWorkflowHandler_Deactivate_InvalidStatusTransition(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", activeProject(), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1312,7 +1312,7 @@ func TestWorkflowHandler_Deactivate_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", activeProject(), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1333,7 +1333,7 @@ func TestWorkflowHandler_Delete_Success(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1356,7 +1356,7 @@ func TestWorkflowHandler_Delete_Unauthorized(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", h.Delete)
+	app.Delete("/workflows/:workflowId", h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1381,7 +1381,7 @@ func TestWorkflowHandler_Delete_WrongProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1405,7 +1405,7 @@ func TestWorkflowHandler_Delete_HandlerError_Internal(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1422,7 +1422,7 @@ func TestWorkflowHandler_Delete_MissingActiveProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", testutil.WithUserWithoutProject(testutil.TestUserID), h.Delete)
+	app.Delete("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1442,7 +1442,7 @@ func TestWorkflowHandler_Delete_InvalidID(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/bad-id", nil))
 	if err != nil {
@@ -1465,7 +1465,7 @@ func TestWorkflowHandler_Delete_GetExisting_NotFound(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1488,7 +1488,7 @@ func TestWorkflowHandler_Delete_GetExisting_InternalError(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Delete("/workflows/:id", activeProject(), h.Delete)
+	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodDelete, "/workflows/"+testutil.TestWorkflowID.String(), nil))
 	if err != nil {
@@ -1512,7 +1512,7 @@ func TestWorkflowHandler_Update_InvalidData(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), map[string]any{}))
 	if err != nil {
@@ -1531,7 +1531,7 @@ func TestWorkflowHandler_Activate_MissingActiveProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/activate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Activate)
+	app.Post("/workflows/:workflowId/activate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Activate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
 	if err != nil {
@@ -1550,7 +1550,7 @@ func TestWorkflowHandler_Deactivate_MissingActiveProject(t *testing.T) {
 	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Post("/workflows/:id/deactivate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Deactivate)
+	app.Post("/workflows/:workflowId/deactivate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Deactivate)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
 	if err != nil {
@@ -1573,7 +1573,7 @@ func TestWorkflowHandler_Update_GetExisting_InternalError(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {
@@ -1597,7 +1597,7 @@ func TestWorkflowHandler_Update_ScheduleTimezoneError(t *testing.T) {
 	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Put("/workflows/:id", activeProject(), h.Update)
+	app.Put("/workflows/:workflowId", activeProject(), h.Update)
 
 	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
 	if err != nil {

@@ -57,7 +57,7 @@ func setupPlanRoutes(public fiber.Router, container *di.Container) {
 }
 
 func setupSubscriptionRoutes(api fiber.Router, container *di.Container) {
-	api.Get("/subscription", container.SubscriptionHandler.GetSubscription)
+	api.Get("/subscriptions", container.SubscriptionHandler.GetSubscription)
 	api.Get("/quota", container.SubscriptionHandler.GetQuota)
 	api.Post("/subscriptions", container.SubscriptionHandler.CreateSubscription)
 	api.Post("/subscriptions/preview", container.SubscriptionHandler.PreviewSubscription)
@@ -86,11 +86,11 @@ func setupProjectRoutes(api fiber.Router, container *di.Container) {
 func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows", container.WorkflowHandler.Create)
 	api.Get("/workflows", container.WorkflowHandler.ListByProject)
-	api.Get("/workflows/:id", container.WorkflowHandler.GetByID)
-	api.Put("/workflows/:id", container.WorkflowHandler.Update)
-	api.Post("/workflows/:id/activate", container.WorkflowHandler.Activate)
-	api.Post("/workflows/:id/deactivate", container.WorkflowHandler.Deactivate)
-	api.Delete("/workflows/:id", container.WorkflowHandler.Delete)
+	api.Get("/workflows/:workflowId", container.WorkflowHandler.GetByID)
+	api.Put("/workflows/:workflowId", container.WorkflowHandler.Update)
+	api.Post("/workflows/:workflowId/activate", container.WorkflowHandler.Activate)
+	api.Post("/workflows/:workflowId/deactivate", container.WorkflowHandler.Deactivate)
+	api.Delete("/workflows/:workflowId", container.WorkflowHandler.Delete)
 }
 
 func setupEndpointRoutes(api fiber.Router, container *di.Container) {
@@ -147,8 +147,8 @@ func setupActivityLogRoutes(api fiber.Router, container *di.Container) {
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/workflows/:workflowId/runs/analytics", container.WorkflowRunHandler.Analytics)
-	api.Post("/workflows/:id/start", container.WorkflowRunHandler.StartWorkflow)
-	api.Post("/workflows/:id/stop", container.WorkflowRunHandler.StopWorkflow)
+	api.Post("/workflows/:workflowId/start", container.WorkflowRunHandler.StartWorkflow)
+	api.Post("/workflows/:workflowId/stop", container.WorkflowRunHandler.StopWorkflow)
 	api.Get("/workflows/:workflowId/runs", container.WorkflowRunHandler.ListByWorkflow)
 	api.Get("/workflows/:workflowId/runs/:id", container.WorkflowRunHandler.GetByID)
 }

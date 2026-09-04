@@ -8,8 +8,8 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/workflows/:id/start` | Start run (optional `context` JSON body) |
-| `POST` | `/api/workflows/:id/stop` | Cancel in-progress run |
+| `POST` | `/api/workflows/:workflowId/start` | Start run (optional `context` JSON body) |
+| `POST` | `/api/workflows/:workflowId/stop` | Cancel in-progress run |
 | `GET` | `/api/workflows/:workflowId/runs` | List runs (paginated) |
 | `GET` | `/api/workflows/:workflowId/runs/:id` | Run detail (step runs, insights) |
 | `GET` | `/api/workflows/:workflowId/runs/analytics` | Aggregated stats (`from` / `to` RFC3339 query) |

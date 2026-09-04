@@ -112,7 +112,7 @@ func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -202,7 +202,7 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -285,7 +285,7 @@ func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -319,7 +319,7 @@ func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}
@@ -353,7 +353,7 @@ func (h *WorkflowHandler) Delete(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
 	}
 
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := uuid.Parse(c.Params("workflowId"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
 	}

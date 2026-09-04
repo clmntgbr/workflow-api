@@ -7,16 +7,16 @@ import (
 
 	"go-api/internal/application/messaging"
 	"go-api/internal/application/realtime"
-	domainsubscription "go-api/internal/domain/subscription"
 	"go-api/internal/domain/port"
+	domainsubscription "go-api/internal/domain/subscription"
 	domainuser "go-api/internal/domain/user"
 
 	"github.com/google/uuid"
 )
 
 type PublishRealtimeHandler struct {
-	realtime port.RealtimePublisher
-	userRepo domainuser.UserReadRepository
+	publisher *realtime.Publisher
+	userRepo  domainuser.UserReadRepository
 }
 
 func NewPublishRealtimeHandler(
@@ -24,8 +24,8 @@ func NewPublishRealtimeHandler(
 	userRepo domainuser.UserReadRepository,
 ) *PublishRealtimeHandler {
 	return &PublishRealtimeHandler{
-		realtime: realtimePublisher,
-		userRepo: userRepo,
+		publisher: realtime.NewPublisher(realtimePublisher, nil),
+		userRepo:  userRepo,
 	}
 }
 
@@ -53,23 +53,5 @@ func (h *PublishRealtimeHandler) OnUpdated(ctx context.Context, payload []byte) 
 		return nil
 	}
 
-	eventType := realtime.EventType(realtime.EntitySubscription, realtime.ActionUpdated)
-	if err := h.realtime.PublishToUser(ctx, user.ID, eventType, evt); err != nil {
-		log.Printf(
-			"centrifugo publish failed type=%s subscriptionId=%s userId=%s: %v",
-			eventType,
-			evt.SubscriptionID,
-			user.ID.String(),
-			err,
-		)
-		return messaging.Retryable(err)
-	}
-
-	log.Printf(
-		"centrifugo published type=%s subscriptionId=%s userId=%s",
-		eventType,
-		evt.SubscriptionID,
-		user.ID.String(),
-	)
-	return nil
+	return h.publisher.ToUser(ctx, realtime.EntitySubscription, realtime.ActionUpdated, user.ID.String(), evt)
 }

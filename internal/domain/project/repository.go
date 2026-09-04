@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"go-api/internal/domain/paginate"
+
 	"github.com/google/uuid"
 )
 
@@ -19,6 +21,7 @@ type ProjectWriteRepository interface {
 type ProjectReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*ProjectView, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID) ([]ProjectView, error)
+	FindPageByUserID(ctx context.Context, userID uuid.UUID, query paginate.PaginateQuery) ([]ProjectView, int64, error)
 }
 
 type ProjectView struct {

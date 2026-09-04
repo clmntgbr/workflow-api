@@ -16,7 +16,7 @@ Billing integrates **Stripe** for subscriptions, quotas, invoices, and the custo
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/subscription` | Current subscription |
+| `GET` | `/api/subscriptions` | Current subscription |
 | `GET` | `/api/quota` | Usage vs limits for active project |
 | `POST` | `/api/subscriptions` | Create checkout session |
 | `POST` | `/api/subscriptions/preview` | Preview proration |

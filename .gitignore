@@ -9,4 +9,3 @@ build-errors.log
 coverage*
 .env
 bin/*
-review.*md

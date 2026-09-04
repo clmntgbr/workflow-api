@@ -32,7 +32,7 @@ type projectGetByIDHandler interface {
 }
 
 type projectListByUserHandler interface {
-	Handle(ctx context.Context, q queryproject.ListProjectsByUserQuery) ([]domainproject.ProjectView, error)
+	Handle(ctx context.Context, q queryproject.ListProjectsByUserQuery) ([]domainproject.ProjectView, int64, error)
 }
 
 type projectSetActiveHandler interface {

@@ -221,9 +221,9 @@ func TestSubscriptionHandler_GetSubscription_Success(t *testing.T) {
 	h := newSubscriptionHandler(getCurrent, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/subscription", activeProject(), h.GetSubscription)
+	app.Get("/subscriptions", activeProject(), h.GetSubscription)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscription", nil))
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscriptions", nil))
 	if err != nil {
 		t.Fatalf("perform request: %v", err)
 	}
@@ -249,9 +249,9 @@ func TestSubscriptionHandler_GetSubscription_Unauthorized(t *testing.T) {
 	h := newSubscriptionHandler(getCurrent, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/subscription", h.GetSubscription)
+	app.Get("/subscriptions", h.GetSubscription)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscription", nil))
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscriptions", nil))
 	if err != nil {
 		t.Fatalf("perform request: %v", err)
 	}
@@ -268,9 +268,9 @@ func TestSubscriptionHandler_GetSubscription_NotFound(t *testing.T) {
 	h := newSubscriptionHandler(getCurrent, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/subscription", activeProject(), h.GetSubscription)
+	app.Get("/subscriptions", activeProject(), h.GetSubscription)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscription", nil))
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscriptions", nil))
 	if err != nil {
 		t.Fatalf("perform request: %v", err)
 	}
@@ -284,9 +284,9 @@ func TestSubscriptionHandler_GetSubscription_HandlerError_Internal(t *testing.T)
 	h := newSubscriptionHandler(getCurrent, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
-	app.Get("/subscription", activeProject(), h.GetSubscription)
+	app.Get("/subscriptions", activeProject(), h.GetSubscription)
 
-	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscription", nil))
+	resp, err := app.Test(mustJSONRequest(t, http.MethodGet, "/subscriptions", nil))
 	if err != nil {
 		t.Fatalf("perform request: %v", err)
 	}

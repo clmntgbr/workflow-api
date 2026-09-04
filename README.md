@@ -29,12 +29,12 @@ Resources are scoped to the caller’s **active project**. Shared workflow URLs 
 
 ### Execution
 
-- **Workflow runs** — manual (`POST /workflows/:id/start`), API, schedule, webhook
+- **Workflow runs** — manual (`POST /workflows/:workflowId/start`), API, schedule, webhook
 - **Orchestration** — worker advances the graph after each step run succeeds/fails/skips
 - **HTTP steps** — dedicated **executor** binary consumes `stepRun.queued`, calls the target API, runs assertions, records **insights** (timings)
 - **Delay steps** — always `waiting` + `resumeAt`; worker polls (`STEP_RUN_WAITING_POLL_INTERVAL`, default `1s`) and resumes when due — executor handles HTTP only
 - **Condition steps** — evaluated inline by the worker (no executor); taken branch is activated, the other branch subtree is skipped
-- **Cancellation** — `POST /workflows/:id/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
+- **Cancellation** — `POST /workflows/:workflowId/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
 - **Scheduling** — **scheduler** binary claims due workflows and starts runs
 
 Delay step runs emit the same realtime events as HTTP steps (`stepRun.started`, `stepRun.succeeded`). The API exposes `startedAt`, `finishedAt`, and `resumeAt` on step runs.
@@ -78,6 +78,7 @@ Feature-level docs for the HTTP API and related behaviour.
 | [Connections](docs/connections.md) | Directed edges, condition branches |
 | [Variables](docs/variables.md) | Static values and JSON-path extracts |
 | [Assertions](docs/assertions.md) | Post-response validation on HTTP steps |
+| [Headers](docs/headers.md) | Suggest keys and values from existing endpoints and steps |
 | [Activity logs](docs/activity-logs.md) | Audit trail per workflow |
 
 ### Execution
@@ -327,15 +328,16 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 |---|---|
 | User | `GET /api/users/me`, `PUT /api/users/me/active-project` |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/:id`, members, activate |
-| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:id`, activate/deactivate |
+| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:workflowId`, activate/deactivate |
 | Endpoints | `GET/POST /api/endpoints`, import OpenAPI, `GET/PUT/DELETE /api/endpoints/:id` |
+| Headers | `GET /api/headers/suggest`, `GET /api/headers/suggest-values` |
 | Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http`, `delay`, and `condition`; `lastRunStatus` reflects the **active run** when one is in progress, otherwise the latest completed run per step |
 | Connections | nested under `/api/workflows/:workflowId/connections` (`branch` on edges from condition steps) |
 | Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
 | Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |
 | Activity | `GET /api/workflows/:workflowId/activity` |
-| Workflow runs | `POST /workflows/:id/start`, `POST /workflows/:id/stop`, list, detail, analytics |
-| Billing | `/api/plans`, `/api/subscription`, `/api/quota`, `/api/subscriptions/*`, `/api/invoices` |
+| Workflow runs | `POST /workflows/:workflowId/start`, `POST /workflows/:workflowId/stop`, list, detail, analytics |
+| Billing | `/api/plans`, `/api/quota`, `/api/subscriptions`, `/api/subscriptions/*`, `/api/invoices` |
 | Realtime | `GET /api/realtime/connection` |
 
 ## Messaging

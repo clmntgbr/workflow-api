@@ -2,6 +2,7 @@ package handler
 
 import (
 	httpctx "go-api/internal/interfaces/http/context"
+	"go-api/internal/interfaces/http/presenter"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -22,12 +23,12 @@ func (h *RealtimeHandler) GetConnection(c fiber.Ctx) error {
 		})
 	}
 
-	info, err := h.connectionCreator.CreateConnectionInfo(user.ID)
+	connection, err := h.connectionCreator.CreateConnectionInfo(user.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to create realtime connection",
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(info)
+	return c.Status(fiber.StatusOK).JSON(presenter.NewRealtimeConnectionResponse(connection))
 }

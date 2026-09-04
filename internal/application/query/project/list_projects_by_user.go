@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"go-api/internal/domain/paginate"
 	domainproject "go-api/internal/domain/project"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 
 type ListProjectsByUserQuery struct {
 	UserID uuid.UUID
+	Query  paginate.PaginateQuery
 }
 
 type ListProjectsByUserHandler struct {
@@ -26,13 +28,13 @@ func NewListProjectsByUserHandler(
 func (h *ListProjectsByUserHandler) Handle(
 	ctx context.Context,
 	q ListProjectsByUserQuery,
-) ([]domainproject.ProjectView, error) {
+) ([]domainproject.ProjectView, int64, error) {
 	if q.UserID == uuid.Nil {
-		return nil, errors.New("userId is required")
+		return nil, 0, errors.New("userId is required")
 	}
-	views, err := h.readRepo.FindByUserID(ctx, q.UserID)
+	views, total, err := h.readRepo.FindPageByUserID(ctx, q.UserID, q.Query)
 	if err != nil {
-		return nil, errors.New("failed to list projects")
+		return nil, 0, errors.New("failed to list projects")
 	}
-	return views, nil
+	return views, total, nil
 }

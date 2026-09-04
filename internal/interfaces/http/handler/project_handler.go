@@ -6,6 +6,7 @@ import (
 	projectcmd "go-api/internal/application/command/project"
 	usercmd "go-api/internal/application/command/user"
 	queryproject "go-api/internal/application/query/project"
+	"go-api/internal/domain/paginate"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
 	"go-api/internal/interfaces/http/presenter"
@@ -51,16 +52,35 @@ func (h *ProjectHandler) List(c fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
 	}
 
-	views, err := h.listByUserHandler.Handle(c.Context(), queryproject.ListProjectsByUserQuery{
+	var query paginate.PaginateQuery
+	if err := c.Bind().Query(&query); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid query parameters",
+		})
+	}
+
+	sortBy, orderBy := query.SortBy, query.OrderBy
+	query.Normalize()
+	if sortBy == "" {
+		query.SortBy = "created_at"
+	}
+	if orderBy == "" {
+		query.OrderBy = paginate.OrderByAsc
+	}
+
+	views, total, err := h.listByUserHandler.Handle(c.Context(), queryproject.ListProjectsByUserQuery{
 		UserID: user.ID,
+		Query:  query,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list projects"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(
+	return c.Status(fiber.StatusOK).JSON(paginate.NewPaginateResponse(
 		presenter.NewProjectListResponseFromViews(views, user.ActiveProjectID),
-	)
+		int(total),
+		query,
+	))
 }
 
 func (h *ProjectHandler) Create(c fiber.Ctx) error {

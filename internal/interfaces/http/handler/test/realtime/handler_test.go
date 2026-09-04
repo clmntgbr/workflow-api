@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"testing"
 
-	"go-api/internal/infrastructure/centrifugo"
+	"go-api/internal/domain/port"
 	"go-api/internal/interfaces/http/handler"
+	"go-api/internal/interfaces/http/presenter"
 	"go-api/internal/interfaces/http/testutil"
 
 	"github.com/google/uuid"
@@ -15,11 +16,11 @@ import (
 type mockConnectionCreator struct {
 	called bool
 	userID uuid.UUID
-	info   centrifugo.ConnectionInfo
+	info   port.RealtimeConnection
 	err    error
 }
 
-func (m *mockConnectionCreator) CreateConnectionInfo(userID uuid.UUID) (centrifugo.ConnectionInfo, error) {
+func (m *mockConnectionCreator) CreateConnectionInfo(userID uuid.UUID) (port.RealtimeConnection, error) {
 	m.called = true
 	m.userID = userID
 	return m.info, m.err
@@ -34,9 +35,9 @@ func newRealtimeHandler(creator *mockConnectionCreator) *handler.RealtimeHandler
 
 func TestRealtimeHandler_GetConnection_Success(t *testing.T) {
 	creator := &mockConnectionCreator{
-		info: centrifugo.ConnectionInfo{
+		info: port.RealtimeConnection{
 			Token:   "signed-token",
-			Channel: centrifugo.UserChannel(testutil.TestUserID),
+			Channel: "users:" + testutil.TestUserID.String(),
 			WSURL:   "wss://realtime.example.com/connection/websocket",
 		},
 	}
@@ -64,13 +65,16 @@ func TestRealtimeHandler_GetConnection_Success(t *testing.T) {
 		t.Fatalf("user id: got %s", creator.userID)
 	}
 
-	var out centrifugo.ConnectionInfo
+	var out presenter.RealtimeConnectionResponse
 	testutil.DecodeJSON(t, resp, &out)
 	if out.Token != "signed-token" {
 		t.Fatalf("token: got %q", out.Token)
 	}
-	if out.Channel != centrifugo.UserChannel(testutil.TestUserID) {
+	if out.Channel != "users:"+testutil.TestUserID.String() {
 		t.Fatalf("channel: got %q", out.Channel)
+	}
+	if out.WSURL != "wss://realtime.example.com/connection/websocket" {
+		t.Fatalf("wsUrl: got %q", out.WSURL)
 	}
 }
 

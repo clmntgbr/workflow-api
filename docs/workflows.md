@@ -14,15 +14,15 @@ Requires authentication and active project.
 |--------|------|-------------|
 | `POST` | `/api/workflows` | Create workflow |
 | `GET` | `/api/workflows` | List workflows in active project (paginated) |
-| `GET` | `/api/workflows/:id` | Get workflow detail |
-| `PUT` | `/api/workflows/:id` | Update name, description, status, schedule, concurrency, notifications |
-| `POST` | `/api/workflows/:id/activate` | Activate |
-| `POST` | `/api/workflows/:id/deactivate` | Deactivate |
-| `DELETE` | `/api/workflows/:id` | Soft-delete |
+| `GET` | `/api/workflows/:workflowId` | Get workflow detail |
+| `PUT` | `/api/workflows/:workflowId` | Update name, description, status, schedule, concurrency, notifications |
+| `POST` | `/api/workflows/:workflowId/activate` | Activate |
+| `POST` | `/api/workflows/:workflowId/deactivate` | Deactivate |
+| `DELETE` | `/api/workflows/:workflowId` | Soft-delete |
 
 ## Cross-project access
 
-If a workflow belongs to another project the user is a member of, `GET /api/workflows/:id` returns:
+If a workflow belongs to another project the user is a member of, `GET /api/workflows/:workflowId` returns:
 
 ```json
 {
