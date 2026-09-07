@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"go-api/internal/domain/event"
 	domaininvoice "go-api/internal/domain/invoice"
 	"go-api/internal/domain/port"
 	domainsubscription "go-api/internal/domain/subscription"
@@ -33,6 +34,8 @@ type UpsertInvoiceCommand struct {
 	PeriodEnd            time.Time
 	PaidAt               *time.Time
 	StripeCreatedAt      time.Time
+	StripeEventID        string
+	PaymentOutcome       string
 }
 
 type UpsertInvoiceHandler struct {
@@ -127,6 +130,12 @@ func (h *UpsertInvoiceHandler) Handle(ctx context.Context, cmd UpsertInvoiceComm
 		invoiceEntity.RaiseCreated()
 	} else {
 		invoiceEntity.RaiseUpdated()
+	}
+	switch cmd.PaymentOutcome {
+	case "succeeded":
+		invoiceEntity.RaisePaymentSucceeded(event.DeterministicID("stripe", cmd.StripeEventID, "invoice.paymentSucceeded"))
+	case "failed":
+		invoiceEntity.RaisePaymentFailed(event.DeterministicID("stripe", cmd.StripeEventID, "invoice.paymentFailed"))
 	}
 
 	err = h.invoiceRepo.WithTransaction(ctx, func(txCtx context.Context) error {

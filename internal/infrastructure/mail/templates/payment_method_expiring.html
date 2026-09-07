@@ -1,0 +1,14 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#92400e;">Payment card expiring</h1>
+<p style="margin:0 0 12px 0;">
+  Your {{if .Brand}}{{.Brand}} {{end}}card{{if .Last4}} ending in {{.Last4}}{{end}} expires{{if .ExpiresOn}} on {{.ExpiresOn}}{{end}}.
+  Update it to keep your subscription active.
+</p>
+{{if .BillingURL}}
+<p style="margin:0;">
+  <a href="{{.BillingURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    Update card
+  </a>
+</p>
+{{end}}
+{{end}}

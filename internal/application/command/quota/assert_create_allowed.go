@@ -13,21 +13,22 @@ import (
 	domainworkflow "go-api/internal/domain/workflow"
 
 	"github.com/google/uuid"
+	"time"
 )
 
 var (
-	ErrWorkflowQuotaExceeded      = errors.New("workflow quota exceeded for your current plan")
-	ErrEndpointQuotaExceeded      = errors.New("endpoint quota exceeded for your current plan")
-	ErrStepQuotaExceeded          = errors.New("step quota exceeded for your current plan")
-	ErrVariableQuotaExceeded      = errors.New("variable quota exceeded for your current plan")
-	ErrAssertionQuotaExceeded     = errors.New("assertion quota exceeded for your current plan")
-	ErrWorkflowRunQuotaExceeded   = errors.New("workflow run quota exceeded for your current plan")
-	ErrConcurrentRunQuotaExceeded = errors.New("concurrent run quota exceeded for your current plan")
-	ErrProjectQuotaExceeded       = errors.New("project quota exceeded for your current plan")
+	ErrWorkflowQuotaExceeded         = errors.New("workflow quota exceeded for your current plan")
+	ErrEndpointQuotaExceeded         = errors.New("endpoint quota exceeded for your current plan")
+	ErrStepQuotaExceeded             = errors.New("step quota exceeded for your current plan")
+	ErrVariableQuotaExceeded         = errors.New("variable quota exceeded for your current plan")
+	ErrAssertionQuotaExceeded        = errors.New("assertion quota exceeded for your current plan")
+	ErrWorkflowRunQuotaExceeded      = errors.New("workflow run quota exceeded for your current plan")
+	ErrConcurrentRunQuotaExceeded    = errors.New("concurrent run quota exceeded for your current plan")
+	ErrProjectQuotaExceeded          = errors.New("project quota exceeded for your current plan")
 	ErrScheduleIntervalQuotaExceeded = errors.New("schedule interval is below the minimum allowed for your current plan")
-	ErrStepTimeoutQuotaExceeded   = errors.New("step timeout exceeds the maximum allowed for your current plan")
-	ErrRetryCountQuotaExceeded    = errors.New("retry count exceeds the maximum allowed for your current plan")
-	ErrOpenAPIImportNotAllowed    = errors.New("OpenAPI import is not available on your current plan")
+	ErrStepTimeoutQuotaExceeded      = errors.New("step timeout exceeds the maximum allowed for your current plan")
+	ErrRetryCountQuotaExceeded       = errors.New("retry count exceeds the maximum allowed for your current plan")
+	ErrOpenAPIImportNotAllowed       = errors.New("OpenAPI import is not available on your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
@@ -88,7 +89,7 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowCreate(
 	projectID uuid.UUID,
 ) error {
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
-		UserID:         userID,
+		UserID:    userID,
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -111,7 +112,7 @@ func (h *AssertCreateAllowedHandler) AssertEndpointCreate(
 	}
 
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
-		UserID:         userID,
+		UserID:    userID,
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -130,7 +131,7 @@ func (h *AssertCreateAllowedHandler) AssertStepCreate(
 	workflowID uuid.UUID,
 ) error {
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
-		UserID:         userID,
+		UserID:    userID,
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -333,7 +334,7 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowRunStart(
 	}
 
 	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
-		UserID:         userID,
+		UserID:    userID,
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -376,4 +377,56 @@ func (h *AssertCreateAllowedHandler) resolveBillingUserID(
 	}
 
 	return uuid.Nil, querysubscription.ErrSubscriptionNotFound
+}
+
+type WorkflowRunQuotaSnapshot struct {
+	UserID         uuid.UUID
+	SubscriptionID uuid.UUID
+	Used           int64
+	Max            int
+	PeriodStart    time.Time
+}
+
+const WorkflowRunWarningPercent = 80
+
+func (h *AssertCreateAllowedHandler) WorkflowRunQuotaSnapshot(
+	ctx context.Context,
+	projectID uuid.UUID,
+	preferredUserID *uuid.UUID,
+) (*WorkflowRunQuotaSnapshot, error) {
+	userID, err := h.resolveBillingUserID(ctx, projectID, preferredUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := h.userReadRepo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, errors.New("failed to resolve billing user")
+	}
+	if user == nil || user.SubscriptionID == nil {
+		return nil, querysubscription.ErrSubscriptionNotFound
+	}
+
+	return &WorkflowRunQuotaSnapshot{
+		UserID:         userID,
+		SubscriptionID: *user.SubscriptionID,
+		Used:           usage.WorkflowRuns.Used,
+		Max:            usage.WorkflowRuns.Max,
+		PeriodStart:    usage.WorkflowRuns.PeriodStart,
+	}, nil
+}
+
+func (s WorkflowRunQuotaSnapshot) PeriodKey() string {
+	if s.PeriodStart.IsZero() {
+		return ""
+	}
+	return s.PeriodStart.UTC().Format(time.RFC3339)
 }

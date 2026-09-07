@@ -1,0 +1,19 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#166534;">Payment received</h1>
+<p style="margin:0 0 12px 0;">
+  We received your payment{{if .Amount}} of <strong>{{.Amount}}</strong>{{end}}.
+</p>
+{{if .InvoiceNumber}}
+<p style="margin:0 0 8px 0; font-size:14px; color:#8a8a8a;">Invoice: {{.InvoiceNumber}}</p>
+{{end}}
+{{if .PaidAt}}
+<p style="margin:0 0 24px 0; font-size:14px; color:#8a8a8a;">Paid at: {{.PaidAt}}</p>
+{{end}}
+{{if .InvoiceURL}}
+<p style="margin:0;">
+  <a href="{{.InvoiceURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    View invoice
+  </a>
+</p>
+{{end}}
+{{end}}

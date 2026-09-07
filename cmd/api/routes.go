@@ -57,7 +57,7 @@ func setupPlanRoutes(public fiber.Router, container *di.Container) {
 }
 
 func setupSubscriptionRoutes(api fiber.Router, container *di.Container) {
-	api.Get("/subscriptions", container.SubscriptionHandler.GetSubscription)
+	api.Get("/subscription", container.SubscriptionHandler.GetSubscription)
 	api.Get("/quota", container.SubscriptionHandler.GetQuota)
 	api.Post("/subscriptions", container.SubscriptionHandler.CreateSubscription)
 	api.Post("/subscriptions/preview", container.SubscriptionHandler.PreviewSubscription)

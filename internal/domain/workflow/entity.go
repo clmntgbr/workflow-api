@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go-api/internal/domain/event"
+	"go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
 )
@@ -36,10 +37,32 @@ type Workflow struct {
 	events []event.DomainEvent
 }
 
+// ShouldNotify reports whether this workflow should emit a notification for the
+// given run outcome.
+func (w Workflow) ShouldNotify(finishType workflowrun.FinishType) bool {
+	return shouldNotify(w.NotificationsEnabled, w.NotifyOnSuccess, w.NotifyOnFailure, w.NotifyOnCancel, finishType)
+}
+
+func shouldNotify(enabled, onSuccess, onFailure, onCancel bool, finishType workflowrun.FinishType) bool {
+	if !enabled {
+		return false
+	}
+	switch finishType {
+	case workflowrun.FinishTypeSuccess:
+		return onSuccess
+	case workflowrun.FinishTypeFailed:
+		return onFailure
+	case workflowrun.FinishTypeCancelled:
+		return onCancel
+	default:
+		return false
+	}
+}
+
 type NewWorkflowParams struct {
 	Name                  string
 	Description           string
-	ProjectID        uuid.UUID
+	ProjectID             uuid.UUID
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  ScheduleUnit
@@ -72,7 +95,7 @@ func NewWorkflow(p NewWorkflowParams) (*Workflow, error) {
 		Name:                  p.Name,
 		Description:           p.Description,
 		Status:                StatusInactive,
-		ProjectID:        p.ProjectID,
+		ProjectID:             p.ProjectID,
 		ScheduleType:          scheduleType,
 		ScheduleIntervalValue: p.ScheduleIntervalValue,
 		ScheduleIntervalUnit:  p.ScheduleIntervalUnit,
@@ -193,10 +216,10 @@ func (w *Workflow) MarkDeleted() {
 	w.NextRunAt = nil
 	w.UpdatedAt = time.Now().UTC()
 	w.recordEvent(WorkflowDeleted{
-		ID:             uuid.New().String(),
-		WorkflowID:     w.ID.String(),
-		ProjectID: w.ProjectID.String(),
-		Timestamp:      w.UpdatedAt,
+		ID:         uuid.New().String(),
+		WorkflowID: w.ID.String(),
+		ProjectID:  w.ProjectID.String(),
+		Timestamp:  w.UpdatedAt,
 	})
 }
 
@@ -204,7 +227,7 @@ func (w *Workflow) createdEvent(at time.Time) WorkflowCreated {
 	return WorkflowCreated{
 		ID:                    uuid.New().String(),
 		WorkflowID:            w.ID.String(),
-		ProjectID:        w.ProjectID.String(),
+		ProjectID:             w.ProjectID.String(),
 		Name:                  w.Name,
 		Description:           w.Description,
 		Status:                string(w.Status),
@@ -227,7 +250,7 @@ func (w *Workflow) updatedEvent(at time.Time, reason string) WorkflowUpdated {
 	return WorkflowUpdated{
 		ID:                    uuid.New().String(),
 		WorkflowID:            w.ID.String(),
-		ProjectID:        w.ProjectID.String(),
+		ProjectID:             w.ProjectID.String(),
 		Name:                  w.Name,
 		Description:           w.Description,
 		Status:                string(w.Status),

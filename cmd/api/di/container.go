@@ -16,8 +16,8 @@ import (
 	variablecmd "go-api/internal/application/command/variable"
 	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
-	queryassertion "go-api/internal/application/query/assertion"
 	queryactivitylog "go-api/internal/application/query/activitylog"
+	queryassertion "go-api/internal/application/query/assertion"
 	queryconn "go-api/internal/application/query/connection"
 	queryendpoint "go-api/internal/application/query/endpoint"
 	queryheader "go-api/internal/application/query/header"
@@ -32,8 +32,8 @@ import (
 	queryvariable "go-api/internal/application/query/variable"
 	queryworkflow "go-api/internal/application/query/workflow"
 	queryworkflowrun "go-api/internal/application/query/workflowrun"
-	infraClerk "go-api/internal/infrastructure/clerk"
 	"go-api/internal/infrastructure/centrifugo"
+	infraClerk "go-api/internal/infrastructure/clerk"
 	"go-api/internal/infrastructure/config"
 	infraopenapi "go-api/internal/infrastructure/openapi"
 	"go-api/internal/infrastructure/persistence/outbox"
@@ -361,6 +361,14 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		userWriteRepo,
 		outboxRepo,
 	)
+	renewalUpcomingHandler := subscriptioncmd.NewSubscriptionRenewalUpcomingHandler(
+		subscriptionWriteRepo,
+		outboxRepo,
+	)
+	paymentMethodExpiringHandler := subscriptioncmd.NewPaymentMethodExpiringHandler(
+		subscriptionWriteRepo,
+		outboxRepo,
+	)
 	listInvoicesHandler := queryinvoice.NewListInvoicesHandler(invoiceReadRepo)
 
 	suggestHeadersHandler := queryheader.NewSuggestHeadersHandler(headerReadRepo)
@@ -387,6 +395,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			invoicePaymentSucceededHandler,
 			invoicePaymentFailedHandler,
 			upsertInvoiceHandler,
+			renewalUpcomingHandler,
+			paymentMethodExpiringHandler,
 		),
 		UserHandler: httphandler.NewUserHandler(getUserByIDHandler, setActiveProjectHandler),
 		ProjectHandler: httphandler.NewProjectHandler(

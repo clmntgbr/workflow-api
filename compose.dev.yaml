@@ -60,6 +60,8 @@ services:
         condition: service_healthy
       centrifugo:
         condition: service_started
+      mailpit:
+        condition: service_started
     networks:
       - api
     restart: unless-stopped

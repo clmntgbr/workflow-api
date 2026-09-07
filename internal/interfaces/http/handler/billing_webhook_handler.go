@@ -24,6 +24,8 @@ type BillingWebhookHandler struct {
 	invoicePaymentSucceededHandler billingInvoicePaymentSucceededHandler
 	invoicePaymentFailedHandler    billingInvoicePaymentFailedHandler
 	upsertInvoiceHandler           billingUpsertInvoiceHandler
+	renewalUpcomingHandler         billingRenewalUpcomingHandler
+	paymentMethodExpiringHandler   billingPaymentMethodExpiringHandler
 }
 
 func NewBillingWebhookHandler(
@@ -33,6 +35,8 @@ func NewBillingWebhookHandler(
 	invoicePaymentSucceededHandler billingInvoicePaymentSucceededHandler,
 	invoicePaymentFailedHandler billingInvoicePaymentFailedHandler,
 	upsertInvoiceHandler billingUpsertInvoiceHandler,
+	renewalUpcomingHandler billingRenewalUpcomingHandler,
+	paymentMethodExpiringHandler billingPaymentMethodExpiringHandler,
 ) *BillingWebhookHandler {
 	return &BillingWebhookHandler{
 		checkoutCompletedHandler:       checkoutCompletedHandler,
@@ -41,6 +45,8 @@ func NewBillingWebhookHandler(
 		invoicePaymentSucceededHandler: invoicePaymentSucceededHandler,
 		invoicePaymentFailedHandler:    invoicePaymentFailedHandler,
 		upsertInvoiceHandler:           upsertInvoiceHandler,
+		renewalUpcomingHandler:         renewalUpcomingHandler,
+		paymentMethodExpiringHandler:   paymentMethodExpiringHandler,
 	}
 }
 
@@ -83,6 +89,10 @@ func (h *BillingWebhookHandler) dispatch(ctx context.Context, event stripe.Event
 		return h.handleInvoicePaymentSucceeded(ctx, event)
 	case "invoice.payment_failed":
 		return h.handleInvoicePaymentFailed(ctx, event)
+	case "invoice.upcoming":
+		return h.handleInvoiceUpcoming(ctx, event)
+	case "customer.source.expiring":
+		return h.handlePaymentMethodExpiring(ctx, event)
 	default:
 		log.Printf("stripe webhook: ignoring unhandled event id=%s type=%s", event.ID, event.Type)
 		return nil
@@ -151,6 +161,8 @@ func (h *BillingWebhookHandler) handleInvoicePaymentSucceeded(ctx context.Contex
 	}
 
 	upsertCmd := upsertInvoiceCommandFromStripe(&invoice)
+	upsertCmd.StripeEventID = event.ID
+	upsertCmd.PaymentOutcome = "succeeded"
 	log.Printf(
 		"stripe webhook: invoice.payment_succeeded mapped invoiceID=%s subscriptionID=%s customerID=%s parent=%v",
 		upsertCmd.StripeInvoiceID,
@@ -179,6 +191,8 @@ func (h *BillingWebhookHandler) handleInvoicePaymentFailed(ctx context.Context, 
 	}
 
 	upsertCmd := upsertInvoiceCommandFromStripe(&invoice)
+	upsertCmd.StripeEventID = event.ID
+	upsertCmd.PaymentOutcome = "failed"
 	if err := h.upsertInvoiceHandler.Handle(ctx, upsertCmd); err != nil {
 		return err
 	}
@@ -260,4 +274,41 @@ func unixToTime(ts int64) time.Time {
 		return time.Time{}
 	}
 	return time.Unix(ts, 0).UTC()
+}
+
+func (h *BillingWebhookHandler) handleInvoiceUpcoming(ctx context.Context, event stripe.Event) error {
+	var invoice stripe.Invoice
+	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
+		return err
+	}
+
+	return h.renewalUpcomingHandler.Handle(ctx, cmdsubscription.SubscriptionRenewalUpcomingCommand{
+		StripeEventID:        event.ID,
+		StripeSubscriptionID: subscriptionIDFromInvoice(&invoice),
+		StripeCustomerID:     customerIDFromInvoice(&invoice),
+		AmountDue:            invoice.AmountDue,
+		Currency:             string(invoice.Currency),
+		PeriodEnd:            unixToTime(invoice.PeriodEnd),
+	})
+}
+
+func (h *BillingWebhookHandler) handlePaymentMethodExpiring(ctx context.Context, event stripe.Event) error {
+	var card stripe.Card
+	if err := json.Unmarshal(event.Data.Raw, &card); err != nil {
+		return err
+	}
+
+	customerID := ""
+	if card.Customer != nil {
+		customerID = card.Customer.ID
+	}
+
+	return h.paymentMethodExpiringHandler.Handle(ctx, cmdsubscription.PaymentMethodExpiringCommand{
+		StripeEventID:    event.ID,
+		StripeCustomerID: customerID,
+		Brand:            string(card.Brand),
+		Last4:            card.Last4,
+		ExpMonth:         card.ExpMonth,
+		ExpYear:          card.ExpYear,
+	})
 }

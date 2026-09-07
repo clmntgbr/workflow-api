@@ -1,0 +1,20 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#991b1b;">Payment failed</h1>
+<p style="margin:0 0 12px 0;">
+  We could not collect payment{{if .Amount}} of <strong>{{.Amount}}</strong>{{end}} for your subscription.
+  Update your payment method to avoid an interruption.
+</p>
+{{if .InvoiceNumber}}
+<p style="margin:0 0 8px 0; font-size:14px; color:#8a8a8a;">Invoice: {{.InvoiceNumber}}</p>
+{{end}}
+{{if .AttemptCount}}
+<p style="margin:0 0 24px 0; font-size:14px; color:#8a8a8a;">Attempts: {{.AttemptCount}}</p>
+{{end}}
+{{if .BillingURL}}
+<p style="margin:0;">
+  <a href="{{.BillingURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    Update billing
+  </a>
+</p>
+{{end}}
+{{end}}

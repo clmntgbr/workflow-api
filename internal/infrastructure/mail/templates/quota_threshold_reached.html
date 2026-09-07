@@ -1,0 +1,14 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#92400e;">Quota almost reached</h1>
+<p style="margin:0 0 12px 0;">
+  You have used <strong>{{.Used}}</strong> of <strong>{{.Max}}</strong> workflow runs this period
+  ({{.Percent}}%). Upgrade your plan before you are blocked.
+</p>
+{{if .BillingURL}}
+<p style="margin:0;">
+  <a href="{{.BillingURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    View plan
+  </a>
+</p>
+{{end}}
+{{end}}

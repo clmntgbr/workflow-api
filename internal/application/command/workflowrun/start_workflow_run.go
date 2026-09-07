@@ -8,6 +8,7 @@ import (
 	cmdquota "go-api/internal/application/command/quota"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
+	domainquota "go-api/internal/domain/quota"
 	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -93,6 +94,13 @@ func (h *StartWorkflowRunHandler) Handle(
 		cmd.TriggeredByUserID,
 		1,
 	); err != nil {
+		quotaName := domainquota.QuotaNameWorkflowRuns
+		if errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded) {
+			quotaName = domainquota.QuotaNameConcurrentRuns
+		}
+		if errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded) || errors.Is(err, cmdquota.ErrConcurrentRunQuotaExceeded) {
+			_ = h.storeQuotaExceeded(ctx, workflow, cmd.TriggeredByUserID, quotaName)
+		}
 		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule {
 			switch {
 			case errors.Is(err, cmdquota.ErrWorkflowRunQuotaExceeded):
@@ -165,7 +173,70 @@ func (h *StartWorkflowRunHandler) Handle(
 		return nil, errors.New("failed to start workflow run")
 	}
 
+	_ = h.storeQuotaThresholdIfNeeded(ctx, workflow, cmd.TriggeredByUserID)
 	return run, nil
+}
+
+func (h *StartWorkflowRunHandler) storeQuotaThresholdIfNeeded(
+	ctx context.Context,
+	workflow *domainworkflow.Workflow,
+	preferredUserID *uuid.UUID,
+) error {
+	snap, err := h.assert.WorkflowRunQuotaSnapshot(ctx, workflow.ProjectID, preferredUserID)
+	if err != nil || snap == nil || snap.Max <= 0 {
+		return err
+	}
+	usedAfter := snap.Used + 1
+	if usedAfter*100 < int64(snap.Max)*int64(cmdquota.WorkflowRunWarningPercent) {
+		return nil
+	}
+	percent := int(usedAfter * 100 / int64(snap.Max))
+	now := time.Now().UTC()
+	evt := domainquota.QuotaThresholdReached{
+		ID: event.DeterministicID(
+			domainquota.EventTypeQuotaThresholdReached,
+			snap.SubscriptionID.String(),
+			snap.PeriodKey(),
+			domainquota.QuotaNameWorkflowRuns,
+			"80",
+		),
+		SubscriptionID: snap.SubscriptionID.String(),
+		UserID:         snap.UserID.String(),
+		QuotaName:      domainquota.QuotaNameWorkflowRuns,
+		Used:           usedAfter,
+		Max:            int64(snap.Max),
+		Percent:        percent,
+		Timestamp:      now,
+	}
+	return h.outbox.StoreEvents(ctx, []event.DomainEvent{evt})
+}
+
+func (h *StartWorkflowRunHandler) storeQuotaExceeded(
+	ctx context.Context,
+	workflow *domainworkflow.Workflow,
+	preferredUserID *uuid.UUID,
+	quotaName string,
+) error {
+	snap, err := h.assert.WorkflowRunQuotaSnapshot(ctx, workflow.ProjectID, preferredUserID)
+	if err != nil || snap == nil {
+		return err
+	}
+	now := time.Now().UTC()
+	evt := domainquota.QuotaExceeded{
+		ID: event.DeterministicID(
+			domainquota.EventTypeQuotaExceeded,
+			snap.SubscriptionID.String(),
+			snap.PeriodKey(),
+			quotaName,
+		),
+		SubscriptionID: snap.SubscriptionID.String(),
+		UserID:         snap.UserID.String(),
+		QuotaName:      quotaName,
+		Used:           snap.Used,
+		Max:            int64(snap.Max),
+		Timestamp:      now,
+	}
+	return h.outbox.StoreEvents(ctx, []event.DomainEvent{evt})
 }
 
 func (h *StartWorkflowRunHandler) recordScheduledSkip(

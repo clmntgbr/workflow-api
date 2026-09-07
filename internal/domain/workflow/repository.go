@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go-api/internal/domain/paginate"
+	"go-api/internal/domain/workflowrun"
 
 	"github.com/google/uuid"
 )
@@ -33,7 +34,7 @@ type WorkflowView struct {
 	Name                  string
 	Description           string
 	Status                Status
-	ProjectID        uuid.UUID
+	ProjectID             uuid.UUID
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  ScheduleUnit
@@ -47,4 +48,8 @@ type WorkflowView struct {
 	NotifyOnCancel        bool
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+}
+
+func (w WorkflowView) ShouldNotify(finishType workflowrun.FinishType) bool {
+	return shouldNotify(w.NotificationsEnabled, w.NotifyOnSuccess, w.NotifyOnFailure, w.NotifyOnCancel, finishType)
 }

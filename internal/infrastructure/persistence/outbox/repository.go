@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type repository struct {
@@ -46,7 +47,9 @@ func (r *repository) StoreEvents(ctx context.Context, events []event.DomainEvent
 		})
 	}
 
-	return write.DBWithContext(ctx, r.db).Create(&rows).Error
+	return write.DBWithContext(ctx, r.db).
+		Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&rows).Error
 }
 
 func (r *repository) FetchUnpublished(ctx context.Context, limit int) ([]port.OutboxMessage, error) {

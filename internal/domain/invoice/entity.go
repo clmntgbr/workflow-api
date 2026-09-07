@@ -149,6 +149,46 @@ func (i *Invoice) RaiseUpdated() {
 	})
 }
 
+func (i *Invoice) RaisePaymentSucceeded(eventID string) {
+	i.recordEvent(InvoicePaymentSucceeded{
+		ID:               eventIDOrNew(eventID),
+		InvoiceID:        i.ID.String(),
+		UserID:           i.UserID.String(),
+		Number:           i.Number,
+		Currency:         i.Currency,
+		AmountPaid:       i.AmountPaid,
+		Total:            i.Total,
+		HostedInvoiceURL: i.HostedInvoiceURL,
+		InvoicePDF:       i.InvoicePDF,
+		BillingReason:    i.BillingReason,
+		PaidAt:           i.PaidAt,
+		Timestamp:        i.UpdatedAt,
+	})
+}
+
+func (i *Invoice) RaisePaymentFailed(eventID string) {
+	i.recordEvent(InvoicePaymentFailed{
+		ID:               eventIDOrNew(eventID),
+		InvoiceID:        i.ID.String(),
+		UserID:           i.UserID.String(),
+		Number:           i.Number,
+		Currency:         i.Currency,
+		AmountDue:        i.AmountDue,
+		Total:            i.Total,
+		AttemptCount:     i.AttemptCount,
+		HostedInvoiceURL: i.HostedInvoiceURL,
+		BillingReason:    i.BillingReason,
+		Timestamp:        i.UpdatedAt,
+	})
+}
+
+func eventIDOrNew(eventID string) string {
+	if eventID == "" {
+		return uuid.New().String()
+	}
+	return eventID
+}
+
 func subscriptionIDString(id *uuid.UUID) *string {
 	if id == nil {
 		return nil

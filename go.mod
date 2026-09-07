@@ -5,14 +5,15 @@ go 1.25.0
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/centrifugal/gocent/v3 v3.4.0
+	github.com/expr-lang/expr v1.17.8
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/rabbitmq/amqp091-go v1.12.0
+	github.com/stripe/stripe-go/v82 v82.5.1
 	gorm.io/driver/postgres v1.6.0
 )
 
 require (
 	github.com/PaesslerAG/gval v1.0.0 // indirect
-	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -22,7 +23,6 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/stripe/stripe-go/v82 v82.5.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 )
 

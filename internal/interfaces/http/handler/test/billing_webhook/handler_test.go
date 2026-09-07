@@ -87,6 +87,30 @@ func (m *mockUpsertInvoiceHandler) Handle(_ context.Context, cmd cmdsubscription
 	return m.err
 }
 
+type mockRenewalUpcomingHandler struct {
+	called bool
+	cmd    cmdsubscription.SubscriptionRenewalUpcomingCommand
+	err    error
+}
+
+func (m *mockRenewalUpcomingHandler) Handle(_ context.Context, cmd cmdsubscription.SubscriptionRenewalUpcomingCommand) error {
+	m.called = true
+	m.cmd = cmd
+	return m.err
+}
+
+type mockPaymentMethodExpiringHandler struct {
+	called bool
+	cmd    cmdsubscription.PaymentMethodExpiringCommand
+	err    error
+}
+
+func (m *mockPaymentMethodExpiringHandler) Handle(_ context.Context, cmd cmdsubscription.PaymentMethodExpiringCommand) error {
+	m.called = true
+	m.cmd = cmd
+	return m.err
+}
+
 type billingWebhookMocks struct {
 	checkoutCompleted       *mockCheckoutCompletedHandler
 	subscriptionUpdated     *mockSubscriptionUpdatedHandler
@@ -94,6 +118,8 @@ type billingWebhookMocks struct {
 	invoicePaymentSucceeded *mockInvoicePaymentSucceededHandler
 	invoicePaymentFailed    *mockInvoicePaymentFailedHandler
 	upsertInvoice           *mockUpsertInvoiceHandler
+	renewalUpcoming         *mockRenewalUpcomingHandler
+	paymentMethodExpiring   *mockPaymentMethodExpiringHandler
 }
 
 func newBillingWebhookHandler(mocks billingWebhookMocks) *handler.BillingWebhookHandler {
@@ -115,6 +141,12 @@ func newBillingWebhookHandler(mocks billingWebhookMocks) *handler.BillingWebhook
 	if mocks.upsertInvoice == nil {
 		mocks.upsertInvoice = &mockUpsertInvoiceHandler{}
 	}
+	if mocks.renewalUpcoming == nil {
+		mocks.renewalUpcoming = &mockRenewalUpcomingHandler{}
+	}
+	if mocks.paymentMethodExpiring == nil {
+		mocks.paymentMethodExpiring = &mockPaymentMethodExpiringHandler{}
+	}
 
 	return handler.NewBillingWebhookHandler(
 		mocks.checkoutCompleted,
@@ -123,6 +155,8 @@ func newBillingWebhookHandler(mocks billingWebhookMocks) *handler.BillingWebhook
 		mocks.invoicePaymentSucceeded,
 		mocks.invoicePaymentFailed,
 		mocks.upsertInvoice,
+		mocks.renewalUpcoming,
+		mocks.paymentMethodExpiring,
 	)
 }
 
@@ -196,10 +230,10 @@ func TestBillingWebhookHandler_Execute_SubscriptionUpdated_Success(t *testing.T)
 		"items": map[string]any{
 			"data": []map[string]any{
 				{
-					"id":                     "si_123",
-					"price":                  map[string]string{"id": "price_123"},
-					"current_period_start":   1704067200,
-					"current_period_end":     1706745600,
+					"id":                   "si_123",
+					"price":                map[string]string{"id": "price_123"},
+					"current_period_start": 1704067200,
+					"current_period_end":   1706745600,
 				},
 			},
 		},
@@ -266,6 +300,9 @@ func TestBillingWebhookHandler_Execute_InvoicePaymentSucceeded_Success(t *testin
 	if upsert.cmd.StripeInvoiceID != "in_123" {
 		t.Fatalf("invoice id: got %q", upsert.cmd.StripeInvoiceID)
 	}
+	if upsert.cmd.PaymentOutcome != "succeeded" {
+		t.Fatalf("payment outcome: got %q", upsert.cmd.PaymentOutcome)
+	}
 	if succeeded.cmd.StripeSubscriptionID != "sub_123" {
 		t.Fatalf("subscription id: got %q", succeeded.cmd.StripeSubscriptionID)
 	}
@@ -293,6 +330,9 @@ func TestBillingWebhookHandler_Execute_InvoicePaymentFailed_Success(t *testing.T
 	}
 	if failed.cmd.StripeSubscriptionID != "sub_123" {
 		t.Fatalf("subscription id: got %q", failed.cmd.StripeSubscriptionID)
+	}
+	if upsert.cmd.PaymentOutcome != "failed" {
+		t.Fatalf("payment outcome: got %q", upsert.cmd.PaymentOutcome)
 	}
 }
 
@@ -624,6 +664,87 @@ func TestBillingWebhookHandler_Execute_InvoicePaymentFailed_UnmarshalError(t *te
 	}
 	if upsert.called {
 		t.Fatal("upsert handler must not be called on unmarshal error")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoiceUpcoming_Success(t *testing.T) {
+	upcoming := &mockRenewalUpcomingHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{renewalUpcoming: upcoming})
+
+	event := stripeEvent("invoice.upcoming", sampleInvoicePayload())
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !upcoming.called {
+		t.Fatal("expected renewal upcoming handler to be called")
+	}
+	if upcoming.cmd.StripeSubscriptionID != "sub_123" {
+		t.Fatalf("subscription id: got %q", upcoming.cmd.StripeSubscriptionID)
+	}
+	if upcoming.cmd.AmountDue != 1000 {
+		t.Fatalf("amount due: got %d", upcoming.cmd.AmountDue)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_InvoiceUpcoming_UnmarshalError(t *testing.T) {
+	upcoming := &mockRenewalUpcomingHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{renewalUpcoming: upcoming})
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("invoice.upcoming"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if upcoming.called {
+		t.Fatal("renewal handler must not be called on unmarshal error")
+	}
+}
+
+func TestBillingWebhookHandler_Execute_PaymentMethodExpiring_Success(t *testing.T) {
+	expiring := &mockPaymentMethodExpiringHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{paymentMethodExpiring: expiring})
+
+	event := stripeEvent("customer.source.expiring", map[string]any{
+		"id":        "card_123",
+		"brand":     "visa",
+		"last4":     "4242",
+		"exp_month": 8,
+		"exp_year":  2026,
+		"customer":  map[string]string{"id": "cus_123"},
+	})
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
+	}
+	if !expiring.called {
+		t.Fatal("expected payment method expiring handler to be called")
+	}
+	if expiring.cmd.StripeCustomerID != "cus_123" {
+		t.Fatalf("customer id: got %q", expiring.cmd.StripeCustomerID)
+	}
+	if expiring.cmd.Last4 != "4242" {
+		t.Fatalf("last4: got %q", expiring.cmd.Last4)
+	}
+}
+
+func TestBillingWebhookHandler_Execute_PaymentMethodExpiring_UnmarshalError(t *testing.T) {
+	expiring := &mockPaymentMethodExpiringHandler{}
+	h := newBillingWebhookHandler(billingWebhookMocks{paymentMethodExpiring: expiring})
+	event := stripe.Event{
+		ID:   "evt_test",
+		Type: stripe.EventType("customer.source.expiring"),
+		Data: &stripe.EventData{Raw: json.RawMessage(`{invalid`)},
+	}
+	resp := executeWebhook(t, h, event)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+	if expiring.called {
+		t.Fatal("expiring handler must not be called on unmarshal error")
 	}
 }
 

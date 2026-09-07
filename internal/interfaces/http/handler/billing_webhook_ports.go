@@ -29,3 +29,11 @@ type billingInvoicePaymentFailedHandler interface {
 type billingUpsertInvoiceHandler interface {
 	Handle(ctx context.Context, cmd cmdsubscription.UpsertInvoiceCommand) error
 }
+
+type billingRenewalUpcomingHandler interface {
+	Handle(ctx context.Context, cmd cmdsubscription.SubscriptionRenewalUpcomingCommand) error
+}
+
+type billingPaymentMethodExpiringHandler interface {
+	Handle(ctx context.Context, cmd cmdsubscription.PaymentMethodExpiringCommand) error
+}

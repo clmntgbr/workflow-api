@@ -6,14 +6,14 @@ import (
 
 	cmdquota "go-api/internal/application/command/quota"
 	stepruncmd "go-api/internal/application/command/steprun"
-	querysubscription "go-api/internal/application/query/subscription"
-	eventassertion "go-api/internal/application/event/assertion"
 	eventactivitylog "go-api/internal/application/event/activitylog"
+	eventassertion "go-api/internal/application/event/assertion"
 	eventconnection "go-api/internal/application/event/connection"
 	"go-api/internal/application/event/dedup"
 	eventendpoint "go-api/internal/application/event/endpoint"
 	eventinvoice "go-api/internal/application/event/invoice"
 	eventproject "go-api/internal/application/event/project"
+	eventquota "go-api/internal/application/event/quota"
 	eventstep "go-api/internal/application/event/step"
 	eventsteprun "go-api/internal/application/event/steprun"
 	eventsubscription "go-api/internal/application/event/subscription"
@@ -21,12 +21,15 @@ import (
 	eventvariable "go-api/internal/application/event/variable"
 	eventworkflow "go-api/internal/application/event/workflow"
 	eventworkflowrun "go-api/internal/application/event/workflowrun"
+	appmail "go-api/internal/application/mail"
+	querysubscription "go-api/internal/application/query/subscription"
 	"go-api/internal/application/registry"
 	domainassertion "go-api/internal/domain/assertion"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	domaininvoice "go-api/internal/domain/invoice"
 	domainproject "go-api/internal/domain/project"
+	domainquota "go-api/internal/domain/quota"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainsubscription "go-api/internal/domain/subscription"
@@ -36,6 +39,7 @@ import (
 	domainworkflowrun "go-api/internal/domain/workflowrun"
 	"go-api/internal/infrastructure/centrifugo"
 	"go-api/internal/infrastructure/config"
+	inframail "go-api/internal/infrastructure/mail"
 	"go-api/internal/infrastructure/messaging/rabbitmq"
 	"go-api/internal/infrastructure/notification"
 	"go-api/internal/infrastructure/persistence/outbox"
@@ -47,12 +51,12 @@ import (
 )
 
 type Container struct {
-	Relay                         *outbox.Relay
-	Consumer                      *rabbitmq.Consumer
-	Conn                          *rabbitmq.Connection
-	ResumeWaitingStepRunsHandler  *stepruncmd.ResumeDueWaitingStepRunsHandler
-	WaitingPollInterval           time.Duration
-	WaitingPollBatchSize          int
+	Relay                        *outbox.Relay
+	Consumer                     *rabbitmq.Consumer
+	Conn                         *rabbitmq.Connection
+	ResumeWaitingStepRunsHandler *stepruncmd.ResumeDueWaitingStepRunsHandler
+	WaitingPollInterval          time.Duration
+	WaitingPollBatchSize         int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -133,6 +137,22 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	publishVariableRealtime := eventvariable.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishAssertionRealtime := eventassertion.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishWorkflowRunRealtime := eventworkflowrun.NewPublishRealtimeHandler(realtimePublisher, workflowReadRepo, projectReadRepo)
+	mailSender, err := inframail.NewSender(env)
+	if err != nil {
+		log.Fatalf("failed to load mail templates: %v", err)
+	}
+	sendFinishedMail := eventworkflowrun.NewWorkflowFinishedMailHandler(
+		workflowReadRepo,
+		workflowRunReadRepo,
+		projectReadRepo,
+		userReadRepo,
+		appmail.NewWorkflowFinishedMailService(mailSender, env.AppBaseURL),
+	)
+	billingMail := appmail.NewBillingMailService(mailSender, env.AppBaseURL)
+	quotaMail := appmail.NewQuotaMailService(mailSender, env.AppBaseURL)
+	invoicePaymentMail := eventinvoice.NewPaymentMailHandler(userReadRepo, billingMail)
+	subscriptionBillingMail := eventsubscription.NewBillingMailHandler(userReadRepo, planReadRepo, billingMail)
+	quotaMailHandler := eventquota.NewMailHandler(userReadRepo, quotaMail)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishSubscriptionRealtime := eventsubscription.NewPublishRealtimeHandler(realtimePublisher, userReadRepo)
 	publishInvoiceRealtime := eventinvoice.NewPublishRealtimeHandler(realtimePublisher)
@@ -413,6 +433,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		"publish_subscription_updated_realtime",
 		publishSubscriptionRealtime.OnUpdated,
 	))
+	reg.Register(domainsubscription.EventTypeSubscriptionPlanChanged, dedup.With(
+		dedupRepo,
+		eventsubscription.BillingMailHandlerName,
+		subscriptionBillingMail.OnPlanChanged,
+	))
+	reg.Register(domainsubscription.EventTypeSubscriptionRenewalUpcoming, dedup.With(
+		dedupRepo,
+		eventsubscription.BillingMailHandlerName,
+		subscriptionBillingMail.OnRenewalUpcoming,
+	))
+	reg.Register(domainsubscription.EventTypeSubscriptionPaymentMethodExpiring, dedup.With(
+		dedupRepo,
+		eventsubscription.BillingMailHandlerName,
+		subscriptionBillingMail.OnPaymentMethodExpiring,
+	))
 
 	reg.Register(domaininvoice.EventTypeInvoiceCreated, dedup.With(
 		dedupRepo,
@@ -428,6 +463,27 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"invoice_updated",
 		eventinvoice.NewInvoiceUpdatedHandler().Handle,
+	))
+	reg.Register(domaininvoice.EventTypeInvoicePaymentSucceeded, dedup.With(
+		dedupRepo,
+		eventinvoice.PaymentMailHandlerName,
+		invoicePaymentMail.OnSucceeded,
+	))
+	reg.Register(domaininvoice.EventTypeInvoicePaymentFailed, dedup.With(
+		dedupRepo,
+		eventinvoice.PaymentMailHandlerName,
+		invoicePaymentMail.OnFailed,
+	))
+
+	reg.Register(domainquota.EventTypeQuotaThresholdReached, dedup.With(
+		dedupRepo,
+		eventquota.MailHandlerName,
+		quotaMailHandler.OnThresholdReached,
+	))
+	reg.Register(domainquota.EventTypeQuotaExceeded, dedup.With(
+		dedupRepo,
+		eventquota.MailHandlerName,
+		quotaMailHandler.OnExceeded,
 	))
 
 	reg.Register(domainworkflowrun.EventTypeWorkflowRunStarted, dedup.With(
@@ -459,6 +515,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"publish_workflow_run_finished_realtime",
 		publishWorkflowRunRealtime.OnFinished,
+	))
+	reg.Register(domainworkflowrun.EventTypeWorkflowRunFinished, dedup.With(
+		dedupRepo,
+		eventworkflowrun.FinishedMailHandlerName,
+		sendFinishedMail.Handle,
 	))
 	reg.Register(domainworkflowrun.EventTypeWorkflowRunScheduledSkipped, dedup.With(
 		dedupRepo,

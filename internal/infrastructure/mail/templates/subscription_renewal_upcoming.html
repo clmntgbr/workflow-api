@@ -1,0 +1,13 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#92400e;">Subscription renewing soon</h1>
+<p style="margin:0 0 12px 0;">
+  Your <strong>{{.PlanName}}</strong> subscription will renew{{if .PeriodEnd}} on {{.PeriodEnd}}{{end}}{{if .Amount}} for <strong>{{.Amount}}</strong>{{end}}.
+</p>
+{{if .BillingURL}}
+<p style="margin:0;">
+  <a href="{{.BillingURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    Manage billing
+  </a>
+</p>
+{{end}}
+{{end}}
