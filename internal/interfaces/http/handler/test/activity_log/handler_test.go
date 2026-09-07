@@ -352,7 +352,7 @@ func TestActivityLogHandler_ListByWorkflow_NormalizesPaginationBeforeHandler(t *
 		wantLimit int
 	}{
 		{name: "defaults", query: "", wantPage: 1, wantLimit: paginate.DefaultLimit},
-		{name: "limit above maximum", query: "?limit=5000", wantPage: 1, wantLimit: paginate.DefaultLimit},
+		{name: "limit above maximum", query: "?limit=5000", wantPage: 1, wantLimit: paginate.MaxLimit},
 		{name: "negative page", query: "?page=-3", wantPage: 1, wantLimit: paginate.DefaultLimit},
 	}
 

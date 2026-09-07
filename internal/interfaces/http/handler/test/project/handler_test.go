@@ -248,8 +248,8 @@ func TestProjectHandler_List_NormalizesPaginationBeforeHandler(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
 	}
-	if list.query.Query.Limit != paginate.DefaultLimit {
-		t.Fatalf("limit: got %d want %d", list.query.Query.Limit, paginate.DefaultLimit)
+	if list.query.Query.Limit != paginate.MaxLimit {
+		t.Fatalf("limit: got %d want %d", list.query.Query.Limit, paginate.MaxLimit)
 	}
 	if list.query.Query.Page != 1 {
 		t.Fatalf("page: got %d want 1", list.query.Query.Page)

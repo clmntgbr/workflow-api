@@ -6,6 +6,7 @@ const (
 	OrderByAsc   = "asc"
 	OrderByDesc  = "desc"
 	DefaultLimit = 20
+	MaxLimit     = 200
 )
 
 type PaginateQuery struct {
@@ -39,8 +40,11 @@ func (p *PaginateQuery) Normalize() {
 	if p.Page <= 0 {
 		p.Page = 1
 	}
-	if p.Limit <= 0 || p.Limit > 100 {
+	if p.Limit <= 0 {
 		p.Limit = DefaultLimit
+	}
+	if p.Limit > MaxLimit {
+		p.Limit = MaxLimit
 	}
 	if p.OrderBy != OrderByAsc && p.OrderBy != OrderByDesc {
 		p.OrderBy = OrderByAsc

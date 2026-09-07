@@ -77,7 +77,7 @@ func TestHeaderHandler_Suggest_NormalizesPaginationBeforeHandler(t *testing.T) {
 		wantLimit int
 	}{
 		{name: "defaults", query: "", wantPage: 1, wantLimit: paginate.DefaultLimit},
-		{name: "limit above maximum", query: "?limit=5000", wantPage: 1, wantLimit: paginate.DefaultLimit},
+		{name: "limit above maximum", query: "?limit=5000", wantPage: 1, wantLimit: paginate.MaxLimit},
 		{name: "negative page", query: "?page=-3", wantPage: 1, wantLimit: paginate.DefaultLimit},
 	}
 
@@ -225,8 +225,8 @@ func TestHeaderHandler_SuggestValues_NormalizesPaginationBeforeHandler(t *testin
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
 	}
-	if suggestValues.query.Paginate.Limit != paginate.DefaultLimit {
-		t.Fatalf("limit: got %d want %d", suggestValues.query.Paginate.Limit, paginate.DefaultLimit)
+	if suggestValues.query.Paginate.Limit != paginate.MaxLimit {
+		t.Fatalf("limit: got %d want %d", suggestValues.query.Paginate.Limit, paginate.MaxLimit)
 	}
 	if suggestValues.query.Paginate.Page != 1 {
 		t.Fatalf("page: got %d want 1", suggestValues.query.Paginate.Page)
