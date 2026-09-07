@@ -236,7 +236,7 @@ Copy [`.env.dist`](.env.dist) and fill required values (Clerk, Postgres, RabbitM
 |---|---|---|
 | `STEP_RUN_WAITING_POLL_INTERVAL` | `1s` | Worker poll interval for due `waiting` delay step runs |
 | `STEP_RUN_WAITING_POLL_BATCH_SIZE` | `100` | Batch size per poll tick |
-| `SCHEDULER_INTERVAL` | `1m` | How often scheduled workflows are claimed |
+| `SCHEDULER_INTERVAL` | `1m` | Claim cadence, aligned to the clock (e.g. `1m` → `:00` of every minute) |
 | `RABBITMQ_EXECUTOR_*` | `step_run.execute` | Executor queue topology |
 | `OUTBOX_POLL_INTERVAL` | `2s` | Outbox relay poll interval |
 

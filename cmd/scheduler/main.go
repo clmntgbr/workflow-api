@@ -45,7 +45,7 @@ func runScheduler(ctx context.Context, container *di.Container, interval time.Du
 	}
 
 	log.Printf(
-		"scheduler started (interval=%s batchSize=%d concurrency=%d maxBatches=%d)",
+		"scheduler started (interval=%s clock-aligned batchSize=%d concurrency=%d maxBatches=%d)",
 		interval,
 		container.BatchSize,
 		container.Concurrency,
@@ -53,15 +53,15 @@ func runScheduler(ctx context.Context, container *di.Container, interval time.Du
 	)
 	tick(ctx, container)
 
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
 	for {
+		wait := durationUntilNextInterval(time.Now(), interval)
+		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			log.Println("scheduler stopped")
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			tick(ctx, container)
 		}
 	}

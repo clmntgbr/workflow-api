@@ -57,7 +57,7 @@ Returns totals, success/failure rates, average duration, last run time.
 | `cmd/api` | Start/stop HTTP |
 | `cmd/worker` | Orchestration, delay poller, outbox consumer |
 | `cmd/executor` | HTTP step execution |
-| `cmd/scheduler` | Scheduled workflow starts |
+| `cmd/scheduler` | Scheduled workflow starts (ticks aligned to `SCHEDULER_INTERVAL`, e.g. every minute at `:00`) |
 
 ## Code map
 
