@@ -16,6 +16,7 @@ import (
 type WorkflowRunListResponse struct {
 	ID         string                          `json:"id"`
 	Status     string                          `json:"status"`
+	Duration   int64                           `json:"duration"`
 	StartedAt  *time.Time                      `json:"startedAt"`
 	FinishedAt *time.Time                      `json:"finishedAt"`
 	CreatedAt  time.Time                       `json:"createdAt"`
@@ -30,6 +31,7 @@ type WorkflowRunDetailResponse struct {
 	ID          string                  `json:"id"`
 	Status      string                  `json:"status"`
 	TriggeredBy string                  `json:"triggeredBy"`
+	Duration    int64                   `json:"duration"`
 	StartedAt   *time.Time              `json:"startedAt"`
 	FinishedAt  *time.Time              `json:"finishedAt"`
 	Error       *string                 `json:"error"`
@@ -60,6 +62,7 @@ func NewWorkflowRunListResponseFromView(
 	return WorkflowRunListResponse{
 		ID:         view.ID.String(),
 		Status:     string(view.Status),
+		Duration:   domainsteprun.SumExecutionElapsedMS(stepRuns),
 		StartedAt:  view.StartedAt,
 		FinishedAt: view.FinishedAt,
 		CreatedAt:  view.CreatedAt,
@@ -126,6 +129,7 @@ func NewWorkflowRunDetailResponseFromViewWithRelations(
 		ID:          view.ID.String(),
 		Status:      string(view.Status),
 		TriggeredBy: string(view.TriggeredBy),
+		Duration:    domainsteprun.SumExecutionElapsedMS(stepRuns),
 		StartedAt:   view.StartedAt,
 		FinishedAt:  view.FinishedAt,
 		Error:       optionalNonEmptyString(view.Error),

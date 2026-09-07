@@ -11,49 +11,53 @@ import (
 )
 
 type Config struct {
-	DatabaseURL                 string
-	ClerkWebhookSecret          string
-	Port                        string
-	Environment                 string
-	ClerkSecretKey              string
-	ClerkFrontendAPI            string
-	CORSAllowedOrigins          []string
-	CORSAllowCredentials        bool
-	CORSAllowMethods            []string
-	CORSAllowHeaders            []string
-	CORSMaxAge                  int
-	RateLimitMax                int
-	RabbitMQURL                 string
-	RabbitMQExchange            string
-	RabbitMQQueue               string
-	RabbitMQRoutingKey          string
-	RabbitMQRetryTTLMS          int
-	WorkerMaxRetries            int
-	OutboxPollInterval          time.Duration
-	WorkerConcurrency           int
-	CentrifugoURL               string
-	CentrifugoAPIKey            string
-	CentrifugoTokenSecret       string
-	CentrifugoPublicWSURL       string
-	RabbitMQExecutorExchange    string
-	RabbitMQExecutorQueue       string
-	RabbitMQExecutorRoutingKey  string
-	SchedulerInterval           time.Duration
-	SchedulerBatchSize          int
-	SchedulerConcurrency        int
-	SchedulerMaxBatchesPerTick  int
-	StepRunWaitingPollInterval  time.Duration
-	StepRunWaitingPollBatchSize int
-	StripeSecretKey             string
-	RedirectSuccessURL          string
-	RedirectCancelURL           string
-	RedirectPortalURL           string
-	StripeWebhookSecret         string
-	MailerDSN                   string
-	MailFrom                    string
-	MailLogoURL                 string
-	MailCompanyAddress          string
-	AppBaseURL                  string
+	DatabaseURL                   string
+	ClerkWebhookSecret            string
+	Port                          string
+	Environment                   string
+	ClerkSecretKey                string
+	ClerkFrontendAPI              string
+	CORSAllowedOrigins            []string
+	CORSAllowCredentials          bool
+	CORSAllowMethods              []string
+	CORSAllowHeaders              []string
+	CORSMaxAge                    int
+	RateLimitMax                  int
+	RabbitMQURL                   string
+	RabbitMQExchange              string
+	RabbitMQQueue                 string
+	RabbitMQRoutingKey            string
+	RabbitMQRetryTTLMS            int
+	WorkerMaxRetries              int
+	OutboxPollInterval            time.Duration
+	WorkerConcurrency             int
+	CentrifugoURL                 string
+	CentrifugoAPIKey              string
+	CentrifugoTokenSecret         string
+	CentrifugoPublicWSURL         string
+	RabbitMQExecutorExchange      string
+	RabbitMQExecutorQueue         string
+	RabbitMQExecutorRoutingKey    string
+	SchedulerInterval             time.Duration
+	SchedulerBatchSize            int
+	SchedulerConcurrency          int
+	SchedulerMaxBatchesPerTick    int
+	StepRunWaitingPollInterval    time.Duration
+	StepRunWaitingPollBatchSize   int
+	StaleStepRunPollBatchSize     int
+	StaleStepRunPendingMaxAge     time.Duration
+	StaleStepRunGrace             time.Duration
+	StaleStepRunMaxBatchesPerTick int
+	StripeSecretKey               string
+	RedirectSuccessURL            string
+	RedirectCancelURL             string
+	RedirectPortalURL             string
+	StripeWebhookSecret           string
+	MailerDSN                     string
+	MailFrom                      string
+	MailLogoURL                   string
+	MailCompanyAddress            string
+	AppBaseURL                    string
 }
 
 func Load() *Config {
@@ -62,49 +66,53 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DatabaseURL:                 getEnv("DATABASE_URL"),
-		ClerkWebhookSecret:          getEnv("CLERK_WEBHOOK_SECRET"),
-		Port:                        getEnv("PORT"),
-		Environment:                 getEnv("GO_ENV"),
-		ClerkSecretKey:              getEnv("CLERK_SECRET_KEY"),
-		ClerkFrontendAPI:            getEnv("CLERK_FRONTEND_API"),
-		CORSAllowedOrigins:          strings.Split(getEnv("CORS_ALLOWED_ORIGINS"), ","),
-		CORSAllowCredentials:        getEnvBool("CORS_ALLOW_CREDENTIALS"),
-		CORSAllowMethods:            strings.Split(getEnv("CORS_ALLOW_METHODS"), ","),
-		CORSAllowHeaders:            strings.Split(getEnv("CORS_ALLOW_HEADERS"), ","),
-		CORSMaxAge:                  getEnvInt("CORS_MAX_AGE"),
-		RateLimitMax:                getEnvInt("RATE_LIMIT_MAX"),
-		RabbitMQURL:                 getEnv("RABBITMQ_URL"),
-		RabbitMQExchange:            getEnvOrDefault("RABBITMQ_EXCHANGE", "domain.events"),
-		RabbitMQQueue:               getEnvOrDefault("RABBITMQ_QUEUE", "domain.events"),
-		RabbitMQRoutingKey:          getEnvOrDefault("RABBITMQ_ROUTING_KEY", "#"),
-		RabbitMQRetryTTLMS:          getEnvIntOrDefault("RABBITMQ_RETRY_TTL_MS", 30000),
-		WorkerMaxRetries:            getEnvIntOrDefault("WORKER_MAX_RETRIES", 3),
-		OutboxPollInterval:          getEnvDuration("OUTBOX_POLL_INTERVAL", 2*time.Second),
-		WorkerConcurrency:           getEnvIntOrDefault("WORKER_CONCURRENCY", 4),
-		CentrifugoURL:               getEnv("CENTRIFUGO_URL"),
-		CentrifugoAPIKey:            getEnv("CENTRIFUGO_API_KEY"),
-		CentrifugoTokenSecret:       getEnv("CENTRIFUGO_TOKEN_SECRET"),
-		CentrifugoPublicWSURL:       getEnvOrDefault("CENTRIFUGO_PUBLIC_WS_URL", ""),
-		RabbitMQExecutorExchange:    getEnvOrDefault("RABBITMQ_EXECUTOR_EXCHANGE", "step_run.execute"),
-		RabbitMQExecutorQueue:       getEnvOrDefault("RABBITMQ_EXECUTOR_QUEUE", "step_run.execute"),
-		RabbitMQExecutorRoutingKey:  getEnvOrDefault("RABBITMQ_EXECUTOR_ROUTING_KEY", "step_run.execute"),
-		SchedulerInterval:           getEnvDuration("SCHEDULER_INTERVAL", time.Minute),
-		SchedulerBatchSize:          getEnvIntOrDefault("SCHEDULER_BATCH_SIZE", 100),
-		SchedulerConcurrency:        getEnvIntOrDefault("SCHEDULER_CONCURRENCY", 32),
-		SchedulerMaxBatchesPerTick:  getEnvIntOrDefault("SCHEDULER_MAX_BATCHES_PER_TICK", 100),
-		StepRunWaitingPollInterval:  getEnvDuration("STEP_RUN_WAITING_POLL_INTERVAL", time.Second),
-		StepRunWaitingPollBatchSize: getEnvIntOrDefault("STEP_RUN_WAITING_POLL_BATCH_SIZE", 100),
-		StripeSecretKey:             getEnvOrDefault("STRIPE_SECRET_KEY", ""),
-		RedirectSuccessURL:          getEnvOrDefault("REDIRECT_SUCCESS_URL", "http://localhost:3000/subscription/success"),
-		RedirectCancelURL:           getEnvOrDefault("REDIRECT_CANCEL_URL", "http://localhost:3000/subscription/failed"),
-		RedirectPortalURL:           getEnvOrDefault("REDIRECT_PORTAL_URL", "http://localhost:3000/subscription"),
-		StripeWebhookSecret:         getEnvOrDefault("STRIPE_WEBHOOK_SECRET", ""),
-		MailerDSN:                   getEnvOrDefault("MAILER_DSN", ""),
-		MailFrom:                    getEnvOrDefault("MAIL_FROM", ""),
-		MailLogoURL:                 getEnvOrDefault("MAIL_LOGO_URL", ""),
-		MailCompanyAddress:          getEnvOrDefault("MAIL_COMPANY_ADDRESS", ""),
-		AppBaseURL:                  getEnvOrDefault("APP_BASE_URL", "http://localhost:3000"),
+		DatabaseURL:                   getEnv("DATABASE_URL"),
+		ClerkWebhookSecret:            getEnv("CLERK_WEBHOOK_SECRET"),
+		Port:                          getEnv("PORT"),
+		Environment:                   getEnv("GO_ENV"),
+		ClerkSecretKey:                getEnv("CLERK_SECRET_KEY"),
+		ClerkFrontendAPI:              getEnv("CLERK_FRONTEND_API"),
+		CORSAllowedOrigins:            strings.Split(getEnv("CORS_ALLOWED_ORIGINS"), ","),
+		CORSAllowCredentials:          getEnvBool("CORS_ALLOW_CREDENTIALS"),
+		CORSAllowMethods:              strings.Split(getEnv("CORS_ALLOW_METHODS"), ","),
+		CORSAllowHeaders:              strings.Split(getEnv("CORS_ALLOW_HEADERS"), ","),
+		CORSMaxAge:                    getEnvInt("CORS_MAX_AGE"),
+		RateLimitMax:                  getEnvInt("RATE_LIMIT_MAX"),
+		RabbitMQURL:                   getEnv("RABBITMQ_URL"),
+		RabbitMQExchange:              getEnvOrDefault("RABBITMQ_EXCHANGE", "domain.events"),
+		RabbitMQQueue:                 getEnvOrDefault("RABBITMQ_QUEUE", "domain.events"),
+		RabbitMQRoutingKey:            getEnvOrDefault("RABBITMQ_ROUTING_KEY", "#"),
+		RabbitMQRetryTTLMS:            getEnvIntOrDefault("RABBITMQ_RETRY_TTL_MS", 30000),
+		WorkerMaxRetries:              getEnvIntOrDefault("WORKER_MAX_RETRIES", 3),
+		OutboxPollInterval:            getEnvDuration("OUTBOX_POLL_INTERVAL", 2*time.Second),
+		WorkerConcurrency:             getEnvIntOrDefault("WORKER_CONCURRENCY", 4),
+		CentrifugoURL:                 getEnv("CENTRIFUGO_URL"),
+		CentrifugoAPIKey:              getEnv("CENTRIFUGO_API_KEY"),
+		CentrifugoTokenSecret:         getEnv("CENTRIFUGO_TOKEN_SECRET"),
+		CentrifugoPublicWSURL:         getEnvOrDefault("CENTRIFUGO_PUBLIC_WS_URL", ""),
+		RabbitMQExecutorExchange:      getEnvOrDefault("RABBITMQ_EXECUTOR_EXCHANGE", "step_run.execute"),
+		RabbitMQExecutorQueue:         getEnvOrDefault("RABBITMQ_EXECUTOR_QUEUE", "step_run.execute"),
+		RabbitMQExecutorRoutingKey:    getEnvOrDefault("RABBITMQ_EXECUTOR_ROUTING_KEY", "step_run.execute"),
+		SchedulerInterval:             getEnvDuration("SCHEDULER_INTERVAL", time.Minute),
+		SchedulerBatchSize:            getEnvIntOrDefault("SCHEDULER_BATCH_SIZE", 100),
+		SchedulerConcurrency:          getEnvIntOrDefault("SCHEDULER_CONCURRENCY", 32),
+		SchedulerMaxBatchesPerTick:    getEnvIntOrDefault("SCHEDULER_MAX_BATCHES_PER_TICK", 100),
+		StepRunWaitingPollInterval:    getEnvDuration("STEP_RUN_WAITING_POLL_INTERVAL", time.Second),
+		StepRunWaitingPollBatchSize:   getEnvIntOrDefault("STEP_RUN_WAITING_POLL_BATCH_SIZE", 100),
+		StaleStepRunPollBatchSize:     getEnvIntOrDefault("STALE_STEP_RUN_POLL_BATCH_SIZE", 100),
+		StaleStepRunPendingMaxAge:     getEnvDuration("STALE_STEP_RUN_PENDING_MAX_AGE", 30*time.Minute),
+		StaleStepRunGrace:             getEnvDuration("STALE_STEP_RUN_GRACE", 5*time.Minute),
+		StaleStepRunMaxBatchesPerTick: getEnvIntOrDefault("STALE_STEP_RUN_MAX_BATCHES_PER_TICK", 50),
+		StripeSecretKey:               getEnvOrDefault("STRIPE_SECRET_KEY", ""),
+		RedirectSuccessURL:            getEnvOrDefault("REDIRECT_SUCCESS_URL", "http://localhost:3000/subscription/success"),
+		RedirectCancelURL:             getEnvOrDefault("REDIRECT_CANCEL_URL", "http://localhost:3000/subscription/failed"),
+		RedirectPortalURL:             getEnvOrDefault("REDIRECT_PORTAL_URL", "http://localhost:3000/subscription"),
+		StripeWebhookSecret:           getEnvOrDefault("STRIPE_WEBHOOK_SECRET", ""),
+		MailerDSN:                     getEnvOrDefault("MAILER_DSN", ""),
+		MailFrom:                      getEnvOrDefault("MAIL_FROM", ""),
+		MailLogoURL:                   getEnvOrDefault("MAIL_LOGO_URL", ""),
+		MailCompanyAddress:            getEnvOrDefault("MAIL_COMPANY_ADDRESS", ""),
+		AppBaseURL:                    getEnvOrDefault("APP_BASE_URL", "http://localhost:3000"),
 	}
 }
 

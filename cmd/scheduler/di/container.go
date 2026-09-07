@@ -2,6 +2,7 @@ package di
 
 import (
 	cmdquota "go-api/internal/application/command/quota"
+	stepruncmd "go-api/internal/application/command/steprun"
 	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	querysubscription "go-api/internal/application/query/subscription"
@@ -16,14 +17,17 @@ import (
 type Container struct {
 	StartWorkflowRunHandler  *workflowruncmd.StartWorkflowRunHandler
 	ClaimDueWorkflowsHandler *workflowcmd.ClaimDueWorkflowsHandler
+	FailStaleStepRunsHandler *stepruncmd.FailStaleStepRunsHandler
 	BatchSize                int
 	Concurrency              int
 	MaxBatchesPerTick        int
+	StalePollBatchSize       int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
+	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
@@ -66,6 +70,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	if maxBatches <= 0 {
 		maxBatches = 100
 	}
+	stalePollBatchSize := env.StaleStepRunPollBatchSize
+	if stalePollBatchSize <= 0 {
+		stalePollBatchSize = 100
+	}
 
 	return &Container{
 		StartWorkflowRunHandler: workflowruncmd.NewStartWorkflowRunHandler(
@@ -79,8 +87,17 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			workflowWriteRepo,
 			outboxRepo,
 		),
-		BatchSize:         batchSize,
-		Concurrency:       concurrency,
-		MaxBatchesPerTick: maxBatches,
+		FailStaleStepRunsHandler: stepruncmd.NewFailStaleStepRunsHandler(
+			stepRunWriteRepo,
+			workflowRunWriteRepo,
+			outboxRepo,
+			env.StaleStepRunPendingMaxAge,
+			env.StaleStepRunGrace,
+			env.StaleStepRunMaxBatchesPerTick,
+		),
+		BatchSize:          batchSize,
+		Concurrency:        concurrency,
+		MaxBatchesPerTick:  maxBatches,
+		StalePollBatchSize: stalePollBatchSize,
 	}
 }

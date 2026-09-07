@@ -316,6 +316,8 @@ func sampleWorkflowRunView() *domainworkflowrun.WorkflowRunView {
 }
 
 func sampleStepRunView() domainsteprun.StepRunView {
+	started := time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC)
+	finished := started.Add(2 * time.Second)
 	return domainsteprun.StepRunView{
 		ID:            testStepRunID,
 		WorkflowRunID: testutil.TestWorkflowRunID,
@@ -325,6 +327,8 @@ func sampleStepRunView() domainsteprun.StepRunView {
 		StepType:      domainstep.TypeHTTP,
 		Name:          "Fetch order",
 		Status:        domainsteprun.StatusSuccess,
+		StartedAt:     &started,
+		FinishedAt:    &finished,
 		CreatedAt:     time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC),
 		UpdatedAt:     time.Date(2026, 1, 2, 10, 1, 0, 0, time.UTC),
 	}
@@ -864,6 +868,9 @@ func TestWorkflowRunHandler_ListByWorkflow_Success(t *testing.T) {
 	if len(out.Members[0].StepRuns) != 1 {
 		t.Fatalf("step runs length: got %d want 1", len(out.Members[0].StepRuns))
 	}
+	if out.Members[0].Duration != 2000 {
+		t.Fatalf("duration: got %d want 2000", out.Members[0].Duration)
+	}
 }
 
 func TestWorkflowRunHandler_ListByWorkflow_MissingActiveProject(t *testing.T) {
@@ -1036,6 +1043,9 @@ func TestWorkflowRunHandler_GetByID_Success(t *testing.T) {
 	}
 	if len(out.StepRuns) != 1 {
 		t.Fatalf("step runs length: got %d want 1", len(out.StepRuns))
+	}
+	if out.Duration != 2000 {
+		t.Fatalf("duration: got %d want 2000", out.Duration)
 	}
 }
 

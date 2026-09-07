@@ -33,9 +33,10 @@ Resources are scoped to the caller’s **active project**. Shared workflow URLs 
 - **Orchestration** — worker advances the graph after each step run succeeds/fails/skips
 - **HTTP steps** — dedicated **executor** binary consumes `stepRun.queued`, calls the target API, runs assertions, records **insights** (timings)
 - **Delay steps** — always `waiting` + `resumeAt`; worker polls (`STEP_RUN_WAITING_POLL_INTERVAL`, default `1s`) and resumes when due — executor handles HTTP only
+- **Stalled steps** — scheduler fails HTTP/condition step runs that stay `pending` too long or exceed timeout+retries (clock-aligned every 30 minutes); delay steps are ignored so long waits stay valid
 - **Condition steps** — evaluated inline by the worker (no executor); taken branch is activated, the other branch subtree is skipped
 - **Cancellation** — `POST /workflows/:workflowId/stop` cancels the in-progress run and all non-terminal step runs (including `waiting`)
-- **Scheduling** — **scheduler** binary claims due workflows and starts runs
+- **Scheduling** — **scheduler** binary claims due workflows and starts runs, and fails stalled HTTP/condition step runs every 30 minutes
 
 Delay step runs emit the same realtime events as HTTP steps (`stepRun.started`, `stepRun.succeeded`). The API exposes `startedAt`, `finishedAt`, and `resumeAt` on step runs.
 
@@ -236,6 +237,10 @@ Copy [`.env.dist`](.env.dist) and fill required values (Clerk, Postgres, RabbitM
 |---|---|---|
 | `STEP_RUN_WAITING_POLL_INTERVAL` | `1s` | Worker poll interval for due `waiting` delay step runs |
 | `STEP_RUN_WAITING_POLL_BATCH_SIZE` | `100` | Batch size per poll tick |
+| `STALE_STEP_RUN_POLL_BATCH_SIZE` | `100` | Batch size per stale-step scheduler tick |
+| `STALE_STEP_RUN_PENDING_MAX_AGE` | `30m` | Max time an HTTP/condition step may stay `pending` before the run is failed |
+| `STALE_STEP_RUN_GRACE` | `5m` | Extra time on top of timeout/retries before a `running` step is treated as stalled |
+| `STALE_STEP_RUN_MAX_BATCHES_PER_TICK` | `50` | Max batches processed on each stale-step scheduler tick |
 | `SCHEDULER_INTERVAL` | `1m` | Claim cadence, aligned to the clock (e.g. `1m` → `:00` of every minute) |
 | `RABBITMQ_EXECUTOR_*` | `step_run.execute` | Executor queue topology |
 | `OUTBOX_POLL_INTERVAL` | `2s` | Outbox relay poll interval |
@@ -257,7 +262,7 @@ make migrate
 | API | `4000` | Air hot reload |
 | Worker | — | Outbox relay + consumer + delay poller |
 | Executor | — | HTTP step runs |
-| Scheduler | — | Cron-like workflow starts |
+| Scheduler | — | Cron-like workflow starts + stalled step runs (every 30m) |
 | Postgres | `9543` | |
 | RabbitMQ | `5672` / UI `15672` | Credentials from `.env` |
 | Centrifugo | `8000` | WebSocket |

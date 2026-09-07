@@ -18,6 +18,7 @@ type StepRunWriteRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*StepRun, error)
 	FindByWorkflowRunID(ctx context.Context, workflowRunID uuid.UUID) ([]*StepRun, error)
 	ClaimDueWaiting(ctx context.Context, now time.Time, limit int) ([]*StepRun, error)
+	FindActiveNonDelay(ctx context.Context, now time.Time, pendingMaxAge, grace time.Duration, limit int) ([]*StepRun, error)
 }
 
 type StepRunReadRepository interface {

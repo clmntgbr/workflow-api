@@ -40,9 +40,13 @@ POST /start → workflowRun.started.v1
   → workflowRun.finished.v1
 ```
 
+Scheduler also polls stalled **HTTP/condition** step runs (not delays) every 30 minutes (clock-aligned, same pattern as due workflow claims). A `pending` step older than `STALE_STEP_RUN_PENDING_MAX_AGE`, or a `running` step past `timeout × attempts + retry delays + grace`, fails that step, cancels siblings (including waiting delays), and fails the workflow run. Long delay steps never trigger this.
+
 ## Step run statuses
 
 HTTP and delay steps emit `stepRun.*` realtime events. API exposes `startedAt`, `finishedAt`, `resumeAt` on step runs.
+
+Workflow run payloads include `duration` (milliseconds): the sum of all step-run elapsed times (`finishedAt - startedAt`), including HTTP, condition, and delay waits. In-progress steps without `finishedAt` are not counted yet.
 
 ## Analytics query
 
@@ -70,16 +74,16 @@ Returns `202` `{ id, status: "pending" }`. The worker builds the workbook, redac
 | `cmd/api` | Start/stop HTTP |
 | `cmd/worker` | Orchestration, delay poller, outbox consumer, run-history export |
 | `cmd/executor` | HTTP step execution |
-| `cmd/scheduler` | Scheduled workflow starts (ticks aligned to `SCHEDULER_INTERVAL`, e.g. every minute at `:00`) |
+| `cmd/scheduler` | Scheduled workflow starts (ticks aligned to `SCHEDULER_INTERVAL`, e.g. every minute at `:00`) and stalled HTTP/condition step runs (every 30 minutes, clock-aligned) |
 
 ## Code map
 
 | Layer | Location |
 |-------|----------|
 | HTTP | `internal/interfaces/http/handler/workflow_run_handler.go`, `run_export_handler.go` |
-| Commands | `internal/application/command/workflowrun/`, `internal/application/command/runexport/` |
+| Commands | `internal/application/command/workflowrun/`, `internal/application/command/runexport/`, `internal/application/command/steprun/` |
 | Queries | `internal/application/query/workflowrun/` |
-| Domain | `internal/domain/workflowrun/` |
+| Domain | `internal/domain/workflowrun/`, `internal/domain/steprun/` |
 
 ## Events
 

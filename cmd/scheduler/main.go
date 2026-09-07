@@ -36,6 +36,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	go runStaleStepRunPoller(ctx, container)
 	runScheduler(ctx, container, env.SchedulerInterval)
 }
 
@@ -144,4 +145,44 @@ func processClaimedBatch(
 	}
 
 	wg.Wait()
+}
+
+const staleStepRunPollInterval = 30 * time.Minute
+
+func runStaleStepRunPoller(ctx context.Context, container *di.Container) {
+	log.Printf(
+		"scheduler: stale step run poller started (interval=%s clock-aligned batchSize=%d)",
+		staleStepRunPollInterval,
+		container.StalePollBatchSize,
+	)
+
+	tickStale(ctx, container)
+
+	for {
+		wait := durationUntilNextInterval(time.Now(), staleStepRunPollInterval)
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			log.Println("scheduler: stale step run poller stopped")
+			return
+		case <-timer.C:
+			tickStale(ctx, container)
+		}
+	}
+}
+
+func tickStale(ctx context.Context, container *di.Container) {
+	failed, err := container.FailStaleStepRunsHandler.Handle(
+		ctx,
+		time.Now().UTC(),
+		container.StalePollBatchSize,
+	)
+	if err != nil {
+		log.Printf("scheduler: fail stale step runs failed: %v", err)
+		return
+	}
+	if failed > 0 {
+		log.Printf("scheduler: failed %d stalled workflow run(s)", failed)
+	}
 }
