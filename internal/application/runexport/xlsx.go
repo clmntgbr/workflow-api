@@ -69,12 +69,12 @@ func writeRunsSheet(
 	headers := []string{
 		"kind",
 		"runId", "runStatus", "runStartedAt", "runFinishedAt", "runDurationMs",
-		"runCreatedAt", "runError", "runContext",
+		"runCreatedAt", "runError",
 		"stepId", "stepName", "stepDescription", "stepType", "stepStatus",
 		"executionOrder", "attempt", "stepStartedAt", "stepFinishedAt", "stepDurationMs",
 		"method", "url", "timeout", "retryOnFailure", "retryCount", "retryDelay",
 		"requestHeaders", "requestQuery", "requestBody",
-		"responseStatus", "responseHeaders", "responseBody",
+		"responseStatus",
 		"extractedVariables", "matchedBranch", "resumeAt", "delaySeconds", "stepError",
 	}
 	if withInsights {
@@ -116,12 +116,11 @@ func runRow(run domainworkflowrun.WorkflowRunView, withInsights bool) []any {
 		durationBetween(run.StartedAt, run.FinishedAt),
 		run.CreatedAt.UTC().Format(time.RFC3339),
 		run.Error,
-		toJSONCell(redactBody(run.Context)),
 		"", "", "", "", "",
 		"", "", "", "", "",
 		"", "", "", "", "", "",
 		"", "", "",
-		"", "", "",
+		"",
 		"", "", "", "", "",
 	}
 	if withInsights {
@@ -137,18 +136,14 @@ func stepRow(
 	withInsights bool,
 ) []any {
 	responseStatus := ""
-	var responseHeaders any
-	var responseBody any
 	if stepRun.ResponseSnapshot != nil {
 		responseStatus = strconv.Itoa(stepRun.ResponseSnapshot.Status)
-		responseHeaders = redactHeaders(stepRun.ResponseSnapshot.Headers)
-		responseBody = redactBody(stepRun.ResponseSnapshot.Body)
 	}
 
 	values := []any{
 		kindStep,
 		runID.String(),
-		"", "", "", "", "", "", "",
+		"", "", "", "", "", "",
 		stepRun.ID.String(),
 		stepRun.Name,
 		stepRun.Description,
@@ -169,8 +164,6 @@ func stepRow(
 		toJSONCell(redactQuery(stepRun.Query)),
 		toJSONCell(redactBody(stepRun.Body)),
 		responseStatus,
-		toJSONCell(responseHeaders),
-		toJSONCell(responseBody),
 		toJSONCell(redactBody(stepRun.ExtractedVariables)),
 		formatBool(stepRun.MatchedBranch),
 		formatTime(stepRun.ResumeAt),
