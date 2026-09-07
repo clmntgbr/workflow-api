@@ -95,6 +95,11 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "data export not allowed",
+			err:        cmdquota.ErrDataExportNotAllowed,
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "nil error",
 			err:        nil,
 			wantStatus: 0,

@@ -14,6 +14,7 @@ import (
 	eventinvoice "go-api/internal/application/event/invoice"
 	eventproject "go-api/internal/application/event/project"
 	eventquota "go-api/internal/application/event/quota"
+	eventrunexport "go-api/internal/application/event/runexport"
 	eventstep "go-api/internal/application/event/step"
 	eventsteprun "go-api/internal/application/event/steprun"
 	eventsubscription "go-api/internal/application/event/subscription"
@@ -30,6 +31,7 @@ import (
 	domaininvoice "go-api/internal/domain/invoice"
 	domainproject "go-api/internal/domain/project"
 	domainquota "go-api/internal/domain/quota"
+	domainrunexport "go-api/internal/domain/runexport"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainsubscription "go-api/internal/domain/subscription"
@@ -153,6 +155,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	invoicePaymentMail := eventinvoice.NewPaymentMailHandler(userReadRepo, billingMail)
 	subscriptionBillingMail := eventsubscription.NewBillingMailHandler(userReadRepo, planReadRepo, billingMail)
 	quotaMailHandler := eventquota.NewMailHandler(userReadRepo, quotaMail)
+	stepRunReadRepo := read.NewStepRunReadRepository(db)
+	insightReadRepo := read.NewInsightReadRepository(db)
+	runExportWriteRepo := write.NewRunExportWriteRepository(db)
+	generateRunExport := eventrunexport.NewGenerateHandler(
+		runExportWriteRepo,
+		workflowRunReadRepo,
+		stepRunReadRepo,
+		insightReadRepo,
+		workflowReadRepo,
+		userReadRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+		appmail.NewRunExportMailService(mailSender, env.AppBaseURL),
+	)
+	publishRunExportRealtime := eventrunexport.NewPublishRealtimeHandler(realtimePublisher)
 	publishStepRunRealtime := eventsteprun.NewPublishRealtimeHandler(realtimePublisher, projectReadRepo)
 	publishSubscriptionRealtime := eventsubscription.NewPublishRealtimeHandler(realtimePublisher, userReadRepo)
 	publishInvoiceRealtime := eventinvoice.NewPublishRealtimeHandler(realtimePublisher)
@@ -525,6 +542,21 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		dedupRepo,
 		"workflow_run_scheduled_skipped",
 		eventworkflowrun.NewScheduledSkippedHandler().Handle,
+	))
+	reg.Register(domainrunexport.EventTypeRunExportRequested, dedup.With(
+		dedupRepo,
+		eventrunexport.GenerateHandlerName,
+		generateRunExport.Handle,
+	))
+	reg.Register(domainrunexport.EventTypeRunExportReady, dedup.With(
+		dedupRepo,
+		"publish_run_export_ready_realtime",
+		publishRunExportRealtime.OnReady,
+	))
+	reg.Register(domainrunexport.EventTypeRunExportFailed, dedup.With(
+		dedupRepo,
+		"publish_run_export_failed_realtime",
+		publishRunExportRealtime.OnFailed,
 	))
 
 	reg.Register(domainsteprun.EventTypeStepRunQueued, dedup.With(

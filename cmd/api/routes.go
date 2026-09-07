@@ -147,6 +147,8 @@ func setupActivityLogRoutes(api fiber.Router, container *di.Container) {
 
 func setupWorkflowRunRoutes(api fiber.Router, container *di.Container) {
 	api.Get("/workflows/:workflowId/runs/analytics", container.WorkflowRunHandler.Analytics)
+	api.Post("/workflows/:workflowId/runs/export", container.RunExportHandler.Create)
+	api.Get("/workflows/:workflowId/runs/export/:jobId", container.RunExportHandler.GetByID)
 	api.Post("/workflows/:workflowId/start", container.WorkflowRunHandler.StartWorkflow)
 	api.Post("/workflows/:workflowId/stop", container.WorkflowRunHandler.StopWorkflow)
 	api.Get("/workflows/:workflowId/runs", container.WorkflowRunHandler.ListByWorkflow)

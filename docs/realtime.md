@@ -31,6 +31,8 @@ Requires authentication.
 | `stepRun.*` | Step execution (HTTP and delay) |
 | `subscription.updated` | Subscription plan/status change (billing) |
 | `invoice.created` | New invoice (billing) |
+| `runExport.ready` | Run-history XLSX emailed to the requester |
+| `runExport.failed` | Run-history export failed (`error` in payload) |
 
 ## Code map
 

@@ -13,6 +13,7 @@ const (
 	ActionCancelled            = "cancelled"
 	ActionFinished             = "finished"
 	ActionImported             = "imported"
+	ActionReady                = "ready"
 
 	EntityUser         = "user"
 	EntityProject      = "project"
@@ -24,6 +25,7 @@ const (
 	EntityAssertion    = "assertion"
 	EntityWorkflowRun  = "workflowRun"
 	EntityStepRun      = "stepRun"
+	EntityRunExport    = "runExport"
 	EntitySubscription = "subscription"
 	EntityInvoice      = "invoice"
 )

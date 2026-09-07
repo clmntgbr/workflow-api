@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"log"
@@ -35,6 +36,8 @@ var templateFiles = []string{
 	"payment_method_expiring",
 	"quota_threshold_reached",
 	"quota_exceeded",
+	"run_export_ready",
+	"run_export_failed",
 }
 
 const defaultMailFrom = "Workflow <noreply@localhost>"
@@ -150,7 +153,10 @@ func (s *Sender) Send(ctx context.Context, input port.SendMailInput) error {
 		return fmt.Errorf("invalid MAIL_FROM: %w", err)
 	}
 
-	msg := buildHTMLMessage(headerFrom, input.To, input.Subject, html)
+	msg, err := buildMessage(headerFrom, input.To, input.Subject, html, input.Attachments)
+	if err != nil {
+		return err
+	}
 	if err := s.send(ctx, *s.smtp, envelopeFrom, input.To, msg); err != nil {
 		return fmt.Errorf("send mail template=%s: %w", input.TemplateName, err)
 	}
@@ -203,16 +209,60 @@ func splitAddress(value string) (header, envelope string, err error) {
 	return addr.String(), addr.Address, nil
 }
 
-func buildHTMLMessage(from string, to []string, subject, html string) []byte {
+func buildMessage(from string, to []string, subject, html string, attachments []port.MailAttachment) ([]byte, error) {
+	if len(attachments) == 0 {
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "From: %s\r\n", from)
+		fmt.Fprintf(&buf, "To: %s\r\n", strings.Join(to, ", "))
+		fmt.Fprintf(&buf, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", subject))
+		fmt.Fprintf(&buf, "MIME-Version: 1.0\r\n")
+		fmt.Fprintf(&buf, "Content-Type: text/html; charset=UTF-8\r\n")
+		fmt.Fprintf(&buf, "\r\n")
+		buf.WriteString(html)
+		return buf.Bytes(), nil
+	}
+
+	boundary := "workflow-mail-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "From: %s\r\n", from)
 	fmt.Fprintf(&buf, "To: %s\r\n", strings.Join(to, ", "))
 	fmt.Fprintf(&buf, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", subject))
 	fmt.Fprintf(&buf, "MIME-Version: 1.0\r\n")
+	fmt.Fprintf(&buf, "Content-Type: multipart/mixed; boundary=%s\r\n", boundary)
+	fmt.Fprintf(&buf, "\r\n")
+	fmt.Fprintf(&buf, "--%s\r\n", boundary)
 	fmt.Fprintf(&buf, "Content-Type: text/html; charset=UTF-8\r\n")
+	fmt.Fprintf(&buf, "Content-Transfer-Encoding: 8bit\r\n")
 	fmt.Fprintf(&buf, "\r\n")
 	buf.WriteString(html)
-	return buf.Bytes()
+	fmt.Fprintf(&buf, "\r\n")
+	for _, att := range attachments {
+		filename := strings.TrimSpace(att.Filename)
+		if filename == "" {
+			filename = "attachment"
+		}
+		contentType := strings.TrimSpace(att.ContentType)
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		fmt.Fprintf(&buf, "--%s\r\n", boundary)
+		fmt.Fprintf(&buf, "Content-Type: %s; name=%q\r\n", contentType, filename)
+		fmt.Fprintf(&buf, "Content-Disposition: attachment; filename=%q\r\n", filename)
+		fmt.Fprintf(&buf, "Content-Transfer-Encoding: base64\r\n")
+		fmt.Fprintf(&buf, "\r\n")
+		encoded := make([]byte, base64.StdEncoding.EncodedLen(len(att.Bytes)))
+		base64.StdEncoding.Encode(encoded, att.Bytes)
+		for i := 0; i < len(encoded); i += 76 {
+			end := i + 76
+			if end > len(encoded) {
+				end = len(encoded)
+			}
+			buf.Write(encoded[i:end])
+			buf.WriteString("\r\n")
+		}
+	}
+	fmt.Fprintf(&buf, "--%s--\r\n", boundary)
+	return buf.Bytes(), nil
 }
 
 func sendSMTP(ctx context.Context, cfg smtpConfig, from string, to []string, msg []byte) error {

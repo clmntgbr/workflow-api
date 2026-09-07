@@ -25,6 +25,7 @@ func Models() []any {
 		&write.VariableModel{},
 		&write.AssertionModel{},
 		&write.ActivityLogModel{},
+		&write.RunExportModel{},
 		&write.QuotaModel{},
 		&write.PlanModel{},
 		&write.SubscriptionModel{},

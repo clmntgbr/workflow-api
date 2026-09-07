@@ -10,6 +10,7 @@ import (
 	identitycmd "go-api/internal/application/command/identity"
 	projectcmd "go-api/internal/application/command/project"
 	cmdquota "go-api/internal/application/command/quota"
+	runexportcmd "go-api/internal/application/command/runexport"
 	stepcmd "go-api/internal/application/command/step"
 	subscriptioncmd "go-api/internal/application/command/subscription"
 	usercmd "go-api/internal/application/command/user"
@@ -25,6 +26,7 @@ import (
 	queryinvoice "go-api/internal/application/query/invoice"
 	queryplan "go-api/internal/application/query/plan"
 	queryproject "go-api/internal/application/query/project"
+	queryrunexport "go-api/internal/application/query/runexport"
 	querystep "go-api/internal/application/query/step"
 	querysteprun "go-api/internal/application/query/steprun"
 	querysubscription "go-api/internal/application/query/subscription"
@@ -66,6 +68,7 @@ type Container struct {
 	SubscriptionHandler      *httphandler.SubscriptionHandler
 	InvoiceHandler           *httphandler.InvoiceHandler
 	RealtimeHandler          *httphandler.RealtimeHandler
+	RunExportHandler         *httphandler.RunExportHandler
 	HeaderHandler            *httphandler.HeaderHandler
 }
 
@@ -97,6 +100,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	assertionWriteRepo := write.NewAssertionWriteRepository(db)
 	assertionReadRepo := read.NewAssertionReadRepository(db)
 	activityLogReadRepo := read.NewActivityLogReadRepository(db)
+	runExportWriteRepo := write.NewRunExportWriteRepository(db)
+	runExportReadRepo := read.NewRunExportReadRepository(db)
 	headerReadRepo := read.NewHeaderReadRepository(db)
 	quotaReadRepo := read.NewQuotaReadRepository(db)
 	planWriteRepo := write.NewPlanWriteRepository(db)
@@ -210,6 +215,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		workflowRunReadRepo,
 	)
 	listInsightsByIDsHandler := queryinsight.NewListInsightsByStepRunIDsHandler(insightReadRepo)
+	getRunExportByIDHandler := queryrunexport.NewGetRunExportByIDHandler(runExportReadRepo)
 
 	listActivePlansHandler := queryplan.NewListActivePlansHandler(planReadRepo)
 
@@ -220,6 +226,13 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		assertionReadRepo,
 		projectReadRepo,
 		userReadRepo,
+	)
+	requestRunExportHandler := runexportcmd.NewRequestRunExportHandler(
+		runExportWriteRepo,
+		workflowWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+		getQuotaUsageHandler,
 	)
 
 	updateEndpointHandler := endpointcmd.NewUpdateEndpointHandler(endpointWriteRepo, outboxRepo, assertCreateAllowedHandler)
@@ -496,6 +509,11 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		),
 		ActivityLogHandler: httphandler.NewActivityLogHandler(
 			listActivityLogsByWorkflowHandler,
+			getWorkflowByIDHandler,
+		),
+		RunExportHandler: httphandler.NewRunExportHandler(
+			requestRunExportHandler,
+			getRunExportByIDHandler,
 			getWorkflowByIDHandler,
 		),
 		PlanHandler: httphandler.NewPlanHandler(listActivePlansHandler),

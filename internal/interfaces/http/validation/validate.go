@@ -77,9 +77,10 @@ func validateScheduleUnit(fl validator.FieldLevel) bool {
 
 func BindBody(c fiber.Ctx, dst any) error {
 	if err := c.Bind().Body(dst); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request body",
 		})
+		return ErrValidationFailed
 	}
 	return Struct(c, dst)
 }

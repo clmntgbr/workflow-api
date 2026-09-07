@@ -23,6 +23,11 @@ type WorkflowRunListFilter struct {
 	CreatedAfter *time.Time
 }
 
+type WorkflowRunRangeFilter struct {
+	From *time.Time
+	To   *time.Time
+}
+
 type WorkflowRunReadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*WorkflowRunView, error)
 	FindByWorkflowID(
@@ -30,6 +35,11 @@ type WorkflowRunReadRepository interface {
 		workflowID uuid.UUID,
 		filter WorkflowRunListFilter,
 	) ([]WorkflowRunView, int64, error)
+	FindByWorkflowIDInRange(
+		ctx context.Context,
+		workflowID uuid.UUID,
+		filter WorkflowRunRangeFilter,
+	) ([]WorkflowRunView, error)
 	FindInProgressByWorkflowID(ctx context.Context, workflowID uuid.UUID) (*WorkflowRunView, error)
 	FindAnalyticsByProject(
 		ctx context.Context,

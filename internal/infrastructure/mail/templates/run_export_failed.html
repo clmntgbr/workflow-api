@@ -1,0 +1,16 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#991b1b;">Run history export failed</h1>
+<p style="margin:0 0 12px 0;">
+  We could not generate the run history export for <strong>{{.WorkflowName}}</strong>.
+</p>
+<p style="margin:0 0 24px 0; font-size:14px; color:#8a8a8a;">
+  {{.Error}}
+</p>
+{{if .DashboardURL}}
+<p style="margin:0;">
+  <a href="{{.DashboardURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    View workflow
+  </a>
+</p>
+{{end}}
+{{end}}

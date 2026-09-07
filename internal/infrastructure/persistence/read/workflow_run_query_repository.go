@@ -116,6 +116,47 @@ func (r *workflowRunReadRepository) FindByWorkflowID(
 	return views, total, nil
 }
 
+func (r *workflowRunReadRepository) FindByWorkflowIDInRange(
+	ctx context.Context,
+	workflowID uuid.UUID,
+	filter domainworkflowrun.WorkflowRunRangeFilter,
+) ([]domainworkflowrun.WorkflowRunView, error) {
+	db := r.db.WithContext(ctx).
+		Table("workflow_runs").
+		Where("workflow_runs.workflow_id = ?", workflowID)
+	if filter.From != nil {
+		db = db.Where("workflow_runs.created_at >= ?", *filter.From)
+	}
+	if filter.To != nil {
+		db = db.Where("workflow_runs.created_at <= ?", *filter.To)
+	}
+
+	var rows []workflowRunRow
+	err := db.
+		Select(
+			"workflow_runs.id, workflow_runs.workflow_id, workflows.project_id, workflow_runs.status, " +
+				"workflow_runs.triggered_by, workflow_runs.triggered_by_user_id, workflow_runs.context, " +
+				"workflow_runs.started_at, workflow_runs.finished_at, workflow_runs.error, " +
+				"workflow_runs.created_at, workflow_runs.updated_at",
+		).
+		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
+		Order("workflow_runs.created_at DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]domainworkflowrun.WorkflowRunView, 0, len(rows))
+	for _, row := range rows {
+		view, err := toWorkflowRunView(row)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, *view)
+	}
+	return views, nil
+}
+
 func (r *workflowRunReadRepository) FindInProgressByWorkflowID(
 	ctx context.Context,
 	workflowID uuid.UUID,

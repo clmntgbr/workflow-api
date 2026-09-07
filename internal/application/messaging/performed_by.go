@@ -5,6 +5,7 @@ import (
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
 	"go-api/internal/domain/event"
+	domainrunexport "go-api/internal/domain/runexport"
 	domainstep "go-api/internal/domain/step"
 	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -85,6 +86,9 @@ func annotateEvent(evt event.DomainEvent, userID *string) event.DomainEvent {
 		e.PerformedByUserID = userID
 		return e
 	case domainworkflowrun.WorkflowRunCancelled:
+		e.PerformedByUserID = userID
+		return e
+	case domainrunexport.RunExportRequested:
 		e.PerformedByUserID = userID
 		return e
 	default:

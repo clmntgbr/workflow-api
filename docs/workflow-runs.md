@@ -13,6 +13,8 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 | `GET` | `/api/workflows/:workflowId/runs` | List runs (paginated) |
 | `GET` | `/api/workflows/:workflowId/runs/:id` | Run detail (step runs, insights) |
 | `GET` | `/api/workflows/:workflowId/runs/analytics` | Aggregated stats (`from` / `to` RFC3339 query) |
+| `POST` | `/api/workflows/:workflowId/runs/export` | Request an XLSX run-history export (Pro/Business). `202` `{ id, status }`. Optional body `{ from, to }` RFC3339. |
+| `GET` | `/api/workflows/:workflowId/runs/export/:jobId` | Export job status (`pending`, `processing`, `ready`, `failed`). File is emailed, not downloaded. |
 
 ## Start / stop
 
@@ -50,12 +52,23 @@ GET …/runs/analytics?from=2026-01-01T00:00:00Z&to=2026-01-31T23:59:59Z
 
 Returns totals, success/failure rates, average duration, last run time.
 
+## Run history export
+
+Pro and Business plans (`allows_data_export`) can request an XLSX of runs in the retention window:
+
+```
+POST /api/workflows/:workflowId/runs/export
+{ "from": "2026-01-01T00:00:00Z", "to": "2026-01-31T23:59:59Z" }
+```
+
+Returns `202` `{ id, status: "pending" }`. The worker builds the workbook, redacts secrets, and emails it to the requester. Insight columns are included only when the plan allows insights. Files larger than ~15MB fail the job (no object storage). Status is available on `GET …/runs/export/:jobId` (`pending` | `processing` | `ready` | `failed`). Centrifugo also notifies the requester: `runExport.ready` / `runExport.failed`.
+
 ## Binaries involved
 
 | Binary | Role |
 |--------|------|
 | `cmd/api` | Start/stop HTTP |
-| `cmd/worker` | Orchestration, delay poller, outbox consumer |
+| `cmd/worker` | Orchestration, delay poller, outbox consumer, run-history export |
 | `cmd/executor` | HTTP step execution |
 | `cmd/scheduler` | Scheduled workflow starts (ticks aligned to `SCHEDULER_INTERVAL`, e.g. every minute at `:00`) |
 
@@ -63,8 +76,8 @@ Returns totals, success/failure rates, average duration, last run time.
 
 | Layer | Location |
 |-------|----------|
-| HTTP | `internal/interfaces/http/handler/workflow_run_handler.go` |
-| Commands | `internal/application/command/workflowrun/` |
+| HTTP | `internal/interfaces/http/handler/workflow_run_handler.go`, `run_export_handler.go` |
+| Commands | `internal/application/command/workflowrun/`, `internal/application/command/runexport/` |
 | Queries | `internal/application/query/workflowrun/` |
 | Domain | `internal/domain/workflowrun/` |
 
@@ -72,7 +85,9 @@ Returns totals, success/failure rates, average duration, last run time.
 
 - `workflowRun.started.v1`, `workflowRun.finished.v1`, …
 - `stepRun.queued.v1`, `stepRun.succeeded.v1`, `stepRun.failed.v1`, …
+- `runExport.requested.v1`, `runExport.ready.v1`, `runExport.failed.v1`
 
 ## Tests
 
 `internal/interfaces/http/handler/test/workflow_run/`
+`internal/interfaces/http/handler/test/run_export/`

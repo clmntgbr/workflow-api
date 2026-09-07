@@ -30,6 +30,7 @@ var (
 	ErrRetryCountQuotaExceeded       = errors.New("retry count exceeds the maximum allowed for your current plan")
 	ErrOpenAPIImportNotAllowed       = errors.New("OpenAPI import is not available on your current plan")
 	ErrWorkflowImportNotAllowed      = errors.New("workflow import is not available on your current plan")
+	ErrDataExportNotAllowed          = errors.New("data export is not available on your current plan")
 )
 
 type AssertCreateAllowedHandler struct {
@@ -317,6 +318,24 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowImportAllowed(
 	}
 	if !usage.Limits.AllowsWorkflowImport {
 		return ErrWorkflowImportNotAllowed
+	}
+	return nil
+}
+
+func (h *AssertCreateAllowedHandler) AssertDataExportAllowed(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+) error {
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+	if !usage.Limits.AllowsDataExport {
+		return ErrDataExportNotAllowed
 	}
 	return nil
 }

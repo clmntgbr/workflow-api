@@ -13,5 +13,6 @@ var (
 	TestVariableID   = uuid.MustParse("01960000-0000-7000-8000-000000000007")
 	TestAssertionID  = uuid.MustParse("01960000-0000-7000-8000-000000000008")
 	TestWorkflowRunID = uuid.MustParse("01960000-0000-7000-8000-000000000009")
-	TestPlanID       = uuid.MustParse("01960000-0000-7000-8000-00000000000a")
+	TestPlanID        = uuid.MustParse("01960000-0000-7000-8000-00000000000a")
+	TestRunExportID   = uuid.MustParse("01960000-0000-7000-8000-00000000000d")
 )

@@ -336,7 +336,7 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 | Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
 | Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |
 | Activity | `GET /api/workflows/:workflowId/activity` |
-| Workflow runs | `POST /workflows/:workflowId/start`, `POST /workflows/:workflowId/stop`, list, detail, analytics |
+| Workflow runs | `POST /workflows/:workflowId/start`, `POST /workflows/:workflowId/stop`, list, detail, analytics, `POST/GET …/runs/export` (XLSX by email, Pro/Business) |
 | Billing | `/api/plans`, `/api/quota`, `/api/subscriptions`, `/api/subscriptions/*`, `/api/invoices` |
 | Realtime | `GET /api/realtime/connection` |
 

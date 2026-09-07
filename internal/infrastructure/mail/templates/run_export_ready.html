@@ -1,0 +1,19 @@
+{{define "content"}}
+<h1 style="margin:0 0 16px 0; font-size:20px; font-weight:600; color:#166534;">Run history export is ready</h1>
+<p style="margin:0 0 12px 0;">
+  The run history export for <strong>{{.WorkflowName}}</strong> is attached to this email.
+</p>
+<p style="margin:0 0 8px 0; font-size:14px; color:#8a8a8a;">
+  From: {{.From}}
+</p>
+<p style="margin:0 0 24px 0; font-size:14px; color:#8a8a8a;">
+  To: {{.To}}
+</p>
+{{if .DashboardURL}}
+<p style="margin:0;">
+  <a href="{{.DashboardURL}}" style="display:inline-block; padding:12px 20px; background-color:#1a1a1a; color:#ffffff; text-decoration:none; border-radius:6px; font-size:14px; font-weight:600;">
+    View workflow
+  </a>
+</p>
+{{end}}
+{{end}}
