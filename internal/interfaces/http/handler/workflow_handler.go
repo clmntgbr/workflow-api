@@ -27,8 +27,6 @@ import (
 type WorkflowHandler struct {
 	createHandler         workflowCreateHandler
 	updateHandler         workflowUpdateHandler
-	activateHandler       workflowActivateHandler
-	deactivateHandler     workflowDeactivateHandler
 	deleteHandler         workflowDeleteHandler
 	getByIDHandler        workflowGetByIDHandler
 	listByOrgHandler      workflowListByProjectHandler
@@ -40,8 +38,6 @@ type WorkflowHandler struct {
 func NewWorkflowHandler(
 	createHandler workflowCreateHandler,
 	updateHandler workflowUpdateHandler,
-	activateHandler workflowActivateHandler,
-	deactivateHandler workflowDeactivateHandler,
 	deleteHandler workflowDeleteHandler,
 	getByIDHandler workflowGetByIDHandler,
 	listByOrgHandler workflowListByProjectHandler,
@@ -52,8 +48,6 @@ func NewWorkflowHandler(
 	return &WorkflowHandler{
 		createHandler:         createHandler,
 		updateHandler:         updateHandler,
-		activateHandler:       activateHandler,
-		deactivateHandler:     deactivateHandler,
 		deleteHandler:         deleteHandler,
 		getByIDHandler:        getByIDHandler,
 		listByOrgHandler:      listByOrgHandler,
@@ -240,17 +234,11 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 		return err
 	}
 
-	status, err := domainworkflow.ParseStatus(req.Status)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid status"})
-	}
-
 	err = h.updateHandler.Handle(c.Context(), workflowcmd.UpdateWorkflowCommand{
 		ID:                    id,
 		UserID:                user.ID,
 		Name:                  req.Name,
 		Description:           req.Description,
-		Status:                status,
 		ScheduleType:          parseScheduleTypeOrNone(req.ScheduleType),
 		ScheduleIntervalValue: intOrDefault(req.ScheduleIntervalValue, 0),
 		ScheduleIntervalUnit:  domainworkflow.ScheduleUnit(req.ScheduleIntervalUnit),
@@ -265,9 +253,6 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 	if err != nil {
 		if err.Error() == "workflow not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-		}
-		if err.Error() == "invalid status" || err.Error() == "use delete to mark a workflow as deleted" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
 		}
 		if handled, resp := respondQuotaError(c, err); handled {
 			return resp
@@ -284,74 +269,6 @@ func (h *WorkflowHandler) Update(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromView(*view))
-}
-
-func (h *WorkflowHandler) Activate(c fiber.Ctx) error {
-	user, err := httpctx.GetUser(c)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
-	}
-
-	orgID, err := httpctx.GetActiveProjectID(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
-	}
-
-	id, err := uuid.Parse(c.Params("workflowId"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
-	}
-
-	w, err := h.activateHandler.Handle(c.Context(), workflowcmd.ActivateWorkflowCommand{
-		ID:        id,
-		UserID:    user.ID,
-		ProjectID: orgID,
-	})
-	if err != nil {
-		if err.Error() == "workflow not found" {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-		}
-		if errors.Is(err, domainworkflow.ErrInvalidStatusTransition) {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to activate workflow"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromEntity(*w))
-}
-
-func (h *WorkflowHandler) Deactivate(c fiber.Ctx) error {
-	user, err := httpctx.GetUser(c)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
-	}
-
-	orgID, err := httpctx.GetActiveProjectID(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
-	}
-
-	id, err := uuid.Parse(c.Params("workflowId"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
-	}
-
-	w, err := h.deactivateHandler.Handle(c.Context(), workflowcmd.DeactivateWorkflowCommand{
-		ID:        id,
-		UserID:    user.ID,
-		ProjectID: orgID,
-	})
-	if err != nil {
-		if err.Error() == "workflow not found" {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
-		}
-		if errors.Is(err, domainworkflow.ErrInvalidStatusTransition) {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to deactivate workflow"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(presenter.NewWorkflowDetailResponseFromEntity(*w))
 }
 
 func (h *WorkflowHandler) Delete(c fiber.Ctx) error {

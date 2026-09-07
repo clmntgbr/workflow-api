@@ -2,9 +2,9 @@ package di
 
 import (
 	cmdquota "go-api/internal/application/command/quota"
+	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	querysubscription "go-api/internal/application/query/subscription"
-	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/infrastructure/config"
 	"go-api/internal/infrastructure/persistence/outbox"
 	"go-api/internal/infrastructure/persistence/read"
@@ -14,11 +14,11 @@ import (
 )
 
 type Container struct {
-	StartWorkflowRunHandler *workflowruncmd.StartWorkflowRunHandler
-	WorkflowWriteRepo       domainworkflow.WorkflowWriteRepository
-	BatchSize               int
-	Concurrency             int
-	MaxBatchesPerTick       int
+	StartWorkflowRunHandler  *workflowruncmd.StartWorkflowRunHandler
+	ClaimDueWorkflowsHandler *workflowcmd.ClaimDueWorkflowsHandler
+	BatchSize                int
+	Concurrency              int
+	MaxBatchesPerTick        int
 }
 
 func NewContainer(db *gorm.DB, env *config.Config) *Container {
@@ -75,7 +75,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			outboxRepo,
 			assertCreateAllowedHandler,
 		),
-		WorkflowWriteRepo: workflowWriteRepo,
+		ClaimDueWorkflowsHandler: workflowcmd.NewClaimDueWorkflowsHandler(
+			workflowWriteRepo,
+			outboxRepo,
+		),
 		BatchSize:         batchSize,
 		Concurrency:       concurrency,
 		MaxBatchesPerTick: maxBatches,

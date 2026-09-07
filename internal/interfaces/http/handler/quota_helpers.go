@@ -34,7 +34,8 @@ func respondQuotaError(c fiber.Ctx, err error) (bool, error) {
 		errors.Is(err, cmdquota.ErrScheduleIntervalQuotaExceeded),
 		errors.Is(err, cmdquota.ErrStepTimeoutQuotaExceeded),
 		errors.Is(err, cmdquota.ErrRetryCountQuotaExceeded),
-		errors.Is(err, cmdquota.ErrOpenAPIImportNotAllowed):
+		errors.Is(err, cmdquota.ErrOpenAPIImportNotAllowed),
+		errors.Is(err, cmdquota.ErrWorkflowImportNotAllowed):
 		return true, c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"message": err.Error(),
 		})

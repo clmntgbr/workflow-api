@@ -31,6 +31,7 @@ const (
 	ActionWorkflowUpdated          = "workflow.updated"
 	ActionWorkflowActivated        = "workflow.activated"
 	ActionWorkflowDeactivated      = "workflow.deactivated"
+	ActionWorkflowScheduleCleared  = "workflow.schedule_cleared"
 	ActionWorkflowDeleted          = "workflow.deleted"
 	ActionStepCreated              = "step.created"
 	ActionStepUpdated              = "step.updated"

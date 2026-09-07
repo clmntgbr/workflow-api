@@ -11,12 +11,12 @@ type QuotaResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 
-	MaxProjectMembers       int `json:"maxProjectMembers"`
-	MaxProjects             int `json:"maxProjects"`
-	MaxWorkflows            int `json:"maxWorkflows"`
-	MaxStepsPerWorkflow     int `json:"maxStepsPerWorkflow"`
-	MaxEndpoints            int `json:"maxEndpoints"`
-	MaxVariablesPerWorkflow int `json:"maxVariablesPerWorkflow"`
+	MaxProjectMembers        int `json:"maxProjectMembers"`
+	MaxProjects              int `json:"maxProjects"`
+	MaxWorkflows             int `json:"maxWorkflows"`
+	MaxStepsPerWorkflow      int `json:"maxStepsPerWorkflow"`
+	MaxEndpoints             int `json:"maxEndpoints"`
+	MaxVariablesPerWorkflow  int `json:"maxVariablesPerWorkflow"`
 	MaxAssertionsPerWorkflow int `json:"maxAssertionsPerWorkflow"`
 
 	MaxWorkflowRunsPerMonth    int `json:"maxWorkflowRunsPerMonth"`
@@ -30,10 +30,11 @@ type QuotaResponse struct {
 	MaxRequestBodySizeKB  int `json:"maxRequestBodySizeKb"`
 	MaxResponseBodySizeKB int `json:"maxResponseBodySizeKb"`
 
-	AllowsOpenAPIImport bool `json:"allowsOpenApiImport"`
-	AllowsInsights      bool `json:"allowsInsights"`
-	AllowsDataExport    bool `json:"allowsDataExport"`
-	ExecutorPriority    int  `json:"executorPriority"`
+	AllowsOpenAPIImport  bool `json:"allowsOpenApiImport"`
+	AllowsWorkflowImport bool `json:"allowsWorkflowImport"`
+	AllowsInsights       bool `json:"allowsInsights"`
+	AllowsDataExport     bool `json:"allowsDataExport"`
+	ExecutorPriority     int  `json:"executorPriority"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -65,7 +66,7 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 		MaxStepsPerWorkflow:        view.MaxStepsPerWorkflow,
 		MaxEndpoints:               view.MaxEndpoints,
 		MaxVariablesPerWorkflow:    view.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: view.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   view.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    view.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          view.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: view.MinScheduleIntervalMinutes,
@@ -75,6 +76,7 @@ func NewQuotaResponseFromView(view domainquota.QuotaView) QuotaResponse {
 		MaxRequestBodySizeKB:       view.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      view.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        view.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       view.AllowsWorkflowImport,
 		AllowsInsights:             view.AllowsInsights,
 		AllowsDataExport:           view.AllowsDataExport,
 		ExecutorPriority:           view.ExecutorPriority,

@@ -13,6 +13,7 @@ import (
 
 	"go-api/cmd/scheduler/di"
 	cmdquota "go-api/internal/application/command/quota"
+	workflowcmd "go-api/internal/application/command/workflow"
 	workflowruncmd "go-api/internal/application/command/workflowrun"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -75,11 +76,10 @@ func tick(ctx context.Context, container *di.Container) {
 			break
 		}
 
-		claimed, err := container.WorkflowWriteRepo.ClaimDueForExecution(
-			ctx,
-			time.Now().UTC(),
-			container.BatchSize,
-		)
+		claimed, err := container.ClaimDueWorkflowsHandler.Handle(ctx, workflowcmd.ClaimDueWorkflowsCommand{
+			Now:   time.Now().UTC(),
+			Limit: container.BatchSize,
+		})
 		if err != nil {
 			log.Printf("scheduler: claim failed: %v", err)
 			break

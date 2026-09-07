@@ -6,8 +6,8 @@ import (
 	"time"
 
 	domainendpoint "go-api/internal/domain/endpoint"
-	domainproject "go-api/internal/domain/project"
 	"go-api/internal/domain/paginate"
+	domainproject "go-api/internal/domain/project"
 	domainsubscription "go-api/internal/domain/subscription"
 	domainuser "go-api/internal/domain/user"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -174,6 +174,7 @@ func (h *GetQuotaUsageHandler) Handle(ctx context.Context, q GetQuotaUsageQuery)
 			MaxRequestBodySizeKB:       quota.MaxRequestBodySizeKB,
 			MaxResponseBodySizeKB:      quota.MaxResponseBodySizeKB,
 			AllowsOpenAPIImport:        quota.AllowsOpenAPIImport,
+			AllowsWorkflowImport:       quota.AllowsWorkflowImport,
 			AllowsInsights:             quota.AllowsInsights,
 			AllowsDataExport:           quota.AllowsDataExport,
 			ExecutorPriority:           quota.ExecutorPriority,

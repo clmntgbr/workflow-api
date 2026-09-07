@@ -288,6 +288,22 @@ func TestWorkflowHandler_Import_QuotaExceeded(t *testing.T) {
 	}
 }
 
+func TestWorkflowHandler_Import_NotAllowed(t *testing.T) {
+	importH := &mockImportWorkflowHandler{err: cmdquota.ErrWorkflowImportNotAllowed}
+	h := newWorkflowHandlerWithIO(nil, importH)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows/import", activeProject(), h.Import)
+
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/import", validImportWorkflowBody()))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusForbidden)
+	}
+}
+
 func TestWorkflowHandler_Import_InvalidDocument(t *testing.T) {
 	importH := &mockImportWorkflowHandler{err: workflowio.Invalid("unknown connection sourceRef")}
 	h := newWorkflowHandlerWithIO(nil, importH)

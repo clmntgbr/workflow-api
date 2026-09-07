@@ -12,12 +12,12 @@ type QuotaModel struct {
 	ID   uuid.UUID `gorm:"column:id;primaryKey"`
 	Name string    `gorm:"column:name"`
 
-	MaxProjectMembers  int `gorm:"column:max_project_members"`
-	MaxProjects             int `gorm:"column:max_projects"`
-	MaxWorkflows            int `gorm:"column:max_workflows"`
-	MaxStepsPerWorkflow     int `gorm:"column:max_steps_per_workflow"`
-	MaxEndpoints            int `gorm:"column:max_endpoints"`
-	MaxVariablesPerWorkflow int `gorm:"column:max_variables_per_workflow"`
+	MaxProjectMembers        int `gorm:"column:max_project_members"`
+	MaxProjects              int `gorm:"column:max_projects"`
+	MaxWorkflows             int `gorm:"column:max_workflows"`
+	MaxStepsPerWorkflow      int `gorm:"column:max_steps_per_workflow"`
+	MaxEndpoints             int `gorm:"column:max_endpoints"`
+	MaxVariablesPerWorkflow  int `gorm:"column:max_variables_per_workflow"`
 	MaxAssertionsPerWorkflow int `gorm:"column:max_assertions_per_workflow"`
 
 	MaxWorkflowRunsPerMonth    int `gorm:"column:max_workflow_runs_per_month"`
@@ -31,10 +31,11 @@ type QuotaModel struct {
 	MaxRequestBodySizeKB  int `gorm:"column:max_request_body_size_kb"`
 	MaxResponseBodySizeKB int `gorm:"column:max_response_body_size_kb"`
 
-	AllowsOpenAPIImport bool `gorm:"column:allows_openapi_import"`
-	AllowsInsights      bool `gorm:"column:allows_insights"`
-	AllowsDataExport    bool `gorm:"column:allows_data_export"`
-	ExecutorPriority    int  `gorm:"column:executor_priority"`
+	AllowsOpenAPIImport  bool `gorm:"column:allows_openapi_import"`
+	AllowsWorkflowImport bool `gorm:"column:allows_workflow_import"`
+	AllowsInsights       bool `gorm:"column:allows_insights"`
+	AllowsDataExport     bool `gorm:"column:allows_data_export"`
+	ExecutorPriority     int  `gorm:"column:executor_priority"`
 
 	CreatedAt time.Time `gorm:"column:created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at"`
@@ -46,13 +47,13 @@ func quotaModelFromDomain(q *domainquota.Quota) *QuotaModel {
 	return &QuotaModel{
 		ID:                         q.ID,
 		Name:                       q.Name,
-		MaxProjectMembers:     q.MaxProjectMembers,
+		MaxProjectMembers:          q.MaxProjectMembers,
 		MaxProjects:                q.MaxProjects,
 		MaxWorkflows:               q.MaxWorkflows,
 		MaxStepsPerWorkflow:        q.MaxStepsPerWorkflow,
 		MaxEndpoints:               q.MaxEndpoints,
 		MaxVariablesPerWorkflow:    q.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: q.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   q.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    q.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          q.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: q.MinScheduleIntervalMinutes,
@@ -62,6 +63,7 @@ func quotaModelFromDomain(q *domainquota.Quota) *QuotaModel {
 		MaxRequestBodySizeKB:       q.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      q.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        q.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       q.AllowsWorkflowImport,
 		AllowsInsights:             q.AllowsInsights,
 		AllowsDataExport:           q.AllowsDataExport,
 		ExecutorPriority:           q.ExecutorPriority,
@@ -74,13 +76,13 @@ func quotaDomainFromModel(m *QuotaModel) *domainquota.Quota {
 	return &domainquota.Quota{
 		ID:                         m.ID,
 		Name:                       m.Name,
-		MaxProjectMembers:     m.MaxProjectMembers,
+		MaxProjectMembers:          m.MaxProjectMembers,
 		MaxProjects:                m.MaxProjects,
 		MaxWorkflows:               m.MaxWorkflows,
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,
 		MaxVariablesPerWorkflow:    m.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: m.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   m.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    m.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          m.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: m.MinScheduleIntervalMinutes,
@@ -90,6 +92,7 @@ func quotaDomainFromModel(m *QuotaModel) *domainquota.Quota {
 		MaxRequestBodySizeKB:       m.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      m.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        m.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       m.AllowsWorkflowImport,
 		AllowsInsights:             m.AllowsInsights,
 		AllowsDataExport:           m.AllowsDataExport,
 		ExecutorPriority:           m.ExecutorPriority,
@@ -102,13 +105,13 @@ func quotaViewFromModel(m *QuotaModel) domainquota.QuotaView {
 	return domainquota.QuotaView{
 		ID:                         m.ID,
 		Name:                       m.Name,
-		MaxProjectMembers:     m.MaxProjectMembers,
+		MaxProjectMembers:          m.MaxProjectMembers,
 		MaxProjects:                m.MaxProjects,
 		MaxWorkflows:               m.MaxWorkflows,
 		MaxStepsPerWorkflow:        m.MaxStepsPerWorkflow,
 		MaxEndpoints:               m.MaxEndpoints,
 		MaxVariablesPerWorkflow:    m.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: m.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   m.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    m.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          m.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: m.MinScheduleIntervalMinutes,
@@ -118,6 +121,7 @@ func quotaViewFromModel(m *QuotaModel) domainquota.QuotaView {
 		MaxRequestBodySizeKB:       m.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      m.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        m.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       m.AllowsWorkflowImport,
 		AllowsInsights:             m.AllowsInsights,
 		AllowsDataExport:           m.AllowsDataExport,
 		ExecutorPriority:           m.ExecutorPriority,

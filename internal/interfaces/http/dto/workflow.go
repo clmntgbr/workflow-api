@@ -20,7 +20,6 @@ type CreateWorkflowRequest struct {
 type UpdateWorkflowRequest struct {
 	Name                  string     `json:"name" validate:"required,min=1,max=255"`
 	Description           string     `json:"description" validate:"omitempty,max=2000"`
-	Status                string     `json:"status" validate:"required,workflow_status"`
 	ScheduleType          string     `json:"scheduleType" validate:"required,schedule_type"`
 	ScheduleIntervalValue *int       `json:"scheduleIntervalValue" validate:"omitempty,min=0"`
 	ScheduleIntervalUnit  string     `json:"scheduleIntervalUnit" validate:"omitempty,schedule_unit"`

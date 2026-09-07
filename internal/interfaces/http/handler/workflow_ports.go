@@ -19,14 +19,6 @@ type workflowUpdateHandler interface {
 	Handle(ctx context.Context, cmd workflowcmd.UpdateWorkflowCommand) error
 }
 
-type workflowActivateHandler interface {
-	Handle(ctx context.Context, cmd workflowcmd.ActivateWorkflowCommand) (*domainworkflow.Workflow, error)
-}
-
-type workflowDeactivateHandler interface {
-	Handle(ctx context.Context, cmd workflowcmd.DeactivateWorkflowCommand) (*domainworkflow.Workflow, error)
-}
-
 type workflowDeleteHandler interface {
 	Handle(ctx context.Context, cmd workflowcmd.DeleteWorkflowCommand) error
 }

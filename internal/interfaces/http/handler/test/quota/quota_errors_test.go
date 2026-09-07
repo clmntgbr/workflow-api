@@ -90,6 +90,11 @@ func TestRespondQuotaError_Mapping(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "workflow import not allowed",
+			err:        cmdquota.ErrWorkflowImportNotAllowed,
+			wantStatus: http.StatusForbidden,
+		},
+		{
 			name:       "nil error",
 			err:        nil,
 			wantStatus: 0,

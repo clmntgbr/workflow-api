@@ -94,7 +94,7 @@ func NewWorkflow(p NewWorkflowParams) (*Workflow, error) {
 		ID:                    uuid.New(),
 		Name:                  p.Name,
 		Description:           p.Description,
-		Status:                StatusInactive,
+		Status:                StatusActive,
 		ProjectID:             p.ProjectID,
 		ScheduleType:          scheduleType,
 		ScheduleIntervalValue: p.ScheduleIntervalValue,
@@ -130,7 +130,6 @@ func (w *Workflow) recordEvent(e event.DomainEvent) {
 type UpdateWorkflowParams struct {
 	Name                  string
 	Description           string
-	Status                Status
 	ScheduleType          ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  ScheduleUnit
@@ -159,7 +158,6 @@ func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) error {
 
 	w.Name = p.Name
 	w.Description = p.Description
-	w.Status = p.Status
 	w.ScheduleType = scheduleType
 	w.ScheduleIntervalValue = p.ScheduleIntervalValue
 	w.ScheduleIntervalUnit = p.ScheduleIntervalUnit
@@ -180,34 +178,21 @@ func (w *Workflow) ApplyUpdate(p UpdateWorkflowParams) error {
 	return nil
 }
 
-func (w *Workflow) Activate() error {
-	if w.Status == StatusDeleted || w.Status == StatusCanceled {
-		return ErrInvalidStatusTransition
+func (w *Workflow) ClearSchedule() {
+	if w.Status == StatusDeleted {
+		return
 	}
-	if w.Status == StatusActive {
-		return nil
-	}
-	now := time.Now().UTC()
-	w.Status = StatusActive
-	w.UpdatedAt = now
-	w.RecalculateNextRunAt(now)
-	w.recordEvent(w.updatedEvent(now, WorkflowUpdateReasonActivated))
-	return nil
-}
-
-func (w *Workflow) Deactivate() error {
-	if w.Status == StatusDeleted || w.Status == StatusCanceled {
-		return ErrInvalidStatusTransition
-	}
-	if w.Status == StatusInactive {
-		return nil
+	if w.ScheduleType == ScheduleTypeNone && w.NextRunAt == nil {
+		return
 	}
 	now := time.Now().UTC()
-	w.Status = StatusInactive
+	w.ScheduleType = ScheduleTypeNone
+	w.ScheduleIntervalValue = 0
+	w.ScheduleIntervalUnit = ""
+	w.ScheduleAt = nil
 	w.NextRunAt = nil
 	w.UpdatedAt = now
-	w.recordEvent(w.updatedEvent(now, WorkflowUpdateReasonDeactivated))
-	return nil
+	w.recordEvent(w.updatedEvent(now, WorkflowUpdateReasonScheduleCleared))
 }
 
 func (w *Workflow) MarkDeleted() {

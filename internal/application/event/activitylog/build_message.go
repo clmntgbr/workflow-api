@@ -22,6 +22,8 @@ func buildMessageBody(action string, h messageHints) string {
 		return fmt.Sprintf("Workflow %s activated", quotedName(h.WorkflowName, "workflow"))
 	case domainactivitylog.ActionWorkflowDeactivated:
 		return fmt.Sprintf("Workflow %s deactivated", quotedName(h.WorkflowName, "workflow"))
+	case domainactivitylog.ActionWorkflowScheduleCleared:
+		return fmt.Sprintf("Workflow %s schedule cleared", quotedName(h.WorkflowName, "workflow"))
 	case domainactivitylog.ActionWorkflowDeleted:
 		return fmt.Sprintf("Workflow %s deleted", quotedName(h.WorkflowName, "workflow"))
 

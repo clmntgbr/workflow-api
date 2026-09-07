@@ -68,6 +68,10 @@ func (h *ImportWorkflowHandler) Handle(ctx context.Context, cmd ImportWorkflowCo
 		return nil, err
 	}
 
+	if err := h.assert.AssertWorkflowImportAllowed(ctx, cmd.UserID, cmd.ProjectID); err != nil {
+		return nil, err
+	}
+
 	if err := h.assert.AssertWorkflowGraphCreate(
 		ctx,
 		cmd.UserID,

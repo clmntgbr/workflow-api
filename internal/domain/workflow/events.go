@@ -13,8 +13,9 @@ const (
 )
 
 const (
-	WorkflowUpdateReasonActivated   = "activated"
-	WorkflowUpdateReasonDeactivated = "deactivated"
+	WorkflowUpdateReasonActivated       = "activated"
+	WorkflowUpdateReasonDeactivated     = "deactivated"
+	WorkflowUpdateReasonScheduleCleared = "schedule_cleared"
 )
 
 type WorkflowCreated struct {

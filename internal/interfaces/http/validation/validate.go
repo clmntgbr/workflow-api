@@ -32,7 +32,7 @@ func init() {
 
 func validateWorkflowStatus(fl validator.FieldLevel) bool {
 	switch fl.Field().String() {
-	case "active", "inactive", "canceled":
+	case "active", "deleted":
 		return true
 	default:
 		return false

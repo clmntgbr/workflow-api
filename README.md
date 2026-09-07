@@ -12,7 +12,7 @@ This service is the source of truth for that graph and its execution: persistenc
 ### Builder
 
 - **Projects** — multi-tenant workspaces, members, active project on the user
-- **Workflows** — named graphs scoped to a project (soft delete, activate/deactivate, scheduling)
+- **Workflows** — named graphs scoped to a project (soft delete, scheduling; pause with `scheduleType: none`)
 - **Endpoints** — reusable HTTP templates (method, URL, headers, query, body, retries) + OpenAPI import
 - **Steps** — nodes on the canvas; three types:
   - **`http`** — snapshot of an endpoint (default)
@@ -72,7 +72,7 @@ Feature-level docs for the HTTP API and related behaviour.
 | Doc | Description |
 |-----|-------------|
 | [Projects](docs/projects.md) | Multi-tenant workspaces, members, active project |
-| [Workflows](docs/workflows.md) | Workflow graphs, scheduling, activate/deactivate |
+| [Workflows](docs/workflows.md) | Workflow graphs, scheduling, export/import |
 | [Endpoints](docs/endpoints.md) | Reusable HTTP templates, OpenAPI import |
 | [Steps](docs/steps.md) | HTTP, delay, and condition nodes |
 | [Connections](docs/connections.md) | Directed edges, condition branches |
@@ -139,7 +139,7 @@ Versioned types on the bus (`*.v1`). Realtime types drop the version (`entity.ac
 
 | Domain | Realtime | When |
 |---|---|---|
-| `workflow.*.v1` | `workflow.*` | CRUD, activate/deactivate |
+| `workflow.*.v1` | `workflow.*` | CRUD and schedule updates |
 | `endpoint.*.v1` | `endpoint.*` | Endpoint CRUD |
 | `step.created.v1` / `updated.v1` / `deleted.v1` / `position_updated.v1` | `step.*` | Step CRUD / move |
 | `connection.*.v1` | `connection.*` | Link / unlink steps |
@@ -293,7 +293,7 @@ Handler HTTP tests live under `internal/interfaces/http/handler/test/` (one subf
 | `test/realtime/` | Centrifugo connection |
 | `test/activity_log/` | Workflow activity |
 | `test/project/` | Projects CRUD, members, activate |
-| `test/workflow/` | Workflows CRUD, activate/deactivate |
+| `test/workflow/` | Workflows CRUD, export/import |
 | `test/connection/` | Step connections (incl. condition branches) |
 | `test/step/` | Steps (http / delay / condition) |
 | `test/variable/` | Workflow variables |
@@ -328,7 +328,7 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 |---|---|
 | User | `GET /api/users/me`, `PUT /api/users/me/active-project` |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/:id`, members, activate |
-| Workflows | `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/:workflowId`, activate/deactivate |
+| Workflows | `GET/POST /api/workflows`, import/export, `GET/PUT/DELETE /api/workflows/:workflowId` |
 | Endpoints | `GET/POST /api/endpoints`, import OpenAPI, `GET/PUT/DELETE /api/endpoints/:id` |
 | Headers | `GET /api/headers/suggest`, `GET /api/headers/suggest-values` |
 | Steps | nested under `/api/workflows/:workflowId/steps` (CRUD + `PUT …/position`) — `http`, `delay`, and `condition`; `lastRunStatus` reflects the **active run** when one is in progress, otherwise the latest completed run per step |

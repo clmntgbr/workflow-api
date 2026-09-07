@@ -127,8 +127,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	getProjectByIDHandler := queryproject.NewGetProjectByIDHandler(projectReadRepo)
 	listProjectsByUserHandler := queryproject.NewListProjectsByUserHandler(projectReadRepo)
 
-	activateWorkflowHandler := workflowcmd.NewActivateWorkflowHandler(workflowWriteRepo, outboxRepo)
-	deactivateWorkflowHandler := workflowcmd.NewDeactivateWorkflowHandler(workflowWriteRepo, outboxRepo)
 	deleteWorkflowHandler := workflowcmd.NewDeleteWorkflowHandler(workflowWriteRepo, outboxRepo)
 	getWorkflowByIDHandler := queryworkflow.NewGetWorkflowByIDHandler(workflowReadRepo)
 	listWorkflowsByProjectHandler := queryworkflow.NewListWorkflowsByProjectHandler(workflowReadRepo)
@@ -427,8 +425,6 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		WorkflowHandler: httphandler.NewWorkflowHandler(
 			createWorkflowHandler,
 			updateWorkflowHandler,
-			activateWorkflowHandler,
-			deactivateWorkflowHandler,
 			deleteWorkflowHandler,
 			getWorkflowByIDHandler,
 			listWorkflowsByProjectHandler,

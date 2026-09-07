@@ -30,6 +30,7 @@ type quotaRow struct {
 	MaxRequestBodySizeKB       int       `gorm:"column:max_request_body_size_kb"`
 	MaxResponseBodySizeKB      int       `gorm:"column:max_response_body_size_kb"`
 	AllowsOpenAPIImport        bool      `gorm:"column:allows_openapi_import"`
+	AllowsWorkflowImport       bool      `gorm:"column:allows_workflow_import"`
 	AllowsInsights             bool      `gorm:"column:allows_insights"`
 	AllowsDataExport           bool      `gorm:"column:allows_data_export"`
 	ExecutorPriority           int       `gorm:"column:executor_priority"`
@@ -80,13 +81,13 @@ func toQuotaView(row quotaRow) domainquota.QuotaView {
 	return domainquota.QuotaView{
 		ID:                         row.ID,
 		Name:                       row.Name,
-		MaxProjectMembers:     row.MaxProjectMembers,
+		MaxProjectMembers:          row.MaxProjectMembers,
 		MaxProjects:                row.MaxProjects,
 		MaxWorkflows:               row.MaxWorkflows,
 		MaxStepsPerWorkflow:        row.MaxStepsPerWorkflow,
 		MaxEndpoints:               row.MaxEndpoints,
 		MaxVariablesPerWorkflow:    row.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: row.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   row.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    row.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          row.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: row.MinScheduleIntervalMinutes,
@@ -96,6 +97,7 @@ func toQuotaView(row quotaRow) domainquota.QuotaView {
 		MaxRequestBodySizeKB:       row.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      row.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        row.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       row.AllowsWorkflowImport,
 		AllowsInsights:             row.AllowsInsights,
 		AllowsDataExport:           row.AllowsDataExport,
 		ExecutorPriority:           row.ExecutorPriority,

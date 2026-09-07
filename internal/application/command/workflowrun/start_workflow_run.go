@@ -147,13 +147,15 @@ func (h *StartWorkflowRunHandler) Handle(
 		if err := h.runRepo.Save(txCtx, run); err != nil {
 			return err
 		}
+		events := run.PullEvents()
 		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule && !cmd.ScheduleAlreadyAdvanced {
 			workflow.AdvanceAfterScheduledStart(time.Now().UTC())
 			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
 				return err
 			}
+			events = append(events, workflow.PullEvents()...)
 		}
-		return h.outbox.StoreEvents(txCtx, run.PullEvents())
+		return h.outbox.StoreEvents(txCtx, events)
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -244,7 +246,7 @@ func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	workflow *domainworkflow.Workflow,
 	scheduleAlreadyAdvanced bool,
 	reason string,
-	deactivate bool,
+	clearSchedule bool,
 ) error {
 	now := time.Now().UTC()
 	skipped := domainworkflowrun.WorkflowRunScheduledSkipped{
@@ -257,16 +259,15 @@ func (h *StartWorkflowRunHandler) recordScheduledSkip(
 	return h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		events := []event.DomainEvent{skipped}
 
-		if deactivate {
-			if err := workflow.Deactivate(); err != nil {
-				return err
-			}
+		if clearSchedule {
+			workflow.ClearSchedule()
 			events = append(events, workflow.PullEvents()...)
 			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
 				return err
 			}
 		} else if !scheduleAlreadyAdvanced {
 			workflow.AdvanceAfterScheduledStart(now)
+			events = append(events, workflow.PullEvents()...)
 			if err := h.workflowRepo.Update(txCtx, workflow); err != nil {
 				return err
 			}

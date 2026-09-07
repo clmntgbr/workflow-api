@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"go-api/internal/application/messaging"
 	cmdquota "go-api/internal/application/command/quota"
+	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainworkflow "go-api/internal/domain/workflow"
 
@@ -18,7 +18,6 @@ type UpdateWorkflowCommand struct {
 	UserID                uuid.UUID
 	Name                  string
 	Description           string
-	Status                domainworkflow.Status
 	ScheduleType          domainworkflow.ScheduleType
 	ScheduleIntervalValue int
 	ScheduleIntervalUnit  domainworkflow.ScheduleUnit
@@ -49,12 +48,6 @@ func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCo
 	if cmd.Name == "" {
 		return errors.New("name is required")
 	}
-	if !cmd.Status.Valid() {
-		return errors.New("invalid status")
-	}
-	if cmd.Status == domainworkflow.StatusDeleted {
-		return errors.New("use delete to mark a workflow as deleted")
-	}
 
 	return h.repo.WithTransaction(ctx, func(txCtx context.Context) error {
 		w, err := h.repo.GetByID(txCtx, cmd.ID)
@@ -79,7 +72,6 @@ func (h *UpdateWorkflowHandler) Handle(ctx context.Context, cmd UpdateWorkflowCo
 		if err := w.ApplyUpdate(domainworkflow.UpdateWorkflowParams{
 			Name:                  cmd.Name,
 			Description:           cmd.Description,
-			Status:                cmd.Status,
 			ScheduleType:          cmd.ScheduleType,
 			ScheduleIntervalValue: cmd.ScheduleIntervalValue,
 			ScheduleIntervalUnit:  cmd.ScheduleIntervalUnit,

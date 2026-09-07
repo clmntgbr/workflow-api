@@ -27,6 +27,7 @@ type QuotaLimits struct {
 	MaxRequestBodySizeKB       int
 	MaxResponseBodySizeKB      int
 	AllowsOpenAPIImport        bool
+	AllowsWorkflowImport       bool
 	AllowsInsights             bool
 	AllowsDataExport           bool
 	ExecutorPriority           int

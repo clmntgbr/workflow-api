@@ -5,15 +5,13 @@ import "fmt"
 type Status string
 
 const (
-	StatusActive   Status = "active"
-	StatusInactive Status = "inactive"
-	StatusDeleted  Status = "deleted"
-	StatusCanceled Status = "canceled"
+	StatusActive  Status = "active"
+	StatusDeleted Status = "deleted"
 )
 
 func (s Status) Valid() bool {
 	switch s {
-	case StatusActive, StatusInactive, StatusDeleted, StatusCanceled:
+	case StatusActive, StatusDeleted:
 		return true
 	default:
 		return false

@@ -63,7 +63,7 @@ func (r *workflowWriteRepository) ClaimDueForExecution(
 	nowMinute := now.UTC().Truncate(time.Minute)
 
 	var claimed []*domainworkflow.Workflow
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := DBWithContext(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		var models []WorkflowModel
 		err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).

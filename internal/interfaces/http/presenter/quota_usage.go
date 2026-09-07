@@ -31,6 +31,7 @@ type QuotaLimitsResponse struct {
 	MaxRequestBodySizeKB       int  `json:"maxRequestBodySizeKb"`
 	MaxResponseBodySizeKB      int  `json:"maxResponseBodySizeKb"`
 	AllowsOpenAPIImport        bool `json:"allowsOpenApiImport"`
+	AllowsWorkflowImport       bool `json:"allowsWorkflowImport"`
 	AllowsInsights             bool `json:"allowsInsights"`
 	AllowsDataExport           bool `json:"allowsDataExport"`
 	ExecutorPriority           int  `json:"executorPriority"`
@@ -91,6 +92,7 @@ func NewQuotaUsageResponse(usage *querysubscription.QuotaUsageView) QuotaUsageRe
 			MaxRequestBodySizeKB:       usage.Limits.MaxRequestBodySizeKB,
 			MaxResponseBodySizeKB:      usage.Limits.MaxResponseBodySizeKB,
 			AllowsOpenAPIImport:        usage.Limits.AllowsOpenAPIImport,
+			AllowsWorkflowImport:       usage.Limits.AllowsWorkflowImport,
 			AllowsInsights:             usage.Limits.AllowsInsights,
 			AllowsDataExport:           usage.Limits.AllowsDataExport,
 			ExecutorPriority:           usage.Limits.ExecutorPriority,

@@ -7,6 +7,10 @@ COMPOSE_DEV := docker compose -f compose.dev.yaml
 dev:
 	$(COMPOSE_DEV) up -d
 
+restart:
+	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV) up -d
+
 build:
 	$(COMPOSE_DEV) up -d --build
 

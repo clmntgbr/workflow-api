@@ -94,7 +94,7 @@ func projectWorkflowCreated(payload []byte) (*projectedLog, error) {
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelInfo,
-		hints: messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
+		hints:           messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
@@ -116,6 +116,8 @@ func projectWorkflowUpdated(payload []byte) (*projectedLog, error) {
 		action = domainactivitylog.ActionWorkflowActivated
 	case domainworkflow.WorkflowUpdateReasonDeactivated:
 		action = domainactivitylog.ActionWorkflowDeactivated
+	case domainworkflow.WorkflowUpdateReasonScheduleCleared:
+		action = domainactivitylog.ActionWorkflowScheduleCleared
 	}
 	return finalizeEntry(newEntryParams{
 		projectID:       projectID,
@@ -124,7 +126,7 @@ func projectWorkflowUpdated(payload []byte) (*projectedLog, error) {
 		subjectID:       workflowID,
 		workflowID:      &workflowID,
 		level:           domainactivitylog.LevelInfo,
-		hints: messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
+		hints:           messageHints{WorkflowName: evt.Name, WorkflowStatus: evt.Status},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
@@ -170,7 +172,7 @@ func projectStepCreated(payload []byte) (*projectedLog, error) {
 		workflowID:      &workflowID,
 		stepID:          &stepID,
 		level:           domainactivitylog.LevelInfo,
-		hints: messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
+		hints:           messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
@@ -194,7 +196,7 @@ func projectStepUpdated(payload []byte) (*projectedLog, error) {
 		workflowID:      &workflowID,
 		stepID:          &stepID,
 		level:           domainactivitylog.LevelInfo,
-		hints: messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
+		hints:           messageHints{StepName: evt.Name, Method: evt.Method, URL: evt.URL},
 		sourceEventID:   eventID,
 		sourceEventType: evt.EventType(),
 		occurredAt:      evt.Timestamp,
@@ -211,15 +213,15 @@ func projectStepPositionUpdated(payload []byte) (*projectedLog, error) {
 		return nil, err
 	}
 	return finalizeEntry(newEntryParams{
-		projectID:       projectID,
-		action:          domainactivitylog.ActionStepPositionUpdated,
-		subjectType:     domainactivitylog.SubjectStep,
-		subjectID:       stepID,
-		workflowID:      &workflowID,
-		stepID:          &stepID,
-		level:           domainactivitylog.LevelInfo,
+		projectID:   projectID,
+		action:      domainactivitylog.ActionStepPositionUpdated,
+		subjectType: domainactivitylog.SubjectStep,
+		subjectID:   stepID,
+		workflowID:  &workflowID,
+		stepID:      &stepID,
+		level:       domainactivitylog.LevelInfo,
 		hints: messageHints{
-			StepName: evt.Name,
+			StepName:  evt.Name,
 			PositionX: evt.Position.X,
 			PositionY: evt.Position.Y,
 		},
@@ -276,12 +278,12 @@ func projectConnectionCreated(payload []byte) (*projectedLog, error) {
 	sourceStepID, _ := uuid.Parse(evt.SourceStepID)
 	targetStepID, _ := uuid.Parse(evt.TargetStepID)
 	return finalizeEntry(newEntryParams{
-		projectID:       projectID,
-		action:          domainactivitylog.ActionConnectionCreated,
-		subjectType:     domainactivitylog.SubjectConnection,
-		subjectID:       connectionID,
-		workflowID:      &workflowID,
-		level:           domainactivitylog.LevelInfo,
+		projectID:   projectID,
+		action:      domainactivitylog.ActionConnectionCreated,
+		subjectType: domainactivitylog.SubjectConnection,
+		subjectID:   connectionID,
+		workflowID:  &workflowID,
+		level:       domainactivitylog.LevelInfo,
 		hints: messageHints{
 			SourceStepID: sourceStepID,
 			TargetStepID: targetStepID,
@@ -647,12 +649,12 @@ func projectWorkflowRunFinished(payload []byte) (*projectedLog, error) {
 		level = domainactivitylog.LevelWarning
 	}
 	return finalizeEntry(newEntryParams{
-		action:          domainactivitylog.ActionWorkflowRunFinished,
-		subjectType:     domainactivitylog.SubjectWorkflowRun,
-		subjectID:       workflowRunID,
-		workflowID:      &workflowID,
-		workflowRunID:   &workflowRunID,
-		level:           level,
+		action:        domainactivitylog.ActionWorkflowRunFinished,
+		subjectType:   domainactivitylog.SubjectWorkflowRun,
+		subjectID:     workflowRunID,
+		workflowID:    &workflowID,
+		workflowRunID: &workflowRunID,
+		level:         level,
 		hints: messageHints{
 			FinishType: string(evt.FinishType),
 			Error:      evt.Error,

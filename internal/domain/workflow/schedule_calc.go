@@ -82,10 +82,7 @@ func (w *Workflow) AdvanceAfterScheduledStart(now time.Time) {
 		w.NextRunAt = &next
 		w.UpdatedAt = now
 	case ScheduleTypeOnce:
-		w.ScheduleType = ScheduleTypeNone
-		w.ScheduleAt = nil
-		w.NextRunAt = nil
-		w.UpdatedAt = now
+		w.ClearSchedule()
 	}
 }
 

@@ -10,12 +10,12 @@ type Quota struct {
 	ID   uuid.UUID
 	Name string
 
-	MaxProjectMembers  int
-	MaxProjects             int
-	MaxWorkflows            int
-	MaxStepsPerWorkflow     int
-	MaxEndpoints            int
-	MaxVariablesPerWorkflow int
+	MaxProjectMembers        int
+	MaxProjects              int
+	MaxWorkflows             int
+	MaxStepsPerWorkflow      int
+	MaxEndpoints             int
+	MaxVariablesPerWorkflow  int
 	MaxAssertionsPerWorkflow int
 
 	MaxWorkflowRunsPerMonth    int
@@ -24,15 +24,16 @@ type Quota struct {
 
 	RunHistoryRetentionDays int
 
-	MaxStepTimeoutSeconds  int
-	MaxRetryCountPerStep   int
-	MaxRequestBodySizeKB   int
-	MaxResponseBodySizeKB  int
+	MaxStepTimeoutSeconds int
+	MaxRetryCountPerStep  int
+	MaxRequestBodySizeKB  int
+	MaxResponseBodySizeKB int
 
-	AllowsOpenAPIImport bool
-	AllowsInsights      bool
-	AllowsDataExport    bool
-	ExecutorPriority    int
+	AllowsOpenAPIImport  bool
+	AllowsWorkflowImport bool
+	AllowsInsights       bool
+	AllowsDataExport     bool
+	ExecutorPriority     int
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -40,7 +41,7 @@ type Quota struct {
 
 type NewQuotaParams struct {
 	Name                       string
-	MaxProjectMembers     int
+	MaxProjectMembers          int
 	MaxProjects                int
 	MaxWorkflows               int
 	MaxStepsPerWorkflow        int
@@ -56,6 +57,7 @@ type NewQuotaParams struct {
 	MaxRequestBodySizeKB       int
 	MaxResponseBodySizeKB      int
 	AllowsOpenAPIImport        bool
+	AllowsWorkflowImport       bool
 	AllowsInsights             bool
 	AllowsDataExport           bool
 	ExecutorPriority           int
@@ -66,13 +68,13 @@ func NewQuota(p NewQuotaParams) *Quota {
 	return &Quota{
 		ID:                         uuid.New(),
 		Name:                       p.Name,
-		MaxProjectMembers:     p.MaxProjectMembers,
+		MaxProjectMembers:          p.MaxProjectMembers,
 		MaxProjects:                p.MaxProjects,
 		MaxWorkflows:               p.MaxWorkflows,
 		MaxStepsPerWorkflow:        p.MaxStepsPerWorkflow,
 		MaxEndpoints:               p.MaxEndpoints,
 		MaxVariablesPerWorkflow:    p.MaxVariablesPerWorkflow,
-		MaxAssertionsPerWorkflow: p.MaxAssertionsPerWorkflow,
+		MaxAssertionsPerWorkflow:   p.MaxAssertionsPerWorkflow,
 		MaxWorkflowRunsPerMonth:    p.MaxWorkflowRunsPerMonth,
 		MaxConcurrentRuns:          p.MaxConcurrentRuns,
 		MinScheduleIntervalMinutes: p.MinScheduleIntervalMinutes,
@@ -82,6 +84,7 @@ func NewQuota(p NewQuotaParams) *Quota {
 		MaxRequestBodySizeKB:       p.MaxRequestBodySizeKB,
 		MaxResponseBodySizeKB:      p.MaxResponseBodySizeKB,
 		AllowsOpenAPIImport:        p.AllowsOpenAPIImport,
+		AllowsWorkflowImport:       p.AllowsWorkflowImport,
 		AllowsInsights:             p.AllowsInsights,
 		AllowsDataExport:           p.AllowsDataExport,
 		ExecutorPriority:           p.ExecutorPriority,
@@ -108,6 +111,7 @@ func (q *Quota) ApplyUpdate(p NewQuotaParams) {
 	q.MaxRequestBodySizeKB = p.MaxRequestBodySizeKB
 	q.MaxResponseBodySizeKB = p.MaxResponseBodySizeKB
 	q.AllowsOpenAPIImport = p.AllowsOpenAPIImport
+	q.AllowsWorkflowImport = p.AllowsWorkflowImport
 	q.AllowsInsights = p.AllowsInsights
 	q.AllowsDataExport = p.AllowsDataExport
 	q.ExecutorPriority = p.ExecutorPriority

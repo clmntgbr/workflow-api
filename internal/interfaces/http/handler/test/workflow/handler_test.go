@@ -53,37 +53,9 @@ func (m *mockUpdateWorkflowHandler) Handle(_ context.Context, cmd workflowcmd.Up
 	return m.err
 }
 
-type mockActivateWorkflowHandler struct {
-	called bool
-	cmd    workflowcmd.ActivateWorkflowCommand
-	result *domainworkflow.Workflow
-	err    error
-}
 
-func (m *mockActivateWorkflowHandler) Handle(
-	_ context.Context,
-	cmd workflowcmd.ActivateWorkflowCommand,
-) (*domainworkflow.Workflow, error) {
-	m.called = true
-	m.cmd = cmd
-	return m.result, m.err
-}
 
-type mockDeactivateWorkflowHandler struct {
-	called bool
-	cmd    workflowcmd.DeactivateWorkflowCommand
-	result *domainworkflow.Workflow
-	err    error
-}
 
-func (m *mockDeactivateWorkflowHandler) Handle(
-	_ context.Context,
-	cmd workflowcmd.DeactivateWorkflowCommand,
-) (*domainworkflow.Workflow, error) {
-	m.called = true
-	m.cmd = cmd
-	return m.result, m.err
-}
 
 type mockDeleteWorkflowHandler struct {
 	called bool
@@ -191,8 +163,6 @@ func (m *mockImportWorkflowHandler) Handle(
 func newWorkflowHandler(
 	create *mockCreateWorkflowHandler,
 	update *mockUpdateWorkflowHandler,
-	activate *mockActivateWorkflowHandler,
-	deactivate *mockDeactivateWorkflowHandler,
 	deleteH *mockDeleteWorkflowHandler,
 	getByID *mockGetWorkflowByIDHandler,
 	list *mockListWorkflowsByProjectHandler,
@@ -203,12 +173,6 @@ func newWorkflowHandler(
 	}
 	if update == nil {
 		update = &mockUpdateWorkflowHandler{}
-	}
-	if activate == nil {
-		activate = &mockActivateWorkflowHandler{}
-	}
-	if deactivate == nil {
-		deactivate = &mockDeactivateWorkflowHandler{}
 	}
 	if deleteH == nil {
 		deleteH = &mockDeleteWorkflowHandler{}
@@ -225,8 +189,6 @@ func newWorkflowHandler(
 	return handler.NewWorkflowHandler(
 		create,
 		update,
-		activate,
-		deactivate,
 		deleteH,
 		getByID,
 		list,
@@ -249,8 +211,6 @@ func newWorkflowHandlerWithIO(
 	return handler.NewWorkflowHandler(
 		&mockCreateWorkflowHandler{},
 		&mockUpdateWorkflowHandler{},
-		&mockActivateWorkflowHandler{},
-		&mockDeactivateWorkflowHandler{},
 		&mockDeleteWorkflowHandler{},
 		&mockGetWorkflowByIDHandler{},
 		&mockListWorkflowsByProjectHandler{},
@@ -265,7 +225,7 @@ func sampleWorkflowEntity() *domainworkflow.Workflow {
 		ID:                   testutil.TestWorkflowID,
 		Name:                 "Order Flow",
 		Description:          "Processes orders",
-		Status:               domainworkflow.StatusInactive,
+		Status:               domainworkflow.StatusActive,
 		ProjectID:            testutil.TestProjectID,
 		ScheduleType:         domainworkflow.ScheduleTypeNone,
 		ScheduleTimezone:     "UTC",
@@ -307,7 +267,6 @@ func validUpdateWorkflowBody() map[string]any {
 	return map[string]any{
 		"name":         "Order Flow",
 		"description":  "Updated",
-		"status":       "inactive",
 		"scheduleType": "none",
 	}
 }
@@ -318,7 +277,7 @@ func activeProject() fiber.Handler {
 
 func TestWorkflowHandler_Create_Success(t *testing.T) {
 	create := &mockCreateWorkflowHandler{result: sampleWorkflowEntity()}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -349,7 +308,7 @@ func TestWorkflowHandler_Create_Success(t *testing.T) {
 
 func TestWorkflowHandler_Create_Unauthorized(t *testing.T) {
 	create := &mockCreateWorkflowHandler{}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", h.Create)
@@ -368,7 +327,7 @@ func TestWorkflowHandler_Create_Unauthorized(t *testing.T) {
 
 func TestWorkflowHandler_Create_MissingActiveProject(t *testing.T) {
 	create := &mockCreateWorkflowHandler{}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", testutil.WithUserWithoutProject(testutil.TestUserID), h.Create)
@@ -387,7 +346,7 @@ func TestWorkflowHandler_Create_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowHandler_Create_InvalidRequestBody(t *testing.T) {
 	create := &mockCreateWorkflowHandler{}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -412,7 +371,7 @@ func TestWorkflowHandler_Create_InvalidRequestBody(t *testing.T) {
 
 func TestWorkflowHandler_Create_InvalidData(t *testing.T) {
 	create := &mockCreateWorkflowHandler{}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -431,7 +390,7 @@ func TestWorkflowHandler_Create_InvalidData(t *testing.T) {
 
 func TestWorkflowHandler_Create_HandlerError(t *testing.T) {
 	create := &mockCreateWorkflowHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -447,7 +406,7 @@ func TestWorkflowHandler_Create_HandlerError(t *testing.T) {
 
 func TestWorkflowHandler_Create_QuotaExceeded(t *testing.T) {
 	create := &mockCreateWorkflowHandler{err: cmdquota.ErrWorkflowQuotaExceeded}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -463,7 +422,7 @@ func TestWorkflowHandler_Create_QuotaExceeded(t *testing.T) {
 
 func TestWorkflowHandler_Create_ScheduleIntervalQuotaExceeded(t *testing.T) {
 	create := &mockCreateWorkflowHandler{err: cmdquota.ErrScheduleIntervalQuotaExceeded}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -479,7 +438,7 @@ func TestWorkflowHandler_Create_ScheduleIntervalQuotaExceeded(t *testing.T) {
 
 func TestWorkflowHandler_Create_ScheduleError(t *testing.T) {
 	create := &mockCreateWorkflowHandler{err: domainworkflow.ErrInvalidSchedule}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)
@@ -499,7 +458,7 @@ func TestWorkflowHandler_GetByID_Success(t *testing.T) {
 		views: []*domainworkflow.WorkflowView{view},
 		errs:  []error{nil},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -531,7 +490,7 @@ func TestWorkflowHandler_GetByID_WrongProject(t *testing.T) {
 		}},
 		errs: []error{nil},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -558,7 +517,7 @@ func TestWorkflowHandler_GetByID_WrongProject(t *testing.T) {
 
 func TestWorkflowHandler_GetByID_Unauthorized(t *testing.T) {
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", h.GetByID)
@@ -577,7 +536,7 @@ func TestWorkflowHandler_GetByID_Unauthorized(t *testing.T) {
 
 func TestWorkflowHandler_GetByID_MissingActiveProject(t *testing.T) {
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.GetByID)
@@ -596,7 +555,7 @@ func TestWorkflowHandler_GetByID_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowHandler_GetByID_InvalidID(t *testing.T) {
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -618,7 +577,7 @@ func TestWorkflowHandler_GetByID_NotFound(t *testing.T) {
 		views: []*domainworkflow.WorkflowView{nil},
 		errs:  []error{errors.New("workflow not found")},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -637,7 +596,7 @@ func TestWorkflowHandler_GetByID_HandlerError_Internal(t *testing.T) {
 		views: []*domainworkflow.WorkflowView{nil},
 		errs:  []error{errors.New("database unavailable")},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -666,7 +625,7 @@ func TestWorkflowHandler_GetByID_WrongProjectNotMember(t *testing.T) {
 		}},
 		errs: []error{nil},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -691,7 +650,7 @@ func TestWorkflowHandler_GetByID_WrongProjectLookupFailed(t *testing.T) {
 		views: []*domainproject.ProjectView{nil},
 		errs:  []error{errors.New("project not found")},
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, getByID, nil, getProject)
+	h := newWorkflowHandler(nil, nil, nil, getByID, nil, getProject)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows/:workflowId", activeProject(), h.GetByID)
@@ -711,7 +670,7 @@ func TestWorkflowHandler_ListByProject_Success(t *testing.T) {
 		views: []domainworkflow.WorkflowView{*view},
 		total: 1,
 	}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, nil, list, nil)
+	h := newWorkflowHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows", activeProject(), h.ListByProject)
@@ -733,7 +692,7 @@ func TestWorkflowHandler_ListByProject_Success(t *testing.T) {
 
 func TestWorkflowHandler_ListByProject_MissingActiveProject(t *testing.T) {
 	list := &mockListWorkflowsByProjectHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, nil, list, nil)
+	h := newWorkflowHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows", testutil.WithUserWithoutProject(testutil.TestUserID), h.ListByProject)
@@ -752,7 +711,7 @@ func TestWorkflowHandler_ListByProject_MissingActiveProject(t *testing.T) {
 
 func TestWorkflowHandler_ListByProject_InvalidQuery(t *testing.T) {
 	list := &mockListWorkflowsByProjectHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, nil, list, nil)
+	h := newWorkflowHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows", activeProject(), h.ListByProject)
@@ -771,7 +730,7 @@ func TestWorkflowHandler_ListByProject_InvalidQuery(t *testing.T) {
 
 func TestWorkflowHandler_ListByProject_HandlerError(t *testing.T) {
 	list := &mockListWorkflowsByProjectHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(nil, nil, nil, nil, nil, nil, list, nil)
+	h := newWorkflowHandler(nil, nil, nil, nil, list, nil)
 
 	app := testutil.NewTestApp()
 	app.Get("/workflows", activeProject(), h.ListByProject)
@@ -792,7 +751,7 @@ func TestWorkflowHandler_Update_Success(t *testing.T) {
 		errs:  []error{nil, nil},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -822,7 +781,7 @@ func TestWorkflowHandler_Update_ManualScheduleAllowsZeroInterval(t *testing.T) {
 		errs:  []error{nil, nil},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -830,7 +789,6 @@ func TestWorkflowHandler_Update_ManualScheduleAllowsZeroInterval(t *testing.T) {
 	body := map[string]any{
 		"name":                  "Login workflow",
 		"description":           "",
-		"status":                "active",
 		"scheduleType":          "none",
 		"scheduleIntervalValue": 0,
 		"scheduleIntervalUnit":  "",
@@ -863,7 +821,7 @@ func TestWorkflowHandler_Update_ManualScheduleAllowsZeroInterval(t *testing.T) {
 func TestWorkflowHandler_Update_Unauthorized(t *testing.T) {
 	update := &mockUpdateWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", h.Update)
@@ -883,7 +841,7 @@ func TestWorkflowHandler_Update_Unauthorized(t *testing.T) {
 func TestWorkflowHandler_Update_MissingActiveProject(t *testing.T) {
 	update := &mockUpdateWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.Update)
@@ -903,7 +861,7 @@ func TestWorkflowHandler_Update_MissingActiveProject(t *testing.T) {
 func TestWorkflowHandler_Update_InvalidID(t *testing.T) {
 	update := &mockUpdateWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -928,7 +886,7 @@ func TestWorkflowHandler_Update_WrongProject(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -952,7 +910,7 @@ func TestWorkflowHandler_Update_InvalidRequestBody(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -975,33 +933,6 @@ func TestWorkflowHandler_Update_InvalidRequestBody(t *testing.T) {
 	}
 }
 
-func TestWorkflowHandler_Update_InvalidStatus(t *testing.T) {
-	view := sampleWorkflowView()
-	getByID := &mockGetWorkflowByIDHandler{
-		views: []*domainworkflow.WorkflowView{view},
-		errs:  []error{nil},
-	}
-	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Put("/workflows/:workflowId", activeProject(), h.Update)
-
-	body := validUpdateWorkflowBody()
-	body["status"] = "invalid"
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), body))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if update.called {
-		t.Fatal("update handler must not be called with invalid status")
-	}
-}
-
 func TestWorkflowHandler_Update_HandlerError_NotFound(t *testing.T) {
 	view := sampleWorkflowView()
 	getByID := &mockGetWorkflowByIDHandler{
@@ -1009,7 +940,7 @@ func TestWorkflowHandler_Update_HandlerError_NotFound(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{err: errors.New("workflow not found")}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1023,48 +954,6 @@ func TestWorkflowHandler_Update_HandlerError_NotFound(t *testing.T) {
 	}
 }
 
-func TestWorkflowHandler_Update_HandlerError_InvalidStatus(t *testing.T) {
-	view := sampleWorkflowView()
-	getByID := &mockGetWorkflowByIDHandler{
-		views: []*domainworkflow.WorkflowView{view},
-		errs:  []error{nil},
-	}
-	update := &mockUpdateWorkflowHandler{err: errors.New("invalid status")}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Put("/workflows/:workflowId", activeProject(), h.Update)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
-
-func TestWorkflowHandler_Update_HandlerError_UseDelete(t *testing.T) {
-	view := sampleWorkflowView()
-	getByID := &mockGetWorkflowByIDHandler{
-		views: []*domainworkflow.WorkflowView{view},
-		errs:  []error{nil},
-	}
-	update := &mockUpdateWorkflowHandler{err: errors.New("use delete to mark a workflow as deleted")}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Put("/workflows/:workflowId", activeProject(), h.Update)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPut, "/workflows/"+testutil.TestWorkflowID.String(), validUpdateWorkflowBody()))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
-
 func TestWorkflowHandler_Update_ScheduleError(t *testing.T) {
 	view := sampleWorkflowView()
 	getByID := &mockGetWorkflowByIDHandler{
@@ -1072,7 +961,7 @@ func TestWorkflowHandler_Update_ScheduleError(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{err: domainworkflow.ErrScheduleIntervalTooShort}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1093,7 +982,7 @@ func TestWorkflowHandler_Update_ScheduleIntervalQuotaExceeded(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{err: cmdquota.ErrScheduleIntervalQuotaExceeded}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1114,7 +1003,7 @@ func TestWorkflowHandler_Update_HandlerError_Internal(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1135,7 +1024,7 @@ func TestWorkflowHandler_Update_ReloadFailure(t *testing.T) {
 		errs:  []error{nil, errors.New("database unavailable")},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1158,7 +1047,7 @@ func TestWorkflowHandler_Update_GetExisting_NotFound(t *testing.T) {
 		errs:  []error{errors.New("workflow not found")},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1175,222 +1064,6 @@ func TestWorkflowHandler_Update_GetExisting_NotFound(t *testing.T) {
 	}
 }
 
-func TestWorkflowHandler_Activate_Success(t *testing.T) {
-	w := sampleWorkflowEntity()
-	w.Status = domainworkflow.StatusActive
-	activate := &mockActivateWorkflowHandler{result: w}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
-	}
-	if !activate.called {
-		t.Fatal("expected activate handler to be called")
-	}
-	if activate.cmd.ProjectID != testutil.TestProjectID {
-		t.Fatalf("project id: got %s", activate.cmd.ProjectID)
-	}
-}
-
-func TestWorkflowHandler_Activate_Unauthorized(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusUnauthorized)
-	}
-	if activate.called {
-		t.Fatal("activate handler must not be called without user")
-	}
-}
-
-func TestWorkflowHandler_Activate_InvalidID(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/bad-id/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if activate.called {
-		t.Fatal("activate handler must not be called with invalid id")
-	}
-}
-
-func TestWorkflowHandler_Activate_NotFound(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{err: errors.New("workflow not found")}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusNotFound)
-	}
-}
-
-func TestWorkflowHandler_Activate_InvalidStatusTransition(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{err: domainworkflow.ErrInvalidStatusTransition}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
-
-func TestWorkflowHandler_Activate_HandlerError_Internal(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", activeProject(), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
-	}
-}
-
-func TestWorkflowHandler_Deactivate_Success(t *testing.T) {
-	w := sampleWorkflowEntity()
-	deactivate := &mockDeactivateWorkflowHandler{result: w}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusOK)
-	}
-	if !deactivate.called {
-		t.Fatal("expected deactivate handler to be called")
-	}
-}
-
-func TestWorkflowHandler_Deactivate_Unauthorized(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusUnauthorized)
-	}
-	if deactivate.called {
-		t.Fatal("deactivate handler must not be called without user")
-	}
-}
-
-func TestWorkflowHandler_Deactivate_InvalidID(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/bad-id/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if deactivate.called {
-		t.Fatal("deactivate handler must not be called with invalid id")
-	}
-}
-
-func TestWorkflowHandler_Deactivate_NotFound(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{err: errors.New("workflow not found")}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusNotFound)
-	}
-}
-
-func TestWorkflowHandler_Deactivate_InvalidStatusTransition(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{err: domainworkflow.ErrInvalidStatusTransition}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
-
-func TestWorkflowHandler_Deactivate_HandlerError_Internal(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", activeProject(), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusInternalServerError)
-	}
-}
-
 func TestWorkflowHandler_Delete_Success(t *testing.T) {
 	view := sampleWorkflowView()
 	getByID := &mockGetWorkflowByIDHandler{
@@ -1398,7 +1071,7 @@ func TestWorkflowHandler_Delete_Success(t *testing.T) {
 		errs:  []error{nil},
 	}
 	deleteH := &mockDeleteWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1421,7 +1094,7 @@ func TestWorkflowHandler_Delete_Success(t *testing.T) {
 func TestWorkflowHandler_Delete_Unauthorized(t *testing.T) {
 	deleteH := &mockDeleteWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", h.Delete)
@@ -1446,7 +1119,7 @@ func TestWorkflowHandler_Delete_WrongProject(t *testing.T) {
 		errs:  []error{nil},
 	}
 	deleteH := &mockDeleteWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1470,7 +1143,7 @@ func TestWorkflowHandler_Delete_HandlerError_Internal(t *testing.T) {
 		errs:  []error{nil},
 	}
 	deleteH := &mockDeleteWorkflowHandler{err: errors.New("database unavailable")}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1487,7 +1160,7 @@ func TestWorkflowHandler_Delete_HandlerError_Internal(t *testing.T) {
 func TestWorkflowHandler_Delete_MissingActiveProject(t *testing.T) {
 	deleteH := &mockDeleteWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", testutil.WithUserWithoutProject(testutil.TestUserID), h.Delete)
@@ -1507,7 +1180,7 @@ func TestWorkflowHandler_Delete_MissingActiveProject(t *testing.T) {
 func TestWorkflowHandler_Delete_InvalidID(t *testing.T) {
 	deleteH := &mockDeleteWorkflowHandler{}
 	getByID := &mockGetWorkflowByIDHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1530,7 +1203,7 @@ func TestWorkflowHandler_Delete_GetExisting_NotFound(t *testing.T) {
 		errs:  []error{errors.New("workflow not found")},
 	}
 	deleteH := &mockDeleteWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1553,7 +1226,7 @@ func TestWorkflowHandler_Delete_GetExisting_InternalError(t *testing.T) {
 		errs:  []error{errors.New("database unavailable")},
 	}
 	deleteH := &mockDeleteWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, nil, deleteH, getByID, nil, nil)
+	h := newWorkflowHandler(nil, nil, deleteH, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Delete("/workflows/:workflowId", activeProject(), h.Delete)
@@ -1577,7 +1250,7 @@ func TestWorkflowHandler_Update_InvalidData(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1594,51 +1267,13 @@ func TestWorkflowHandler_Update_InvalidData(t *testing.T) {
 	}
 }
 
-func TestWorkflowHandler_Activate_MissingActiveProject(t *testing.T) {
-	activate := &mockActivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, activate, nil, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/activate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Activate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/activate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if activate.called {
-		t.Fatal("activate handler must not be called without active project")
-	}
-}
-
-func TestWorkflowHandler_Deactivate_MissingActiveProject(t *testing.T) {
-	deactivate := &mockDeactivateWorkflowHandler{}
-	h := newWorkflowHandler(nil, nil, nil, deactivate, nil, nil, nil, nil)
-
-	app := testutil.NewTestApp()
-	app.Post("/workflows/:workflowId/deactivate", testutil.WithUserWithoutProject(testutil.TestUserID), h.Deactivate)
-
-	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/deactivate", nil))
-	if err != nil {
-		t.Fatalf("perform request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
-	}
-	if deactivate.called {
-		t.Fatal("deactivate handler must not be called without active project")
-	}
-}
-
 func TestWorkflowHandler_Update_GetExisting_InternalError(t *testing.T) {
 	getByID := &mockGetWorkflowByIDHandler{
 		views: []*domainworkflow.WorkflowView{nil},
 		errs:  []error{errors.New("database unavailable")},
 	}
 	update := &mockUpdateWorkflowHandler{}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1662,7 +1297,7 @@ func TestWorkflowHandler_Update_ScheduleTimezoneError(t *testing.T) {
 		errs:  []error{nil},
 	}
 	update := &mockUpdateWorkflowHandler{err: domainworkflow.ErrInvalidScheduleTimezone}
-	h := newWorkflowHandler(nil, update, nil, nil, nil, getByID, nil, nil)
+	h := newWorkflowHandler(nil, update, nil, getByID, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Put("/workflows/:workflowId", activeProject(), h.Update)
@@ -1678,7 +1313,7 @@ func TestWorkflowHandler_Update_ScheduleTimezoneError(t *testing.T) {
 
 func TestWorkflowHandler_Create_WithOptionalFields(t *testing.T) {
 	create := &mockCreateWorkflowHandler{result: sampleWorkflowEntity()}
-	h := newWorkflowHandler(create, nil, nil, nil, nil, nil, nil, nil)
+	h := newWorkflowHandler(create, nil, nil, nil, nil, nil)
 
 	app := testutil.NewTestApp()
 	app.Post("/workflows", activeProject(), h.Create)

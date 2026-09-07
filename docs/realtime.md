@@ -22,7 +22,7 @@ Requires authentication.
 
 | Realtime type | When |
 |---------------|------|
-| `workflow.*` | Workflow CRUD, activate/deactivate |
+| `workflow.*` | Workflow CRUD and schedule updates |
 | `step.*` | Step CRUD, position |
 | `connection.*` | Link / unlink |
 | `variable.*` | Variable CRUD |

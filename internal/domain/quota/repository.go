@@ -23,12 +23,12 @@ type QuotaView struct {
 	ID   uuid.UUID
 	Name string
 
-	MaxProjectMembers  int
-	MaxProjects             int
-	MaxWorkflows            int
-	MaxStepsPerWorkflow     int
-	MaxEndpoints            int
-	MaxVariablesPerWorkflow int
+	MaxProjectMembers        int
+	MaxProjects              int
+	MaxWorkflows             int
+	MaxStepsPerWorkflow      int
+	MaxEndpoints             int
+	MaxVariablesPerWorkflow  int
 	MaxAssertionsPerWorkflow int
 
 	MaxWorkflowRunsPerMonth    int
@@ -42,10 +42,11 @@ type QuotaView struct {
 	MaxRequestBodySizeKB  int
 	MaxResponseBodySizeKB int
 
-	AllowsOpenAPIImport bool
-	AllowsInsights      bool
-	AllowsDataExport    bool
-	ExecutorPriority    int
+	AllowsOpenAPIImport  bool
+	AllowsWorkflowImport bool
+	AllowsInsights       bool
+	AllowsDataExport     bool
+	ExecutorPriority     int
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
