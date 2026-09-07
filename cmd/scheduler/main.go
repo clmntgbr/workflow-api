@@ -151,9 +151,8 @@ const staleStepRunPollInterval = 30 * time.Minute
 
 func runStaleStepRunPoller(ctx context.Context, container *di.Container) {
 	log.Printf(
-		"scheduler: stale step run poller started (interval=%s clock-aligned batchSize=%d)",
+		"scheduler: stale step run poller started (interval=%s clock-aligned)",
 		staleStepRunPollInterval,
-		container.StalePollBatchSize,
 	)
 
 	tickStale(ctx, container)
@@ -176,7 +175,6 @@ func tickStale(ctx context.Context, container *di.Container) {
 	failed, err := container.FailStaleStepRunsHandler.Handle(
 		ctx,
 		time.Now().UTC(),
-		container.StalePollBatchSize,
 	)
 	if err != nil {
 		log.Printf("scheduler: fail stale step runs failed: %v", err)

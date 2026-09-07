@@ -15,46 +15,35 @@ import (
 const (
 	staleStepRunError     = "step run exceeded its execution budget"
 	staleWorkflowRunError = "a step run stalled and was marked failed"
+
+	stalePendingMaxAge = 30 * time.Minute
+	staleGrace         = 5 * time.Minute
+	staleMaxBatches    = 50
+	staleBatchSize     = 100
 )
 
 type FailStaleStepRunsHandler struct {
-	stepRunRepo   domainsteprun.StepRunWriteRepository
-	runRepo       domainworkflowrun.WorkflowRunWriteRepository
-	outbox        port.OutboxRepository
-	pendingMaxAge time.Duration
-	grace         time.Duration
-	maxBatches    int
+	stepRunRepo domainsteprun.StepRunWriteRepository
+	runRepo     domainworkflowrun.WorkflowRunWriteRepository
+	outbox      port.OutboxRepository
 }
 
 func NewFailStaleStepRunsHandler(
 	stepRunRepo domainsteprun.StepRunWriteRepository,
 	runRepo domainworkflowrun.WorkflowRunWriteRepository,
 	outbox port.OutboxRepository,
-	pendingMaxAge time.Duration,
-	grace time.Duration,
-	maxBatches int,
 ) *FailStaleStepRunsHandler {
-	if maxBatches <= 0 {
-		maxBatches = 50
-	}
 	return &FailStaleStepRunsHandler{
-		stepRunRepo:   stepRunRepo,
-		runRepo:       runRepo,
-		outbox:        outbox,
-		pendingMaxAge: pendingMaxAge,
-		grace:         grace,
-		maxBatches:    maxBatches,
+		stepRunRepo: stepRunRepo,
+		runRepo:     runRepo,
+		outbox:      outbox,
 	}
 }
 
-func (h *FailStaleStepRunsHandler) Handle(ctx context.Context, now time.Time, limit int) (int, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-
+func (h *FailStaleStepRunsHandler) Handle(ctx context.Context, now time.Time) (int, error) {
 	failed := 0
-	for batch := 0; batch < h.maxBatches; batch++ {
-		n, err := h.handleBatch(ctx, now, limit)
+	for batch := 0; batch < staleMaxBatches; batch++ {
+		n, err := h.handleBatch(ctx, now)
 		if err != nil {
 			return failed, err
 		}
@@ -66,8 +55,8 @@ func (h *FailStaleStepRunsHandler) Handle(ctx context.Context, now time.Time, li
 	return failed, nil
 }
 
-func (h *FailStaleStepRunsHandler) handleBatch(ctx context.Context, now time.Time, limit int) (int, error) {
-	candidates, err := h.stepRunRepo.FindActiveNonDelay(ctx, now, h.pendingMaxAge, h.grace, limit)
+func (h *FailStaleStepRunsHandler) handleBatch(ctx context.Context, now time.Time) (int, error) {
+	candidates, err := h.stepRunRepo.FindActiveNonDelay(ctx, now, stalePendingMaxAge, staleGrace, staleBatchSize)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +64,7 @@ func (h *FailStaleStepRunsHandler) handleBatch(ctx context.Context, now time.Tim
 	failed := 0
 	seen := make(map[uuid.UUID]struct{})
 	for _, candidate := range candidates {
-		if candidate == nil || !candidate.IsStale(now, h.pendingMaxAge, h.grace) {
+		if candidate == nil || !candidate.IsStale(now, stalePendingMaxAge, staleGrace) {
 			continue
 		}
 		if _, ok := seen[candidate.WorkflowRunID]; ok {
@@ -116,7 +105,7 @@ func (h *FailStaleStepRunsHandler) failWorkflowRun(
 
 		hasStale := false
 		for _, stepRun := range stepRuns {
-			if stepRun != nil && stepRun.IsStale(now, h.pendingMaxAge, h.grace) {
+			if stepRun != nil && stepRun.IsStale(now, stalePendingMaxAge, staleGrace) {
 				hasStale = true
 				break
 			}
@@ -138,7 +127,7 @@ func (h *FailStaleStepRunsHandler) failWorkflowRun(
 				continue
 			}
 
-			if stepRun.IsStale(now, h.pendingMaxAge, h.grace) {
+			if stepRun.IsStale(now, stalePendingMaxAge, staleGrace) {
 				if err := stepRun.MarkFailed(staleStepRunError, nil, nil); err != nil {
 					if errors.Is(err, domainsteprun.ErrAlreadyTerminal) ||
 						errors.Is(err, domainsteprun.ErrInvalidStatusTransition) {

@@ -16,8 +16,6 @@ import (
 
 func TestFailStaleStepRunsHandler_FailsStaleHTTPAndCancelsWaitingDelay(t *testing.T) {
 	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
-	pendingMaxAge := 30 * time.Minute
-	grace := 5 * time.Minute
 
 	workflowRunID := uuid.New()
 	run := runningWorkflowRun(workflowRunID)
@@ -42,8 +40,8 @@ func TestFailStaleStepRunsHandler_FailsStaleHTTPAndCancelsWaitingDelay(t *testin
 	runRepo := newMemWorkflowRunRepo(run)
 	outbox := &memOutbox{}
 
-	handler := NewFailStaleStepRunsHandler(stepRepo, runRepo, outbox, pendingMaxAge, grace, 1)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	handler := NewFailStaleStepRunsHandler(stepRepo, runRepo, outbox)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
@@ -91,11 +89,8 @@ func TestFailStaleStepRunsHandler_IgnoresLongRunningHTTPWithinTimeout(t *testing
 		newMemStepRunRepo(httpRun),
 		newMemWorkflowRunRepo(run),
 		&memOutbox{},
-		30*time.Minute,
-		5*time.Minute,
-		1,
 	)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
@@ -126,11 +121,8 @@ func TestFailStaleStepRunsHandler_IgnoresWaitingDelayOnly(t *testing.T) {
 		newMemStepRunRepo(delay),
 		newMemWorkflowRunRepo(run),
 		&memOutbox{},
-		30*time.Minute,
-		5*time.Minute,
-		1,
 	)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
@@ -166,11 +158,8 @@ func TestFailStaleStepRunsHandler_DeduplicatesByWorkflowRun(t *testing.T) {
 		newMemStepRunRepo(first, second),
 		newMemWorkflowRunRepo(run),
 		&memOutbox{},
-		30*time.Minute,
-		5*time.Minute,
-		1,
 	)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
@@ -201,11 +190,8 @@ func TestFailStaleStepRunsHandler_FailsRunningHTTPPastTimeout(t *testing.T) {
 		newMemStepRunRepo(httpRun),
 		newMemWorkflowRunRepo(run),
 		&memOutbox{},
-		30*time.Minute,
-		5*time.Minute,
-		1,
 	)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
@@ -240,11 +226,8 @@ func TestFailStaleStepRunsHandler_SkipsAlreadyTerminalWorkflowRun(t *testing.T) 
 		newMemStepRunRepo(stale),
 		newMemWorkflowRunRepo(run),
 		&memOutbox{},
-		30*time.Minute,
-		5*time.Minute,
-		1,
 	)
-	failed, err := handler.Handle(context.Background(), now, 100)
+	failed, err := handler.Handle(context.Background(), now)
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}

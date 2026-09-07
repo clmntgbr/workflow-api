@@ -40,7 +40,7 @@ POST /start → workflowRun.started.v1
   → workflowRun.finished.v1
 ```
 
-Scheduler also polls stalled **HTTP/condition** step runs (not delays) every 30 minutes (clock-aligned, same pattern as due workflow claims). A `pending` step older than `STALE_STEP_RUN_PENDING_MAX_AGE`, or a `running` step past `timeout × attempts + retry delays + grace`, fails that step, cancels siblings (including waiting delays), and fails the workflow run. Long delay steps never trigger this.
+Scheduler also polls stalled **HTTP/condition** step runs (not delays) every 30 minutes (clock-aligned, same pattern as due workflow claims). A `pending` step older than 30 minutes, or a `running` step past `timeout × attempts + retry delays + 5m` grace, fails that step, cancels siblings (including waiting delays), and fails the workflow run. Long delay steps never trigger this.
 
 ## Step run statuses
 
