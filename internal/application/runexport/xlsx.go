@@ -15,9 +15,10 @@ import (
 
 const (
 	sheetRuns       = "Runs"
-	sheetStepRuns   = "Step runs"
 	sheetAssertions = "Assertions"
 	maxFileBytes    = 15 * 1024 * 1024
+	kindRun         = "run"
+	kindStep        = "step"
 )
 
 type BuildInput struct {
@@ -34,22 +35,17 @@ func BuildXLSX(in BuildInput) ([]byte, error) {
 	if err := file.SetSheetName("Sheet1", sheetRuns); err != nil {
 		return nil, err
 	}
-	if _, err := file.NewSheet(sheetStepRuns); err != nil {
-		return nil, err
-	}
 	if _, err := file.NewSheet(sheetAssertions); err != nil {
 		return nil, err
 	}
 
 	insightsByStepRun := indexInsights(in.Insights)
+	stepRunsByRun := groupStepRuns(in.StepRuns)
 
-	if err := writeRunsSheet(file, in.Runs); err != nil {
+	if err := writeRunsSheet(file, in.Runs, stepRunsByRun, insightsByStepRun, in.WithInsights); err != nil {
 		return nil, err
 	}
-	if err := writeStepRunsSheet(file, in.StepRuns, insightsByStepRun, in.WithInsights); err != nil {
-		return nil, err
-	}
-	if err := writeAssertionsSheet(file, in.StepRuns); err != nil {
+	if err := writeAssertionsSheet(file, in.Runs, stepRunsByRun); err != nil {
 		return nil, err
 	}
 
@@ -63,39 +59,23 @@ func BuildXLSX(in BuildInput) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func writeRunsSheet(file *excelize.File, runs []domainworkflowrun.WorkflowRunView) error {
-	headers := []string{"id", "status", "triggeredBy", "startedAt", "finishedAt", "error"}
-	if err := writeHeader(file, sheetRuns, headers); err != nil {
-		return err
-	}
-	for i, run := range runs {
-		row := i + 2
-		values := []any{
-			run.ID.String(),
-			string(run.Status),
-			string(run.TriggeredBy),
-			formatTime(run.StartedAt),
-			formatTime(run.FinishedAt),
-			run.Error,
-		}
-		if err := writeRow(file, sheetRuns, row, values); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func writeStepRunsSheet(
+func writeRunsSheet(
 	file *excelize.File,
-	stepRuns []domainsteprun.StepRunView,
+	runs []domainworkflowrun.WorkflowRunView,
+	stepRunsByRun map[uuid.UUID][]domainsteprun.StepRunView,
 	insights map[uuid.UUID]domaininsight.InsightView,
 	withInsights bool,
 ) error {
 	headers := []string{
-		"runId", "stepName", "type", "status", "attempt",
-		"method", "url", "requestHeaders", "requestQuery", "requestBody",
+		"kind",
+		"runId", "runStatus", "runStartedAt", "runFinishedAt", "runDurationMs",
+		"runCreatedAt", "runError", "runContext",
+		"stepId", "stepName", "stepDescription", "stepType", "stepStatus",
+		"executionOrder", "attempt", "stepStartedAt", "stepFinishedAt", "stepDurationMs",
+		"method", "url", "timeout", "retryOnFailure", "retryCount", "retryDelay",
+		"requestHeaders", "requestQuery", "requestBody",
 		"responseStatus", "responseHeaders", "responseBody",
-		"extractedVariables", "matchedBranch", "error",
+		"extractedVariables", "matchedBranch", "resumeAt", "delaySeconds", "stepError",
 	}
 	if withInsights {
 		headers = append(headers,
@@ -103,64 +83,125 @@ func writeStepRunsSheet(
 			"requestSize", "responseSize", "insightAttempts", "insightError",
 		)
 	}
-	if err := writeHeader(file, sheetStepRuns, headers); err != nil {
+	if err := writeHeader(file, sheetRuns, headers); err != nil {
 		return err
 	}
 
-	for i, stepRun := range stepRuns {
-		row := i + 2
-		responseStatus := ""
-		var responseHeaders any
-		var responseBody any
-		if stepRun.ResponseSnapshot != nil {
-			responseStatus = strconv.Itoa(stepRun.ResponseSnapshot.Status)
-			responseHeaders = redactHeaders(stepRun.ResponseSnapshot.Headers)
-			responseBody = redactBody(stepRun.ResponseSnapshot.Body)
-		}
-		values := []any{
-			stepRun.WorkflowRunID.String(),
-			stepRun.Name,
-			string(stepRun.StepType),
-			string(stepRun.Status),
-			stepRun.Attempt,
-			stepRun.Method,
-			stepRun.URL,
-			toJSONCell(redactHeaders(stepRun.Headers)),
-			toJSONCell(redactQuery(stepRun.Query)),
-			toJSONCell(redactBody(stepRun.Body)),
-			responseStatus,
-			toJSONCell(responseHeaders),
-			toJSONCell(responseBody),
-			toJSONCell(redactBody(stepRun.ExtractedVariables)),
-			formatBool(stepRun.MatchedBranch),
-			stepRun.Error,
-		}
-		if withInsights {
-			insight, ok := insights[stepRun.ID]
-			if ok {
-				values = append(values,
-					durationMS(insight.Duration),
-					durationMS(insight.TTFB),
-					durationMS(insight.DNSLookupDuration),
-					durationMS(insight.TCPConnectionTime),
-					durationMS(insight.TLSHandshakeTime),
-					int64Cell(insight.RequestSize),
-					int64Cell(insight.ResponseSize),
-					insight.TotalAttempts,
-					insight.ErrorMessage,
-				)
-			} else {
-				values = append(values, "", "", "", "", "", "", "", "", "")
-			}
-		}
-		if err := writeRow(file, sheetStepRuns, row, values); err != nil {
+	row := 2
+	for i, run := range runs {
+		if err := writeRow(file, sheetRuns, row, runRow(run, withInsights)); err != nil {
 			return err
+		}
+		row++
+		for _, stepRun := range stepRunsByRun[run.ID] {
+			if err := writeRow(file, sheetRuns, row, stepRow(run.ID, stepRun, insights[stepRun.ID], withInsights)); err != nil {
+				return err
+			}
+			row++
+		}
+		if i < len(runs)-1 {
+			row++
 		}
 	}
 	return nil
 }
 
-func writeAssertionsSheet(file *excelize.File, stepRuns []domainsteprun.StepRunView) error {
+func runRow(run domainworkflowrun.WorkflowRunView, withInsights bool) []any {
+	values := []any{
+		kindRun,
+		run.ID.String(),
+		string(run.Status),
+		formatTime(run.StartedAt),
+		formatTime(run.FinishedAt),
+		durationBetween(run.StartedAt, run.FinishedAt),
+		run.CreatedAt.UTC().Format(time.RFC3339),
+		run.Error,
+		toJSONCell(redactBody(run.Context)),
+		"", "", "", "", "",
+		"", "", "", "", "",
+		"", "", "", "", "", "",
+		"", "", "",
+		"", "", "",
+		"", "", "", "", "",
+	}
+	if withInsights {
+		values = append(values, "", "", "", "", "", "", "", "", "")
+	}
+	return values
+}
+
+func stepRow(
+	runID uuid.UUID,
+	stepRun domainsteprun.StepRunView,
+	insight domaininsight.InsightView,
+	withInsights bool,
+) []any {
+	responseStatus := ""
+	var responseHeaders any
+	var responseBody any
+	if stepRun.ResponseSnapshot != nil {
+		responseStatus = strconv.Itoa(stepRun.ResponseSnapshot.Status)
+		responseHeaders = redactHeaders(stepRun.ResponseSnapshot.Headers)
+		responseBody = redactBody(stepRun.ResponseSnapshot.Body)
+	}
+
+	values := []any{
+		kindStep,
+		runID.String(),
+		"", "", "", "", "", "", "",
+		stepRun.ID.String(),
+		stepRun.Name,
+		stepRun.Description,
+		string(stepRun.StepType),
+		string(stepRun.Status),
+		stepRun.ExecutionOrder,
+		stepRun.Attempt,
+		formatTime(stepRun.StartedAt),
+		formatTime(stepRun.FinishedAt),
+		durationBetween(stepRun.StartedAt, stepRun.FinishedAt),
+		stepRun.Method,
+		stepRun.URL,
+		stepRun.Timeout,
+		stepRun.RetryOnFailure,
+		stepRun.RetryCount,
+		stepRun.RetryDelay,
+		toJSONCell(redactHeaders(stepRun.Headers)),
+		toJSONCell(redactQuery(stepRun.Query)),
+		toJSONCell(redactBody(stepRun.Body)),
+		responseStatus,
+		toJSONCell(responseHeaders),
+		toJSONCell(responseBody),
+		toJSONCell(redactBody(stepRun.ExtractedVariables)),
+		formatBool(stepRun.MatchedBranch),
+		formatTime(stepRun.ResumeAt),
+		delaySeconds(stepRun),
+		stepRun.Error,
+	}
+	if withInsights {
+		if insight.ID != uuid.Nil {
+			values = append(values,
+				durationMS(insight.Duration),
+				durationMS(insight.TTFB),
+				durationMS(insight.DNSLookupDuration),
+				durationMS(insight.TCPConnectionTime),
+				durationMS(insight.TLSHandshakeTime),
+				int64Cell(insight.RequestSize),
+				int64Cell(insight.ResponseSize),
+				insight.TotalAttempts,
+				insight.ErrorMessage,
+			)
+		} else {
+			values = append(values, "", "", "", "", "", "", "", "", "")
+		}
+	}
+	return values
+}
+
+func writeAssertionsSheet(
+	file *excelize.File,
+	runs []domainworkflowrun.WorkflowRunView,
+	stepRunsByRun map[uuid.UUID][]domainsteprun.StepRunView,
+) error {
 	headers := []string{
 		"runId", "stepName", "description", "source", "operator",
 		"expected", "passed", "actual", "message",
@@ -170,35 +211,45 @@ func writeAssertionsSheet(file *excelize.File, stepRuns []domainsteprun.StepRunV
 	}
 
 	row := 2
-	for _, stepRun := range stepRuns {
-		snapshots := make(map[string]int, len(stepRun.Assertions))
-		for i, snap := range stepRun.Assertions {
-			snapshots[snap.AssertionID] = i
-		}
-		for _, result := range stepRun.AssertionsResult {
-			description, source, operator, expected := "", "", "", ""
-			if idx, ok := snapshots[result.AssertionID]; ok {
-				snap := stepRun.Assertions[idx]
-				description = snap.Description
-				source = string(snap.Source)
-				operator = string(snap.Operator)
-				expected = snap.ExpectedValue
+	wroteGroup := false
+	for _, run := range runs {
+		groupStarted := false
+		for _, stepRun := range stepRunsByRun[run.ID] {
+			snapshots := make(map[string]int, len(stepRun.Assertions))
+			for idx, snap := range stepRun.Assertions {
+				snapshots[snap.AssertionID] = idx
 			}
-			values := []any{
-				stepRun.WorkflowRunID.String(),
-				stepRun.Name,
-				description,
-				source,
-				operator,
-				expected,
-				result.Passed,
-				toJSONCell(result.ActualValue),
-				result.Message,
+			for _, result := range stepRun.AssertionsResult {
+				if wroteGroup && !groupStarted {
+					row++
+				}
+				groupStarted = true
+				wroteGroup = true
+
+				description, source, operator, expected := "", "", "", ""
+				if idx, ok := snapshots[result.AssertionID]; ok {
+					snap := stepRun.Assertions[idx]
+					description = snap.Description
+					source = string(snap.Source)
+					operator = string(snap.Operator)
+					expected = snap.ExpectedValue
+				}
+				values := []any{
+					stepRun.WorkflowRunID.String(),
+					stepRun.Name,
+					description,
+					source,
+					operator,
+					expected,
+					result.Passed,
+					toJSONCell(result.ActualValue),
+					result.Message,
+				}
+				if err := writeRow(file, sheetAssertions, row, values); err != nil {
+					return err
+				}
+				row++
 			}
-			if err := writeRow(file, sheetAssertions, row, values); err != nil {
-				return err
-			}
-			row++
 		}
 	}
 	return nil
@@ -223,6 +274,14 @@ func writeRow(file *excelize.File, sheet string, row int, values []any) error {
 		}
 	}
 	return nil
+}
+
+func groupStepRuns(stepRuns []domainsteprun.StepRunView) map[uuid.UUID][]domainsteprun.StepRunView {
+	out := make(map[uuid.UUID][]domainsteprun.StepRunView)
+	for _, stepRun := range stepRuns {
+		out[stepRun.WorkflowRunID] = append(out[stepRun.WorkflowRunID], stepRun)
+	}
+	return out
 }
 
 func indexInsights(views []domaininsight.InsightView) map[uuid.UUID]domaininsight.InsightView {
@@ -252,6 +311,13 @@ func formatBool(value *bool) string {
 	return "false"
 }
 
+func durationBetween(start, end *time.Time) any {
+	if start == nil || end == nil {
+		return ""
+	}
+	return end.Sub(*start).Milliseconds()
+}
+
 func durationMS(d *time.Duration) any {
 	if d == nil {
 		return ""
@@ -264,4 +330,11 @@ func int64Cell(v *int64) any {
 		return ""
 	}
 	return *v
+}
+
+func delaySeconds(stepRun domainsteprun.StepRunView) any {
+	if stepRun.DelayDurationSeconds <= 0 {
+		return ""
+	}
+	return stepRun.DelayDurationSeconds
 }
