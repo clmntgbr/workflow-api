@@ -12,6 +12,7 @@ import (
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryproject "go-api/internal/application/query/project"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/application/workflowio"
 	domainproject "go-api/internal/domain/project"
 	domainworkflow "go-api/internal/domain/workflow"
 	"go-api/internal/interfaces/http/handler"
@@ -155,6 +156,38 @@ func (m *mockGetProjectByIDHandler) Handle(
 	return m.views[idx], nil
 }
 
+type mockExportWorkflowHandler struct {
+	called bool
+	query  queryworkflow.ExportWorkflowQuery
+	result *workflowio.Document
+	err    error
+}
+
+func (m *mockExportWorkflowHandler) Handle(
+	_ context.Context,
+	q queryworkflow.ExportWorkflowQuery,
+) (*workflowio.Document, error) {
+	m.called = true
+	m.query = q
+	return m.result, m.err
+}
+
+type mockImportWorkflowHandler struct {
+	called bool
+	cmd    workflowcmd.ImportWorkflowCommand
+	result *domainworkflow.Workflow
+	err    error
+}
+
+func (m *mockImportWorkflowHandler) Handle(
+	_ context.Context,
+	cmd workflowcmd.ImportWorkflowCommand,
+) (*domainworkflow.Workflow, error) {
+	m.called = true
+	m.cmd = cmd
+	return m.result, m.err
+}
+
 func newWorkflowHandler(
 	create *mockCreateWorkflowHandler,
 	update *mockUpdateWorkflowHandler,
@@ -189,7 +222,42 @@ func newWorkflowHandler(
 	if getProject == nil {
 		getProject = &mockGetProjectByIDHandler{}
 	}
-	return handler.NewWorkflowHandler(create, update, activate, deactivate, deleteH, getByID, list, getProject)
+	return handler.NewWorkflowHandler(
+		create,
+		update,
+		activate,
+		deactivate,
+		deleteH,
+		getByID,
+		list,
+		getProject,
+		&mockExportWorkflowHandler{},
+		&mockImportWorkflowHandler{},
+	)
+}
+
+func newWorkflowHandlerWithIO(
+	exportH *mockExportWorkflowHandler,
+	importH *mockImportWorkflowHandler,
+) *handler.WorkflowHandler {
+	if exportH == nil {
+		exportH = &mockExportWorkflowHandler{}
+	}
+	if importH == nil {
+		importH = &mockImportWorkflowHandler{}
+	}
+	return handler.NewWorkflowHandler(
+		&mockCreateWorkflowHandler{},
+		&mockUpdateWorkflowHandler{},
+		&mockActivateWorkflowHandler{},
+		&mockDeactivateWorkflowHandler{},
+		&mockDeleteWorkflowHandler{},
+		&mockGetWorkflowByIDHandler{},
+		&mockListWorkflowsByProjectHandler{},
+		&mockGetProjectByIDHandler{},
+		exportH,
+		importH,
+	)
 }
 
 func sampleWorkflowEntity() *domainworkflow.Workflow {

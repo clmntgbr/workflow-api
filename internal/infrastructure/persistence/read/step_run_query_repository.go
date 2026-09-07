@@ -21,46 +21,45 @@ type stepRunRow struct {
 	WorkflowRunID        uuid.UUID
 	StepID               uuid.UUID
 	WorkflowID           uuid.UUID
-	EndpointID           *uuid.UUID
 	ProjectID            uuid.UUID
 	StepType             string `gorm:"column:step_type"`
 	DelayDurationSeconds *int
 	Name                 string
-	Description        string
-	URL                string
-	Method             string
-	Headers            dbtype.JSONB
-	QueryParams        dbtype.JSONB
-	Body               dbtype.JSONB
-	Timeout            int `gorm:"column:timeout_ms"`
-	RetryOnFailure     bool
-	RetryCount         int
-	RetryDelay         int `gorm:"column:retry_delay_ms"`
-	StepIndex          string
-	ExecutionOrder     int
-	TreeIndex          int
-	PositionX          float64
-	PositionY          float64
-	Status             string
-	Attempt            int
-	VariableExtracts   dbtype.JSONB `gorm:"column:variable_extracts"`
-	Assertions         dbtype.JSONB `gorm:"column:assertions"`
-	ResponseSnapshot   dbtype.JSONB
-	ExtractedVariables dbtype.JSONB `gorm:"column:extracted_variables"`
-	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
-	StartedAt          *time.Time
-	FinishedAt         *time.Time
-	ResumeAt           *time.Time
-	MatchedBranch      *bool
-	Error              string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	Description          string
+	URL                  string
+	Method               string
+	Headers              dbtype.JSONB
+	QueryParams          dbtype.JSONB
+	Body                 dbtype.JSONB
+	Timeout              int `gorm:"column:timeout_ms"`
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int `gorm:"column:retry_delay_ms"`
+	StepIndex            string
+	ExecutionOrder       int
+	TreeIndex            int
+	PositionX            float64
+	PositionY            float64
+	Status               string
+	Attempt              int
+	VariableExtracts     dbtype.JSONB `gorm:"column:variable_extracts"`
+	Assertions           dbtype.JSONB `gorm:"column:assertions"`
+	ResponseSnapshot     dbtype.JSONB
+	ExtractedVariables   dbtype.JSONB `gorm:"column:extracted_variables"`
+	AssertionsResult     dbtype.JSONB `gorm:"column:assertions_result"`
+	StartedAt            *time.Time
+	FinishedAt           *time.Time
+	ResumeAt             *time.Time
+	MatchedBranch        *bool
+	Error                string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 func (stepRunRow) TableName() string { return "step_runs" }
 
 var stepRunSelectColumns = []string{
-	"id", "workflow_run_id", "step_id", "workflow_id", "endpoint_id", "project_id",
+	"id", "workflow_run_id", "step_id", "workflow_id", "project_id",
 	"step_type", "delay_duration_seconds",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
@@ -299,24 +298,23 @@ func toStepRunView(row stepRunRow) (*domainsteprun.StepRunView, error) {
 		WorkflowRunID:        row.WorkflowRunID,
 		StepID:               row.StepID,
 		WorkflowID:           row.WorkflowID,
-		EndpointID:           row.EndpointID,
 		ProjectID:            row.ProjectID,
 		StepType:             stepType,
 		DelayDurationSeconds: intValueOrZero(row.DelayDurationSeconds),
 		Name:                 row.Name,
-		Description:    row.Description,
-		URL:            row.URL,
-		Method:         row.Method,
-		Headers:        headers,
-		Query:          query,
-		Body:           body,
-		Timeout:        row.Timeout,
-		RetryOnFailure: row.RetryOnFailure,
-		RetryCount:     row.RetryCount,
-		RetryDelay:     row.RetryDelay,
-		Index:          row.StepIndex,
-		ExecutionOrder: row.ExecutionOrder,
-		TreeIndex:      row.TreeIndex,
+		Description:          row.Description,
+		URL:                  row.URL,
+		Method:               row.Method,
+		Headers:              headers,
+		Query:                query,
+		Body:                 body,
+		Timeout:              row.Timeout,
+		RetryOnFailure:       row.RetryOnFailure,
+		RetryCount:           row.RetryCount,
+		RetryDelay:           row.RetryDelay,
+		Index:                row.StepIndex,
+		ExecutionOrder:       row.ExecutionOrder,
+		TreeIndex:            row.TreeIndex,
 		Position: domainstep.Position{
 			X: row.PositionX,
 			Y: row.PositionY,

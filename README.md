@@ -190,7 +190,7 @@ Update a delay step (`PUT …/steps/:id`):
 
 Rules:
 
-- `http` — `endpointId` required; no `delayDurationSeconds` or `expression`
+- `http` — `endpointId` required at create (catalog snapshot; not stored on the step); no `delayDurationSeconds` or `expression`
 - `delay` — `delayDurationSeconds` required; no `endpointId` or `expression`; no variables or assertions
 - `condition` — `expression` required; no `endpointId` or `delayDurationSeconds`; no variables or assertions; two outgoing connections with `branch: "true"` and `branch: "false"`
 - orphan delay (no connections) — skipped at runtime

@@ -34,41 +34,40 @@ type StepRunReadRepository interface {
 }
 
 type StepRunView struct {
-	ID                 uuid.UUID
-	WorkflowRunID      uuid.UUID
-	StepID             uuid.UUID
-	WorkflowID         uuid.UUID
-	EndpointID           *uuid.UUID
+	ID                   uuid.UUID
+	WorkflowRunID        uuid.UUID
+	StepID               uuid.UUID
+	WorkflowID           uuid.UUID
 	ProjectID            uuid.UUID
 	StepType             domainstep.Type
 	DelayDurationSeconds int
 	Name                 string
-	Description        string
-	URL                string
-	Method             string
-	Headers            map[string]string
-	Query              httpquery.Params
-	Body               map[string]any
-	Timeout            int
-	RetryOnFailure     bool
-	RetryCount         int
-	RetryDelay         int
-	Index              string
-	ExecutionOrder     int
-	TreeIndex          int
-	Position           domainstep.Position
-	Status             Status
-	Attempt            int
-	VariableExtracts   []VariableExtract
-	Assertions         []domainassertion.Snapshot
-	ResponseSnapshot   *ResponseSnapshot
-	ExtractedVariables map[string]any
-	AssertionsResult   []domainassertion.Result
-	StartedAt          *time.Time
-	FinishedAt         *time.Time
-	ResumeAt           *time.Time
-	MatchedBranch      *bool
-	Error              string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	Description          string
+	URL                  string
+	Method               string
+	Headers              map[string]string
+	Query                httpquery.Params
+	Body                 map[string]any
+	Timeout              int
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int
+	Index                string
+	ExecutionOrder       int
+	TreeIndex            int
+	Position             domainstep.Position
+	Status               Status
+	Attempt              int
+	VariableExtracts     []VariableExtract
+	Assertions           []domainassertion.Snapshot
+	ResponseSnapshot     *ResponseSnapshot
+	ExtractedVariables   map[string]any
+	AssertionsResult     []domainassertion.Result
+	StartedAt            *time.Time
+	FinishedAt           *time.Time
+	ResumeAt             *time.Time
+	MatchedBranch        *bool
+	Error                string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }

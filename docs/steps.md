@@ -6,7 +6,7 @@ A **step** is a node on the workflow canvas. Three types:
 
 | Type | Purpose | Key fields |
 |------|---------|------------|
-| `http` (default) | Call an external API | `endpointId` — snapshot of [endpoint](endpoints.md) |
+| `http` (default) | Call an external API | Snapshot from [endpoint](endpoints.md) at create time (`endpointId` on POST only) |
 | `delay` | Pause between steps | `delayDurationSeconds` (> 0) |
 | `condition` | Branch on expression | `expression` (expr-lang, `{{var}}` placeholders) |
 
@@ -35,7 +35,7 @@ POST /api/workflows/:workflowId/steps
 }
 ```
 
-- `endpointId` required.
+- `endpointId` required on create; the catalog endpoint is copied onto the step and is not stored afterwards.
 - Supports [variables](variables.md) and [assertions](assertions.md).
 
 ### Delay

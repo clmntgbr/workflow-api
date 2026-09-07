@@ -34,7 +34,6 @@ type StepRunStarted struct {
 	WorkflowRunID  string              `json:"workflowRunId"`
 	StepID         string              `json:"stepId"`
 	WorkflowID     string              `json:"workflowId"`
-	EndpointID     string              `json:"endpointId"`
 	ProjectID      string              `json:"projectId"`
 	Name           string              `json:"name"`
 	Description    string              `json:"description"`

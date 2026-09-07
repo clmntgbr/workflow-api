@@ -7,7 +7,13 @@ import (
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryproject "go-api/internal/application/query/project"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/application/workflowio"
+	domainassertion "go-api/internal/domain/assertion"
+	domaincondition "go-api/internal/domain/condition"
+	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/paginate"
+	domainstep "go-api/internal/domain/step"
+	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
 	httpctx "go-api/internal/interfaces/http/context"
 	"go-api/internal/interfaces/http/dto"
@@ -27,6 +33,8 @@ type WorkflowHandler struct {
 	getByIDHandler        workflowGetByIDHandler
 	listByOrgHandler      workflowListByProjectHandler
 	getProjectByIDHandler workflowGetProjectByIDHandler
+	exportHandler         workflowExportHandler
+	importHandler         workflowImportHandler
 }
 
 func NewWorkflowHandler(
@@ -38,16 +46,20 @@ func NewWorkflowHandler(
 	getByIDHandler workflowGetByIDHandler,
 	listByOrgHandler workflowListByProjectHandler,
 	getProjectByIDHandler workflowGetProjectByIDHandler,
+	exportHandler workflowExportHandler,
+	importHandler workflowImportHandler,
 ) *WorkflowHandler {
 	return &WorkflowHandler{
-		createHandler:     createHandler,
-		updateHandler:     updateHandler,
-		activateHandler:   activateHandler,
-		deactivateHandler: deactivateHandler,
-		deleteHandler:     deleteHandler,
-		getByIDHandler:    getByIDHandler,
-		listByOrgHandler:  listByOrgHandler,
+		createHandler:         createHandler,
+		updateHandler:         updateHandler,
+		activateHandler:       activateHandler,
+		deactivateHandler:     deactivateHandler,
+		deleteHandler:         deleteHandler,
+		getByIDHandler:        getByIDHandler,
+		listByOrgHandler:      listByOrgHandler,
 		getProjectByIDHandler: getProjectByIDHandler,
+		exportHandler:         exportHandler,
+		importHandler:         importHandler,
 	}
 }
 
@@ -76,7 +88,7 @@ func (h *WorkflowHandler) Create(c fiber.Ctx) error {
 		UserID:                user.ID,
 		Name:                  req.Name,
 		Description:           req.Description,
-		ProjectID:        orgID,
+		ProjectID:             orgID,
 		ScheduleType:          parseScheduleTypeOrNone(req.ScheduleType),
 		ScheduleIntervalValue: intOrDefault(req.ScheduleIntervalValue, 0),
 		ScheduleIntervalUnit:  domainworkflow.ScheduleUnit(req.ScheduleIntervalUnit),
@@ -146,8 +158,8 @@ func (h *WorkflowHandler) GetByID(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-		"code":             "WRONG_ORGANIZATION",
-		"message":          "Workflow belongs to another project",
+		"code":        "WRONG_ORGANIZATION",
+		"message":     "Workflow belongs to another project",
 		"projectId":   org.ID.String(),
 		"projectName": org.Name,
 	})
@@ -178,7 +190,7 @@ func (h *WorkflowHandler) ListByProject(c fiber.Ctx) error {
 
 	views, total, err := h.listByOrgHandler.Handle(c.Context(), queryworkflow.ListWorkflowsByProjectQuery{
 		ProjectID: orgID,
-		Query:          query,
+		Query:     query,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to list workflows"})
@@ -379,6 +391,76 @@ func (h *WorkflowHandler) Delete(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+func (h *WorkflowHandler) Export(c fiber.Ctx) error {
+	_, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	orgID, err := httpctx.GetActiveProjectID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
+	}
+
+	id, err := uuid.Parse(c.Params("workflowId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid workflow id"})
+	}
+
+	doc, err := h.exportHandler.Handle(c.Context(), queryworkflow.ExportWorkflowQuery{
+		ID:        id,
+		ProjectID: orgID,
+	})
+	if err != nil {
+		if err.Error() == "workflow not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		if errors.Is(err, workflowio.ErrInvalidDocument) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to export workflow"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(doc)
+}
+
+func (h *WorkflowHandler) Import(c fiber.Ctx) error {
+	user, err := httpctx.GetUser(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	orgID, err := httpctx.GetActiveProjectID(c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Active project is required"})
+	}
+
+	var doc workflowio.Document
+	if err := validation.BindBody(c, &doc); err != nil {
+		return err
+	}
+
+	w, err := h.importHandler.Handle(c.Context(), workflowcmd.ImportWorkflowCommand{
+		UserID:    user.ID,
+		ProjectID: orgID,
+		Document:  doc,
+	})
+	if err != nil {
+		if handled, resp := respondQuotaError(c, err); handled {
+			return resp
+		}
+		if status, message := scheduleError(err); status != 0 {
+			return c.Status(status).JSON(fiber.Map{"message": message})
+		}
+		if status, message := importWorkflowError(err); status != 0 {
+			return c.Status(status).JSON(fiber.Map{"message": message})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to import workflow"})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(presenter.NewWorkflowDetailResponseFromEntity(*w))
+}
+
 func boolOrDefault(value *bool, fallback bool) bool {
 	if value == nil {
 		return fallback
@@ -405,6 +487,40 @@ func scheduleError(err error) (int, string) {
 	case errors.Is(err, domainworkflow.ErrScheduleIntervalTooShort):
 		return fiber.StatusBadRequest, err.Error()
 	case errors.Is(err, domainworkflow.ErrInvalidSchedule), errors.Is(err, domainworkflow.ErrInvalidScheduleTimezone):
+		return fiber.StatusBadRequest, err.Error()
+	default:
+		return 0, ""
+	}
+}
+
+func importWorkflowError(err error) (int, string) {
+	switch {
+	case errors.Is(err, workflowio.ErrUnsupportedFormat),
+		errors.Is(err, workflowio.ErrInvalidDocument),
+		errors.Is(err, domainstep.ErrInvalidStepTypeConfig),
+		errors.Is(err, domaincondition.ErrInvalidExpression),
+		errors.Is(err, domainconnection.ErrInvalidBranch),
+		errors.Is(err, domainconnection.ErrConditionRequiresBranch),
+		errors.Is(err, domainconnection.ErrNonConditionBranchForbidden),
+		errors.Is(err, domainconnection.ErrConditionOutgoingCount),
+		errors.Is(err, domainconnection.ErrConditionalTargetMultipleParents),
+		errors.Is(err, domainvariable.ErrInvalidKind),
+		errors.Is(err, domainvariable.ErrStepRequired),
+		errors.Is(err, domainvariable.ErrStepForbidden),
+		errors.Is(err, domainvariable.ErrPathRequired),
+		errors.Is(err, domainvariable.ErrPathForbidden),
+		errors.Is(err, domainvariable.ErrValueRequired),
+		errors.Is(err, domainvariable.ErrValueForbidden),
+		errors.Is(err, domainvariable.ErrDuplicateKey),
+		errors.Is(err, domainassertion.ErrInvalidSource),
+		errors.Is(err, domainassertion.ErrInvalidOperator),
+		errors.Is(err, domainassertion.ErrPathRequired),
+		errors.Is(err, domainassertion.ErrPathForbidden),
+		errors.Is(err, domainassertion.ErrExpectedValueRequired),
+		errors.Is(err, domainassertion.ErrExpectedValueForbidden),
+		errors.Is(err, domainassertion.ErrInvalidExpectedNumber),
+		errors.Is(err, domainassertion.ErrInvalidExpectedRegex),
+		errors.Is(err, domainstep.ErrNonHTTPStepCannotHaveExtras):
 		return fiber.StatusBadRequest, err.Error()
 	default:
 		return 0, ""

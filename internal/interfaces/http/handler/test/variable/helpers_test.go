@@ -231,10 +231,10 @@ func activeProject() fiber.Handler {
 	return testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID)
 }
 
-func variablesRoute() string             { return "/workflows/:workflowId/variables" }
-func variableItemRoute() string          { return "/workflows/:workflowId/variables/:id" }
-func availableVariablesRoute() string    { return "/workflows/:workflowId/steps/:stepId/variables" }
-func variablePathsRoute() string         { return "/workflows/:workflowId/steps/:stepId/variable-paths" }
+func variablesRoute() string          { return "/workflows/:workflowId/variables" }
+func variableItemRoute() string       { return "/workflows/:workflowId/variables/:id" }
+func availableVariablesRoute() string { return "/workflows/:workflowId/steps/:stepId/variables" }
+func variablePathsRoute() string      { return "/workflows/:workflowId/steps/:stepId/variable-paths" }
 
 func variablesBasePath() string {
 	return "/workflows/" + testutil.TestWorkflowID.String() + "/variables"
@@ -276,11 +276,9 @@ func workflowMocksOK() *mockGetWorkflowByIDHandler {
 }
 
 func sampleStepView() *domainstep.StepView {
-	endpointID := testutil.TestEndpointID
 	return &domainstep.StepView{
 		ID:         testutil.TestStepID,
 		WorkflowID: testutil.TestWorkflowID,
-		EndpointID: &endpointID,
 		ProjectID:  testutil.TestProjectID,
 	}
 }

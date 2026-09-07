@@ -10,9 +10,9 @@ import (
 type Type string
 
 const (
-	TypeHTTP       Type = "http"
-	TypeDelay      Type = "delay"
-	TypeCondition  Type = "condition"
+	TypeHTTP      Type = "http"
+	TypeDelay     Type = "delay"
+	TypeCondition Type = "condition"
 )
 
 func (t Type) Valid() bool {
@@ -32,8 +32,17 @@ func ParseType(value string) (Type, error) {
 	return t, nil
 }
 
+func ValidHTTPMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
+		return true
+	default:
+		return false
+	}
+}
+
 var (
-	ErrInvalidStepTypeConfig      = errors.New("invalid step type configuration")
+	ErrInvalidStepTypeConfig       = errors.New("invalid step type configuration")
 	ErrNonHTTPStepCannotHaveExtras = errors.New("only HTTP steps can have variables or assertions")
 	// ErrDelayStepCannotHaveExtras is kept for backward compatibility with existing callers.
 	ErrDelayStepCannotHaveExtras = ErrNonHTTPStepCannotHaveExtras
@@ -49,19 +58,19 @@ func ValidateConfig(s *Step) error {
 
 	switch s.Type {
 	case TypeHTTP:
-		if s.EndpointID == nil {
-			return ErrInvalidStepTypeConfig
-		}
 		if s.DelayDurationSeconds != 0 {
 			return ErrInvalidStepTypeConfig
 		}
 		if s.Expression != nil {
 			return ErrInvalidStepTypeConfig
 		}
-	case TypeDelay:
-		if s.EndpointID != nil {
+		if strings.TrimSpace(s.URL) == "" {
 			return ErrInvalidStepTypeConfig
 		}
+		if !ValidHTTPMethod(s.Method) {
+			return ErrInvalidStepTypeConfig
+		}
+	case TypeDelay:
 		if s.DelayDurationSeconds <= 0 {
 			return ErrInvalidStepTypeConfig
 		}
@@ -69,9 +78,6 @@ func ValidateConfig(s *Step) error {
 			return ErrInvalidStepTypeConfig
 		}
 	case TypeCondition:
-		if s.EndpointID != nil {
-			return ErrInvalidStepTypeConfig
-		}
 		if s.DelayDurationSeconds != 0 {
 			return ErrInvalidStepTypeConfig
 		}

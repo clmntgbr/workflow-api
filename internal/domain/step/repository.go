@@ -26,27 +26,26 @@ type StepReadRepository interface {
 type StepView struct {
 	ID                   uuid.UUID
 	WorkflowID           uuid.UUID
-	EndpointID           *uuid.UUID
 	ProjectID            uuid.UUID
 	Type                 Type
 	DelayDurationSeconds int
 	Expression           *string
 	Name                 string
-	Description    string
-	URL            string
-	Method         string
-	Headers        map[string]string
-	Query          httpquery.Params
-	Body           map[string]any
-	Timeout        int
-	RetryOnFailure bool
-	RetryCount     int
-	RetryDelay     int
-	Index          string
-	ExecutionOrder int
-	TreeIndex      int
-	Position       Position
-	Status         Status
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	Description          string
+	URL                  string
+	Method               string
+	Headers              map[string]string
+	Query                httpquery.Params
+	Body                 map[string]any
+	Timeout              int
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int
+	Index                string
+	ExecutionOrder       int
+	TreeIndex            int
+	Position             Position
+	Status               Status
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }

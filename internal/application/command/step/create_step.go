@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	cmdquota "go-api/internal/application/command/quota"
+	"go-api/internal/application/messaging"
 	domainconnection "go-api/internal/domain/connection"
 	domainendpoint "go-api/internal/domain/endpoint"
-	"go-api/internal/application/messaging"
 	"go-api/internal/domain/port"
 	domainstep "go-api/internal/domain/step"
 	domainworkflow "go-api/internal/domain/workflow"
@@ -133,35 +133,31 @@ func (h *CreateStepHandler) Handle(
 	}
 	treeIndices := domainstep.CalculateTreeIndices(executionOrderByStepID, edges)
 
-	s := domainstep.NewStep(domainstep.NewStepParams{
-		ID:         now.ID,
-		WorkflowID: cmd.WorkflowID,
-		EndpointID: cmd.EndpointID,
-		ProjectID:  cmd.ProjectID,
-		Endpoint: domainstep.EndpointSnapshot{
-			ID:             endpoint.ID,
-			Name:           endpoint.Name,
-			Description:    endpoint.Description,
-			URL:            endpoint.URL,
-			Method:         string(endpoint.Method),
-			Headers:        endpoint.Headers,
-			Query:          endpoint.Query,
-			Body:           endpoint.Body,
-			Timeout:        endpoint.Timeout,
-			RetryOnFailure: endpoint.RetryOnFailure,
-			RetryCount:     endpoint.RetryCount,
-			RetryDelay:     endpoint.RetryDelay,
-		},
+	s, err := domainstep.NewHTTPStep(domainstep.NewHTTPStepParams{
+		ID:             now.ID,
+		WorkflowID:     cmd.WorkflowID,
+		ProjectID:      cmd.ProjectID,
+		Name:           endpoint.Name,
+		Description:    endpoint.Description,
+		URL:            endpoint.URL,
+		Method:         string(endpoint.Method),
+		Headers:        endpoint.Headers,
+		Query:          endpoint.Query,
+		Body:           endpoint.Body,
+		Timeout:        endpoint.Timeout,
+		RetryOnFailure: endpoint.RetryOnFailure,
+		RetryCount:     endpoint.RetryCount,
+		RetryDelay:     endpoint.RetryDelay,
 		Index:          ordering[now.ID].Index,
 		ExecutionOrder: ordering[now.ID].ExecutionOrder,
 		TreeIndex:      treeIndices[now.ID],
 		Position:       cmd.Position,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	err = h.stepRepo.WithTransaction(ctx, func(txCtx context.Context) error {
-		if err := domainstep.ValidateConfig(s); err != nil {
-			return err
-		}
 		if err := h.stepRepo.Save(txCtx, s); err != nil {
 			return err
 		}

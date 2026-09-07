@@ -17,25 +17,24 @@ type StepRun struct {
 	StepID        uuid.UUID
 
 	WorkflowID           uuid.UUID
-	EndpointID           *uuid.UUID
 	ProjectID            uuid.UUID
 	StepType             domainstep.Type
 	DelayDurationSeconds int
 	Name                 string
-	Description    string
-	URL            string
-	Method         string
-	Headers        map[string]string
-	Query          httpquery.Params
-	Body           map[string]any
-	Timeout        int
-	RetryOnFailure bool
-	RetryCount     int
-	RetryDelay     int
-	Index          string
-	ExecutionOrder int
-	TreeIndex      int
-	Position       domainstep.Position
+	Description          string
+	URL                  string
+	Method               string
+	Headers              map[string]string
+	Query                httpquery.Params
+	Body                 map[string]any
+	Timeout              int
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int
+	Index                string
+	ExecutionOrder       int
+	TreeIndex            int
+	Position             domainstep.Position
 
 	Status  Status
 	Attempt int
@@ -46,13 +45,13 @@ type StepRun struct {
 	ExtractedVariables map[string]any
 	AssertionsResult   []domainassertion.Result
 
-	StartedAt  *time.Time
-	FinishedAt *time.Time
-	ResumeAt       *time.Time
-	MatchedBranch  *bool
-	Error      string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
+	ResumeAt      *time.Time
+	MatchedBranch *bool
+	Error         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 
 	events []event.DomainEvent
 }
@@ -64,30 +63,29 @@ type VariableExtract struct {
 }
 
 type NewStepRunParams struct {
-	WorkflowRunID    uuid.UUID
-	StepID           uuid.UUID
+	WorkflowRunID        uuid.UUID
+	StepID               uuid.UUID
 	WorkflowID           uuid.UUID
-	EndpointID           *uuid.UUID
 	ProjectID            uuid.UUID
 	StepType             domainstep.Type
 	DelayDurationSeconds int
 	Name                 string
-	Description      string
-	URL              string
-	Method           string
-	Headers          map[string]string
-	Query            httpquery.Params
-	Body             map[string]any
-	Timeout          int
-	RetryOnFailure   bool
-	RetryCount       int
-	RetryDelay       int
-	Index            string
-	ExecutionOrder   int
-	TreeIndex        int
-	Position         domainstep.Position
-	VariableExtracts []VariableExtract
-	Assertions       []domainassertion.Snapshot
+	Description          string
+	URL                  string
+	Method               string
+	Headers              map[string]string
+	Query                httpquery.Params
+	Body                 map[string]any
+	Timeout              int
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int
+	Index                string
+	ExecutionOrder       int
+	TreeIndex            int
+	Position             domainstep.Position
+	VariableExtracts     []VariableExtract
+	Assertions           []domainassertion.Snapshot
 }
 
 func NewStepRun(p NewStepRunParams) *StepRun {
@@ -97,37 +95,36 @@ func NewStepRun(p NewStepRunParams) *StepRun {
 		stepType = domainstep.TypeHTTP
 	}
 	return &StepRun{
-		ID:                 uuid.New(),
-		WorkflowRunID:      p.WorkflowRunID,
-		StepID:             p.StepID,
+		ID:                   uuid.New(),
+		WorkflowRunID:        p.WorkflowRunID,
+		StepID:               p.StepID,
 		WorkflowID:           p.WorkflowID,
-		EndpointID:           p.EndpointID,
 		ProjectID:            p.ProjectID,
 		StepType:             stepType,
 		DelayDurationSeconds: p.DelayDurationSeconds,
 		Name:                 p.Name,
-		Description:        p.Description,
-		URL:                p.URL,
-		Method:             p.Method,
-		Headers:            normalizeStringMap(p.Headers),
-		Query:              httpquery.Clone(p.Query),
-		Body:               normalizeAnyMap(p.Body),
-		Timeout:            p.Timeout,
-		RetryOnFailure:     p.RetryOnFailure,
-		RetryCount:         p.RetryCount,
-		RetryDelay:         p.RetryDelay,
-		Index:              p.Index,
-		ExecutionOrder:     p.ExecutionOrder,
-		TreeIndex:          p.TreeIndex,
-		Position:           p.Position,
-		VariableExtracts:   append([]VariableExtract(nil), p.VariableExtracts...),
-		Assertions:         append([]domainassertion.Snapshot(nil), p.Assertions...),
-		ExtractedVariables: map[string]any{},
-		AssertionsResult:   []domainassertion.Result{},
-		Status:             StatusPending,
-		Attempt:            0,
-		CreatedAt:          now,
-		UpdatedAt:          now,
+		Description:          p.Description,
+		URL:                  p.URL,
+		Method:               p.Method,
+		Headers:              normalizeStringMap(p.Headers),
+		Query:                httpquery.Clone(p.Query),
+		Body:                 normalizeAnyMap(p.Body),
+		Timeout:              p.Timeout,
+		RetryOnFailure:       p.RetryOnFailure,
+		RetryCount:           p.RetryCount,
+		RetryDelay:           p.RetryDelay,
+		Index:                p.Index,
+		ExecutionOrder:       p.ExecutionOrder,
+		TreeIndex:            p.TreeIndex,
+		Position:             p.Position,
+		VariableExtracts:     append([]VariableExtract(nil), p.VariableExtracts...),
+		Assertions:           append([]domainassertion.Snapshot(nil), p.Assertions...),
+		ExtractedVariables:   map[string]any{},
+		AssertionsResult:     []domainassertion.Result{},
+		Status:               StatusPending,
+		Attempt:              0,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 }
 
@@ -326,7 +323,6 @@ func (s *StepRun) startedEvent(at time.Time) StepRunStarted {
 		WorkflowRunID:  s.WorkflowRunID.String(),
 		StepID:         s.StepID.String(),
 		WorkflowID:     s.WorkflowID.String(),
-		EndpointID:     endpointIDString(s.EndpointID),
 		ProjectID:      s.ProjectID.String(),
 		Name:           s.Name,
 		Description:    s.Description,
@@ -377,11 +373,4 @@ func (s *StepRun) failedEvent(at time.Time) StepRunFailed {
 		Error:            s.Error,
 		Timestamp:        at,
 	}
-}
-
-func endpointIDString(id *uuid.UUID) string {
-	if id == nil {
-		return ""
-	}
-	return id.String()
 }

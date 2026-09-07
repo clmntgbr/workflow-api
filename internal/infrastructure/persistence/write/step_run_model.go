@@ -18,40 +18,39 @@ type StepRunModel struct {
 	WorkflowRunID        uuid.UUID    `gorm:"column:workflow_run_id"`
 	StepID               uuid.UUID    `gorm:"column:step_id"`
 	WorkflowID           uuid.UUID    `gorm:"column:workflow_id"`
-	EndpointID           *uuid.UUID   `gorm:"column:endpoint_id"`
 	ProjectID            uuid.UUID    `gorm:"column:project_id"`
 	StepType             string       `gorm:"column:step_type"`
 	DelayDurationSeconds *int         `gorm:"column:delay_duration_seconds"`
 	Name                 string       `gorm:"column:name"`
-	Description        string       `gorm:"column:description"`
-	URL                string       `gorm:"column:url"`
-	Method             string       `gorm:"column:method"`
-	Headers            dbtype.JSONB `gorm:"column:headers"`
-	QueryParams        dbtype.JSONB `gorm:"column:query_params"`
-	Body               dbtype.JSONB `gorm:"column:body"`
-	Timeout            int          `gorm:"column:timeout_ms"`
-	RetryOnFailure     bool         `gorm:"column:retry_on_failure"`
-	RetryCount         int          `gorm:"column:retry_count"`
-	RetryDelay         int          `gorm:"column:retry_delay_ms"`
-	StepIndex          string       `gorm:"column:step_index"`
-	ExecutionOrder     int          `gorm:"column:execution_order"`
-	TreeIndex          int          `gorm:"column:tree_index"`
-	PositionX          float64      `gorm:"column:position_x"`
-	PositionY          float64      `gorm:"column:position_y"`
-	Status             string       `gorm:"column:status"`
-	Attempt            int          `gorm:"column:attempt"`
-	VariableExtracts   dbtype.JSONB `gorm:"column:variable_extracts"`
-	Assertions         dbtype.JSONB `gorm:"column:assertions"`
-	ResponseSnapshot   dbtype.JSONB `gorm:"column:response_snapshot"`
-	ExtractedVariables dbtype.JSONB `gorm:"column:extracted_variables"`
-	AssertionsResult   dbtype.JSONB `gorm:"column:assertions_result"`
-	StartedAt          *time.Time   `gorm:"column:started_at"`
-	FinishedAt         *time.Time   `gorm:"column:finished_at"`
-	ResumeAt           *time.Time   `gorm:"column:resume_at"`
-	MatchedBranch      *bool        `gorm:"column:matched_branch"`
-	Error              string       `gorm:"column:error"`
-	CreatedAt          time.Time    `gorm:"column:created_at"`
-	UpdatedAt          time.Time    `gorm:"column:updated_at"`
+	Description          string       `gorm:"column:description"`
+	URL                  string       `gorm:"column:url"`
+	Method               string       `gorm:"column:method"`
+	Headers              dbtype.JSONB `gorm:"column:headers"`
+	QueryParams          dbtype.JSONB `gorm:"column:query_params"`
+	Body                 dbtype.JSONB `gorm:"column:body"`
+	Timeout              int          `gorm:"column:timeout_ms"`
+	RetryOnFailure       bool         `gorm:"column:retry_on_failure"`
+	RetryCount           int          `gorm:"column:retry_count"`
+	RetryDelay           int          `gorm:"column:retry_delay_ms"`
+	StepIndex            string       `gorm:"column:step_index"`
+	ExecutionOrder       int          `gorm:"column:execution_order"`
+	TreeIndex            int          `gorm:"column:tree_index"`
+	PositionX            float64      `gorm:"column:position_x"`
+	PositionY            float64      `gorm:"column:position_y"`
+	Status               string       `gorm:"column:status"`
+	Attempt              int          `gorm:"column:attempt"`
+	VariableExtracts     dbtype.JSONB `gorm:"column:variable_extracts"`
+	Assertions           dbtype.JSONB `gorm:"column:assertions"`
+	ResponseSnapshot     dbtype.JSONB `gorm:"column:response_snapshot"`
+	ExtractedVariables   dbtype.JSONB `gorm:"column:extracted_variables"`
+	AssertionsResult     dbtype.JSONB `gorm:"column:assertions_result"`
+	StartedAt            *time.Time   `gorm:"column:started_at"`
+	FinishedAt           *time.Time   `gorm:"column:finished_at"`
+	ResumeAt             *time.Time   `gorm:"column:resume_at"`
+	MatchedBranch        *bool        `gorm:"column:matched_branch"`
+	Error                string       `gorm:"column:error"`
+	CreatedAt            time.Time    `gorm:"column:created_at"`
+	UpdatedAt            time.Time    `gorm:"column:updated_at"`
 }
 
 func (StepRunModel) TableName() string {
@@ -136,40 +135,39 @@ func stepRunModelFromDomain(s *domainsteprun.StepRun) (*StepRunModel, error) {
 		WorkflowRunID:        s.WorkflowRunID,
 		StepID:               s.StepID,
 		WorkflowID:           s.WorkflowID,
-		EndpointID:           s.EndpointID,
 		ProjectID:            s.ProjectID,
 		StepType:             string(s.StepType),
 		DelayDurationSeconds: intPtrOrNil(s.DelayDurationSeconds),
 		Name:                 s.Name,
-		Description:        s.Description,
-		URL:                s.URL,
-		Method:             s.Method,
-		Headers:            dbtype.JSONB(headersRaw),
-		QueryParams:        dbtype.JSONB(queryRaw),
-		Body:               dbtype.JSONB(bodyRaw),
-		Timeout:            s.Timeout,
-		RetryOnFailure:     s.RetryOnFailure,
-		RetryCount:         s.RetryCount,
-		RetryDelay:         s.RetryDelay,
-		StepIndex:          s.Index,
-		ExecutionOrder:     s.ExecutionOrder,
-		TreeIndex:          s.TreeIndex,
-		PositionX:          s.Position.X,
-		PositionY:          s.Position.Y,
-		Status:             string(s.Status),
-		Attempt:            s.Attempt,
-		VariableExtracts:   dbtype.JSONB(extractsRaw),
-		Assertions:         dbtype.JSONB(assertionsRaw),
-		ResponseSnapshot:   responseRaw,
-		ExtractedVariables: dbtype.JSONB(extractedRaw),
-		AssertionsResult:   dbtype.JSONB(assertionsResultRaw),
-		StartedAt:          s.StartedAt,
-		FinishedAt:         s.FinishedAt,
-		ResumeAt:           s.ResumeAt,
-		MatchedBranch:      s.MatchedBranch,
-		Error:              s.Error,
-		CreatedAt:          s.CreatedAt,
-		UpdatedAt:          s.UpdatedAt,
+		Description:          s.Description,
+		URL:                  s.URL,
+		Method:               s.Method,
+		Headers:              dbtype.JSONB(headersRaw),
+		QueryParams:          dbtype.JSONB(queryRaw),
+		Body:                 dbtype.JSONB(bodyRaw),
+		Timeout:              s.Timeout,
+		RetryOnFailure:       s.RetryOnFailure,
+		RetryCount:           s.RetryCount,
+		RetryDelay:           s.RetryDelay,
+		StepIndex:            s.Index,
+		ExecutionOrder:       s.ExecutionOrder,
+		TreeIndex:            s.TreeIndex,
+		PositionX:            s.Position.X,
+		PositionY:            s.Position.Y,
+		Status:               string(s.Status),
+		Attempt:              s.Attempt,
+		VariableExtracts:     dbtype.JSONB(extractsRaw),
+		Assertions:           dbtype.JSONB(assertionsRaw),
+		ResponseSnapshot:     responseRaw,
+		ExtractedVariables:   dbtype.JSONB(extractedRaw),
+		AssertionsResult:     dbtype.JSONB(assertionsResultRaw),
+		StartedAt:            s.StartedAt,
+		FinishedAt:           s.FinishedAt,
+		ResumeAt:             s.ResumeAt,
+		MatchedBranch:        s.MatchedBranch,
+		Error:                s.Error,
+		CreatedAt:            s.CreatedAt,
+		UpdatedAt:            s.UpdatedAt,
 	}, nil
 }
 
@@ -237,24 +235,23 @@ func stepRunDomainFromModel(m *StepRunModel) (*domainsteprun.StepRun, error) {
 		WorkflowRunID:        m.WorkflowRunID,
 		StepID:               m.StepID,
 		WorkflowID:           m.WorkflowID,
-		EndpointID:           m.EndpointID,
 		ProjectID:            m.ProjectID,
 		StepType:             domainstep.Type(m.StepType),
 		DelayDurationSeconds: intValueOrZero(m.DelayDurationSeconds),
 		Name:                 m.Name,
-		Description:    m.Description,
-		URL:            m.URL,
-		Method:         m.Method,
-		Headers:        headers,
-		Query:          query,
-		Body:           body,
-		Timeout:        m.Timeout,
-		RetryOnFailure: m.RetryOnFailure,
-		RetryCount:     m.RetryCount,
-		RetryDelay:     m.RetryDelay,
-		Index:          m.StepIndex,
-		ExecutionOrder: m.ExecutionOrder,
-		TreeIndex:      m.TreeIndex,
+		Description:          m.Description,
+		URL:                  m.URL,
+		Method:               m.Method,
+		Headers:              headers,
+		Query:                query,
+		Body:                 body,
+		Timeout:              m.Timeout,
+		RetryOnFailure:       m.RetryOnFailure,
+		RetryCount:           m.RetryCount,
+		RetryDelay:           m.RetryDelay,
+		Index:                m.StepIndex,
+		ExecutionOrder:       m.ExecutionOrder,
+		TreeIndex:            m.TreeIndex,
 		Position: domainstep.Position{
 			X: m.PositionX,
 			Y: m.PositionY,

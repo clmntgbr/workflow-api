@@ -21,12 +21,11 @@ func (h *StepCreatedHandler) Handle(ctx context.Context, payload []byte) error {
 		return messaging.NonRetryable(err)
 	}
 	log.Printf(
-		"event handled %s eventId=%s stepId=%s workflowId=%s endpointId=%s",
+		"event handled %s eventId=%s stepId=%s workflowId=%s",
 		domainstep.EventTypeStepCreated,
 		evt.ID,
 		evt.StepID,
 		evt.WorkflowID,
-		evt.EndpointID,
 	)
 	return nil
 }

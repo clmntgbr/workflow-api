@@ -250,11 +250,9 @@ func workflowMocksOK() *mockGetWorkflowByIDHandler {
 }
 
 func sampleStepView() *domainstep.StepView {
-	endpointID := testutil.TestEndpointID
 	return &domainstep.StepView{
 		ID:         testutil.TestStepID,
 		WorkflowID: testutil.TestWorkflowID,
-		EndpointID: &endpointID,
 		ProjectID:  testutil.TestProjectID,
 	}
 }

@@ -101,6 +101,35 @@ func (h *AssertCreateAllowedHandler) AssertWorkflowCreate(
 	return nil
 }
 
+func (h *AssertCreateAllowedHandler) AssertWorkflowGraphCreate(
+	ctx context.Context,
+	userID uuid.UUID,
+	projectID uuid.UUID,
+	stepCount, variableCount, assertionCount int,
+) error {
+	if err := h.AssertWorkflowCreate(ctx, userID, projectID); err != nil {
+		return err
+	}
+
+	usage, err := h.getQuotaUsage.Handle(ctx, querysubscription.GetQuotaUsageQuery{
+		UserID:    userID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+	if stepCount > usage.Limits.MaxStepsPerWorkflow {
+		return ErrStepQuotaExceeded
+	}
+	if variableCount > usage.Limits.MaxVariablesPerWorkflow {
+		return ErrVariableQuotaExceeded
+	}
+	if assertionCount > usage.Limits.MaxAssertionsPerWorkflow {
+		return ErrAssertionQuotaExceeded
+	}
+	return nil
+}
+
 func (h *AssertCreateAllowedHandler) AssertEndpointCreate(
 	ctx context.Context,
 	userID uuid.UUID,

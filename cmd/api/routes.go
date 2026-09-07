@@ -85,7 +85,9 @@ func setupProjectRoutes(api fiber.Router, container *di.Container) {
 
 func setupWorkflowRoutes(api fiber.Router, container *di.Container) {
 	api.Post("/workflows", container.WorkflowHandler.Create)
+	api.Post("/workflows/import", container.WorkflowHandler.Import)
 	api.Get("/workflows", container.WorkflowHandler.ListByProject)
+	api.Get("/workflows/:workflowId/export", container.WorkflowHandler.Export)
 	api.Get("/workflows/:workflowId", container.WorkflowHandler.GetByID)
 	api.Put("/workflows/:workflowId", container.WorkflowHandler.Update)
 	api.Post("/workflows/:workflowId/activate", container.WorkflowHandler.Activate)

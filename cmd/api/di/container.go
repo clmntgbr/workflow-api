@@ -266,6 +266,22 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		outboxRepo,
 		assertCreateAllowedHandler,
 	)
+	exportWorkflowHandler := queryworkflow.NewExportWorkflowHandler(
+		workflowReadRepo,
+		stepReadRepo,
+		connReadRepo,
+		variableReadRepo,
+		assertionReadRepo,
+	)
+	importWorkflowHandler := workflowcmd.NewImportWorkflowHandler(
+		workflowWriteRepo,
+		stepWriteRepo,
+		connWriteRepo,
+		variableWriteRepo,
+		assertionWriteRepo,
+		outboxRepo,
+		assertCreateAllowedHandler,
+	)
 	updateWorkflowHandler := workflowcmd.NewUpdateWorkflowHandler(
 		workflowWriteRepo,
 		outboxRepo,
@@ -417,6 +433,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			getWorkflowByIDHandler,
 			listWorkflowsByProjectHandler,
 			getProjectByIDHandler,
+			exportWorkflowHandler,
+			importWorkflowHandler,
 		),
 		EndpointHandler: httphandler.NewEndpointHandler(
 			createEndpointHandler,

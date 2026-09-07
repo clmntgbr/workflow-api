@@ -17,36 +17,35 @@ import (
 type stepRow struct {
 	ID                   uuid.UUID
 	WorkflowID           uuid.UUID
-	EndpointID           *uuid.UUID
 	ProjectID            uuid.UUID
 	Type                 string
 	DelayDurationSeconds *int
 	Expression           *string
 	Name                 string
-	Description    string
-	URL            string
-	Method         string
-	Headers        dbtype.JSONB
-	QueryParams    dbtype.JSONB
-	Body           dbtype.JSONB
-	Timeout        int  `gorm:"column:timeout_ms"`
-	RetryOnFailure bool
-	RetryCount     int
-	RetryDelay     int  `gorm:"column:retry_delay_ms"`
-	StepIndex      string
-	ExecutionOrder int
-	TreeIndex      int
-	PositionX      float64
-	PositionY      float64
-	Status         string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	Description          string
+	URL                  string
+	Method               string
+	Headers              dbtype.JSONB
+	QueryParams          dbtype.JSONB
+	Body                 dbtype.JSONB
+	Timeout              int `gorm:"column:timeout_ms"`
+	RetryOnFailure       bool
+	RetryCount           int
+	RetryDelay           int `gorm:"column:retry_delay_ms"`
+	StepIndex            string
+	ExecutionOrder       int
+	TreeIndex            int
+	PositionX            float64
+	PositionY            float64
+	Status               string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 func (stepRow) TableName() string { return "steps" }
 
 var stepSelectColumns = []string{
-	"id", "workflow_id", "endpoint_id", "project_id", "type", "delay_duration_seconds", "expression",
+	"id", "workflow_id", "project_id", "type", "delay_duration_seconds", "expression",
 	"name", "description", "url", "method", "headers", "query_params", "body",
 	"timeout_ms", "retry_on_failure", "retry_count", "retry_delay_ms",
 	"step_index", "execution_order", "tree_index", "position_x", "position_y",
@@ -138,25 +137,24 @@ func toStepView(row stepRow) (*domainstep.StepView, error) {
 	return &domainstep.StepView{
 		ID:                   row.ID,
 		WorkflowID:           row.WorkflowID,
-		EndpointID:           row.EndpointID,
 		ProjectID:            row.ProjectID,
 		Type:                 stepType,
 		DelayDurationSeconds: intValueOrZero(row.DelayDurationSeconds),
 		Expression:           row.Expression,
 		Name:                 row.Name,
-		Description:    row.Description,
-		URL:            row.URL,
-		Method:         row.Method,
-		Headers:        headers,
-		Query:          query,
-		Body:           body,
-		Timeout:        row.Timeout,
-		RetryOnFailure: row.RetryOnFailure,
-		RetryCount:     row.RetryCount,
-		RetryDelay:     row.RetryDelay,
-		Index:          row.StepIndex,
-		ExecutionOrder: row.ExecutionOrder,
-		TreeIndex:      row.TreeIndex,
+		Description:          row.Description,
+		URL:                  row.URL,
+		Method:               row.Method,
+		Headers:              headers,
+		Query:                query,
+		Body:                 body,
+		Timeout:              row.Timeout,
+		RetryOnFailure:       row.RetryOnFailure,
+		RetryCount:           row.RetryCount,
+		RetryDelay:           row.RetryDelay,
+		Index:                row.StepIndex,
+		ExecutionOrder:       row.ExecutionOrder,
+		TreeIndex:            row.TreeIndex,
 		Position: domainstep.Position{
 			X: row.PositionX,
 			Y: row.PositionY,

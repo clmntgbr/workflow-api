@@ -218,18 +218,18 @@ func (m *mockGetWorkflowByIDHandler) Handle(
 }
 
 type stepMocks struct {
-	create              *mockCreateStepHandler
-	createDelay         *mockCreateDelayStepHandler
-	createCondition     *mockCreateConditionStepHandler
-	update              *mockUpdateStepHandler
-	updateDelay         *mockUpdateDelayStepHandler
-	updateCondition     *mockUpdateConditionStepHandler
-	updatePosition      *mockUpdateStepPositionHandler
-	deleteH             *mockDeleteStepHandler
-	getByID             *mockGetStepByIDHandler
-	listByWorkflow      *mockListStepsByWorkflowHandler
-	latestRunStatus     *mockLatestStepRunStatusHandler
-	getWorkflow         *mockGetWorkflowByIDHandler
+	create          *mockCreateStepHandler
+	createDelay     *mockCreateDelayStepHandler
+	createCondition *mockCreateConditionStepHandler
+	update          *mockUpdateStepHandler
+	updateDelay     *mockUpdateDelayStepHandler
+	updateCondition *mockUpdateConditionStepHandler
+	updatePosition  *mockUpdateStepPositionHandler
+	deleteH         *mockDeleteStepHandler
+	getByID         *mockGetStepByIDHandler
+	listByWorkflow  *mockListStepsByWorkflowHandler
+	latestRunStatus *mockLatestStepRunStatusHandler
+	getWorkflow     *mockGetWorkflowByIDHandler
 }
 
 func newStepHandler(m stepMocks) *handler.StepHandler {
@@ -289,8 +289,8 @@ func activeProject() fiber.Handler {
 	return testutil.WithActiveProject(testutil.TestUserID, testutil.TestProjectID)
 }
 
-func stepsRoute() string       { return "/workflows/:workflowId/steps" }
-func stepItemRoute() string    { return "/workflows/:workflowId/steps/:id" }
+func stepsRoute() string        { return "/workflows/:workflowId/steps" }
+func stepItemRoute() string     { return "/workflows/:workflowId/steps/:id" }
 func stepPositionRoute() string { return "/workflows/:workflowId/steps/:id/position" }
 
 func stepsBasePath() string {
@@ -322,11 +322,9 @@ func sampleWorkflowView() *domainworkflow.WorkflowView {
 }
 
 func sampleHTTPStepEntity() *domainstep.Step {
-	endpointID := testutil.TestEndpointID
 	return &domainstep.Step{
 		ID:             testutil.TestStepID,
 		WorkflowID:     testutil.TestWorkflowID,
-		EndpointID:     &endpointID,
 		ProjectID:      testutil.TestProjectID,
 		Type:           domainstep.TypeHTTP,
 		Name:           "Fetch Users",
@@ -365,18 +363,18 @@ func sampleDelayStepEntity() *domainstep.Step {
 func sampleConditionStepEntity() *domainstep.Step {
 	expression := "status == 200"
 	return &domainstep.Step{
-		ID:             testutil.TestStepID,
-		WorkflowID:     testutil.TestWorkflowID,
-		ProjectID:      testutil.TestProjectID,
-		Type:           domainstep.TypeCondition,
-		Name:           "Check Status",
-		Expression:     &expression,
-		Headers:        map[string]string{},
-		Query:          httpquery.Empty(),
-		Body:           map[string]any{},
-		Status:         domainstep.StatusActive,
-		CreatedAt:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		UpdatedAt:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		ID:         testutil.TestStepID,
+		WorkflowID: testutil.TestWorkflowID,
+		ProjectID:  testutil.TestProjectID,
+		Type:       domainstep.TypeCondition,
+		Name:       "Check Status",
+		Expression: &expression,
+		Headers:    map[string]string{},
+		Query:      httpquery.Empty(),
+		Body:       map[string]any{},
+		Status:     domainstep.StatusActive,
+		CreatedAt:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -385,7 +383,6 @@ func sampleHTTPStepView() *domainstep.StepView {
 	return &domainstep.StepView{
 		ID:             e.ID,
 		WorkflowID:     e.WorkflowID,
-		EndpointID:     e.EndpointID,
 		ProjectID:      e.ProjectID,
 		Type:           e.Type,
 		Name:           e.Name,
@@ -425,18 +422,18 @@ func sampleDelayStepView() *domainstep.StepView {
 func sampleConditionStepView() *domainstep.StepView {
 	e := sampleConditionStepEntity()
 	return &domainstep.StepView{
-		ID:             e.ID,
-		WorkflowID:     e.WorkflowID,
-		ProjectID:      e.ProjectID,
-		Type:           e.Type,
-		Name:           e.Name,
-		Expression:     e.Expression,
-		Headers:        e.Headers,
-		Query:          e.Query,
-		Body:           e.Body,
-		Status:         e.Status,
-		CreatedAt:      e.CreatedAt,
-		UpdatedAt:      e.UpdatedAt,
+		ID:         e.ID,
+		WorkflowID: e.WorkflowID,
+		ProjectID:  e.ProjectID,
+		Type:       e.Type,
+		Name:       e.Name,
+		Expression: e.Expression,
+		Headers:    e.Headers,
+		Query:      e.Query,
+		Body:       e.Body,
+		Status:     e.Status,
+		CreatedAt:  e.CreatedAt,
+		UpdatedAt:  e.UpdatedAt,
 	}
 }
 

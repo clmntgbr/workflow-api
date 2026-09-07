@@ -2,7 +2,7 @@
 
 ## Overview
 
-An **endpoint** is a reusable HTTP template: method, URL, headers, query, body, timeout, and retry settings. **HTTP steps** snapshot an endpoint when placed on the canvas. Endpoints are scoped to the **active project**.
+An **endpoint** is a reusable HTTP template: method, URL, headers, query, body, timeout, and retry settings. Creating an **HTTP step** copies that template onto the step; later endpoint edits do not change existing steps. Endpoints are scoped to the **active project**.
 
 ## HTTP routes
 

@@ -11,31 +11,30 @@ const EventTypeStepCreated = "step.created.v1"
 
 type StepCreated struct {
 	event.PerformedBy
-	ID             string            `json:"eventId"`
-	StepID         string            `json:"stepId"`
-	WorkflowID     string            `json:"workflowId"`
-	EndpointID           string            `json:"endpointId,omitempty"`
+	ID                   string            `json:"eventId"`
+	StepID               string            `json:"stepId"`
+	WorkflowID           string            `json:"workflowId"`
 	ProjectID            string            `json:"projectId"`
 	Type                 string            `json:"type"`
 	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
 	Expression           *string           `json:"expression,omitempty"`
 	Name                 string            `json:"name"`
-	Description    string            `json:"description"`
-	URL            string            `json:"url"`
-	Method         string            `json:"method"`
-	Headers        map[string]string `json:"headers"`
-	Query          httpquery.Params  `json:"query"`
-	Body           map[string]any    `json:"body"`
-	Timeout        int               `json:"timeout"`
-	RetryOnFailure bool              `json:"retryOnFailure"`
-	RetryCount     int               `json:"retryCount"`
-	RetryDelay     int               `json:"retryDelay"`
-	Index          string            `json:"index"`
-	ExecutionOrder int               `json:"executionOrder"`
-	TreeIndex      int               `json:"treeIndex"`
-	Position       Position          `json:"position"`
-	Status         string            `json:"status"`
-	Timestamp      time.Time         `json:"timestamp"`
+	Description          string            `json:"description"`
+	URL                  string            `json:"url"`
+	Method               string            `json:"method"`
+	Headers              map[string]string `json:"headers"`
+	Query                httpquery.Params  `json:"query"`
+	Body                 map[string]any    `json:"body"`
+	Timeout              int               `json:"timeout"`
+	RetryOnFailure       bool              `json:"retryOnFailure"`
+	RetryCount           int               `json:"retryCount"`
+	RetryDelay           int               `json:"retryDelay"`
+	Index                string            `json:"index"`
+	ExecutionOrder       int               `json:"executionOrder"`
+	TreeIndex            int               `json:"treeIndex"`
+	Position             Position          `json:"position"`
+	Status               string            `json:"status"`
+	Timestamp            time.Time         `json:"timestamp"`
 }
 
 func (e StepCreated) EventID() string       { return e.ID }
@@ -47,29 +46,29 @@ const EventTypeStepUpdated = "step.updated.v1"
 
 type StepUpdated struct {
 	event.PerformedBy
-	ID             string            `json:"eventId"`
-	StepID         string            `json:"stepId"`
-	WorkflowID     string            `json:"workflowId"`
+	ID                   string            `json:"eventId"`
+	StepID               string            `json:"stepId"`
+	WorkflowID           string            `json:"workflowId"`
 	ProjectID            string            `json:"projectId"`
 	Type                 string            `json:"type"`
 	DelayDurationSeconds int               `json:"delayDurationSeconds,omitempty"`
 	Expression           *string           `json:"expression,omitempty"`
 	Name                 string            `json:"name"`
-	Description    string            `json:"description"`
-	URL            string            `json:"url"`
-	Method         string            `json:"method"`
-	Headers        map[string]string `json:"headers"`
-	Query          httpquery.Params  `json:"query"`
-	Body           map[string]any    `json:"body"`
-	Timeout        int               `json:"timeout"`
-	RetryOnFailure bool              `json:"retryOnFailure"`
-	RetryCount     int               `json:"retryCount"`
-	RetryDelay     int               `json:"retryDelay"`
-	Index          string            `json:"index"`
-	ExecutionOrder int               `json:"executionOrder"`
-	TreeIndex      int               `json:"treeIndex"`
-	Position       Position          `json:"position"`
-	Timestamp      time.Time         `json:"timestamp"`
+	Description          string            `json:"description"`
+	URL                  string            `json:"url"`
+	Method               string            `json:"method"`
+	Headers              map[string]string `json:"headers"`
+	Query                httpquery.Params  `json:"query"`
+	Body                 map[string]any    `json:"body"`
+	Timeout              int               `json:"timeout"`
+	RetryOnFailure       bool              `json:"retryOnFailure"`
+	RetryCount           int               `json:"retryCount"`
+	RetryDelay           int               `json:"retryDelay"`
+	Index                string            `json:"index"`
+	ExecutionOrder       int               `json:"executionOrder"`
+	TreeIndex            int               `json:"treeIndex"`
+	Position             Position          `json:"position"`
+	Timestamp            time.Time         `json:"timestamp"`
 }
 
 func (e StepUpdated) EventID() string       { return e.ID }
@@ -102,11 +101,11 @@ const EventTypeStepDeleted = "step.deleted.v1"
 
 type StepDeleted struct {
 	event.PerformedBy
-	ID             string    `json:"eventId"`
-	StepID         string    `json:"stepId"`
-	WorkflowID     string    `json:"workflowId"`
-	ProjectID string    `json:"projectId"`
-	Timestamp      time.Time `json:"timestamp"`
+	ID         string    `json:"eventId"`
+	StepID     string    `json:"stepId"`
+	WorkflowID string    `json:"workflowId"`
+	ProjectID  string    `json:"projectId"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 func (e StepDeleted) EventID() string       { return e.ID }

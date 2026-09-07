@@ -6,6 +6,7 @@ import (
 	workflowcmd "go-api/internal/application/command/workflow"
 	queryproject "go-api/internal/application/query/project"
 	queryworkflow "go-api/internal/application/query/workflow"
+	"go-api/internal/application/workflowio"
 	domainproject "go-api/internal/domain/project"
 	domainworkflow "go-api/internal/domain/workflow"
 )
@@ -40,4 +41,12 @@ type workflowListByProjectHandler interface {
 
 type workflowGetProjectByIDHandler interface {
 	Handle(ctx context.Context, q queryproject.GetProjectByIDQuery) (*domainproject.ProjectView, error)
+}
+
+type workflowExportHandler interface {
+	Handle(ctx context.Context, q queryworkflow.ExportWorkflowQuery) (*workflowio.Document, error)
+}
+
+type workflowImportHandler interface {
+	Handle(ctx context.Context, cmd workflowcmd.ImportWorkflowCommand) (*domainworkflow.Workflow, error)
 }
