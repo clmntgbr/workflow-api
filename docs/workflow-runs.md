@@ -22,7 +22,7 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 
 - `201` with run detail on success.
 - Optional body: `{ "context": { … }, "fromStepId": "<step uuid>" }`.
-- `fromStepId` replays the latest successful run of every ancestor onto the new run, skips reachable steps that are not on that path, then continues from that step. Direct parents must already have a successful step run.
+- `fromStepId` replays the latest successful run of every ancestor onto the new run (including HTTP insights), skips reachable steps that are not on that path, then continues from that step. Direct parents must already have a successful step run.
 - `404` when `fromStepId` is missing from the graph (or is an orphan delay/condition).
 - `409` + `MISSING_PREVIOUS_STEP_RUN` when an ancestor has no successful step run to copy.
 - `409` + `RUN_IN_PROGRESS` if a run is already active.

@@ -8,6 +8,7 @@ import (
 	cmdquota "go-api/internal/application/command/quota"
 	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/event"
+	domaininsight "go-api/internal/domain/insight"
 	"go-api/internal/domain/port"
 	domainquota "go-api/internal/domain/quota"
 	domainstep "go-api/internal/domain/step"
@@ -38,6 +39,8 @@ type StartWorkflowRunHandler struct {
 	connRead     domainconnection.ConnectionReadRepository
 	stepRunRead  domainsteprun.StepRunReadRepository
 	stepRunWrite domainsteprun.StepRunWriteRepository
+	insightRead  domaininsight.InsightReadRepository
+	insightWrite domaininsight.InsightWriteRepository
 	outbox       port.OutboxRepository
 	assert       *cmdquota.AssertCreateAllowedHandler
 }
@@ -50,6 +53,8 @@ func NewStartWorkflowRunHandler(
 	connRead domainconnection.ConnectionReadRepository,
 	stepRunRead domainsteprun.StepRunReadRepository,
 	stepRunWrite domainsteprun.StepRunWriteRepository,
+	insightRead domaininsight.InsightReadRepository,
+	insightWrite domaininsight.InsightWriteRepository,
 	outbox port.OutboxRepository,
 	assert *cmdquota.AssertCreateAllowedHandler,
 ) *StartWorkflowRunHandler {
@@ -61,6 +66,8 @@ func NewStartWorkflowRunHandler(
 		connRead:     connRead,
 		stepRunRead:  stepRunRead,
 		stepRunWrite: stepRunWrite,
+		insightRead:  insightRead,
+		insightWrite: insightWrite,
 		outbox:       outbox,
 		assert:       assert,
 	}
@@ -183,6 +190,11 @@ func (h *StartWorkflowRunHandler) Handle(
 			}
 			for _, skipped := range replay.skips {
 				if err := h.stepRunWrite.Save(txCtx, skipped); err != nil {
+					return err
+				}
+			}
+			for _, insight := range replay.insights {
+				if err := h.insightWrite.Save(txCtx, insight); err != nil {
 					return err
 				}
 			}

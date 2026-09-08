@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	domaininsight "go-api/internal/domain/insight"
 	domainstep "go-api/internal/domain/step"
 	domainsteprun "go-api/internal/domain/steprun"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -12,8 +13,9 @@ import (
 )
 
 type startFromReplay struct {
-	copies []*domainsteprun.StepRun
-	skips  []*domainsteprun.StepRun
+	copies   []*domainsteprun.StepRun
+	skips    []*domainsteprun.StepRun
+	insights []*domaininsight.Insight
 }
 
 func (h *StartWorkflowRunHandler) prepareStartFrom(
@@ -71,6 +73,14 @@ func (h *StartWorkflowRunHandler) prepareStartFrom(
 			cloned := latest.ReplayOnto(run.ID)
 			replay.copies = append(replay.copies, cloned)
 			run.MergeContext(cloned.ExtractedVariables)
+
+			sourceInsights, err := h.insightRead.FindByStepRunID(ctx, latest.ID)
+			if err != nil {
+				return nil, err
+			}
+			for _, insight := range sourceInsights {
+				replay.insights = append(replay.insights, insight.ReplayOnto(cloned.ID))
+			}
 		}
 	}
 

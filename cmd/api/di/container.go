@@ -95,6 +95,7 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	stepRunReadRepo := read.NewStepRunReadRepository(db)
 	insightReadRepo := read.NewInsightReadRepository(db)
+	insightWriteRepo := write.NewInsightWriteRepository(db)
 	variableWriteRepo := write.NewVariableWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
 	assertionWriteRepo := write.NewAssertionWriteRepository(db)
@@ -267,6 +268,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		connReadRepo,
 		stepRunReadRepo,
 		stepRunWriteRepo,
+		insightReadRepo,
+		insightWriteRepo,
 		outboxRepo,
 		assertCreateAllowedHandler,
 	)

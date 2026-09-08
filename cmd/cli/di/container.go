@@ -24,6 +24,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	connReadRepo := read.NewConnectionReadRepository(db)
 	stepRunReadRepo := read.NewStepRunReadRepository(db)
 	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
+	insightReadRepo := read.NewInsightReadRepository(db)
+	insightWriteRepo := write.NewInsightWriteRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
 	projectReadRepo := read.NewProjectReadRepository(db)
@@ -62,6 +64,8 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			connReadRepo,
 			stepRunReadRepo,
 			stepRunWriteRepo,
+			insightReadRepo,
+			insightWriteRepo,
 			outboxRepo,
 			assertCreateAllowedHandler,
 		),
