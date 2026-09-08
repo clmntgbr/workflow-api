@@ -6,9 +6,12 @@ import (
 	"time"
 
 	cmdquota "go-api/internal/application/command/quota"
+	domainconnection "go-api/internal/domain/connection"
 	"go-api/internal/domain/event"
 	"go-api/internal/domain/port"
 	domainquota "go-api/internal/domain/quota"
+	domainstep "go-api/internal/domain/step"
+	domainsteprun "go-api/internal/domain/steprun"
 	domainvariable "go-api/internal/domain/variable"
 	domainworkflow "go-api/internal/domain/workflow"
 	domainworkflowrun "go-api/internal/domain/workflowrun"
@@ -23,6 +26,7 @@ type StartWorkflowRunCommand struct {
 	TriggeredBy             domainworkflowrun.TriggeredBy
 	TriggeredByUserID       *uuid.UUID
 	Context                 map[string]any
+	FromStepID              *uuid.UUID
 	ScheduleAlreadyAdvanced bool
 }
 
@@ -30,6 +34,10 @@ type StartWorkflowRunHandler struct {
 	workflowRepo domainworkflow.WorkflowWriteRepository
 	runRepo      domainworkflowrun.WorkflowRunWriteRepository
 	variableRead domainvariable.VariableReadRepository
+	stepRead     domainstep.StepReadRepository
+	connRead     domainconnection.ConnectionReadRepository
+	stepRunRead  domainsteprun.StepRunReadRepository
+	stepRunWrite domainsteprun.StepRunWriteRepository
 	outbox       port.OutboxRepository
 	assert       *cmdquota.AssertCreateAllowedHandler
 }
@@ -38,6 +46,10 @@ func NewStartWorkflowRunHandler(
 	workflowRepo domainworkflow.WorkflowWriteRepository,
 	runRepo domainworkflowrun.WorkflowRunWriteRepository,
 	variableRead domainvariable.VariableReadRepository,
+	stepRead domainstep.StepReadRepository,
+	connRead domainconnection.ConnectionReadRepository,
+	stepRunRead domainsteprun.StepRunReadRepository,
+	stepRunWrite domainsteprun.StepRunWriteRepository,
 	outbox port.OutboxRepository,
 	assert *cmdquota.AssertCreateAllowedHandler,
 ) *StartWorkflowRunHandler {
@@ -45,6 +57,10 @@ func NewStartWorkflowRunHandler(
 		workflowRepo: workflowRepo,
 		runRepo:      runRepo,
 		variableRead: variableRead,
+		stepRead:     stepRead,
+		connRead:     connRead,
+		stepRunRead:  stepRunRead,
+		stepRunWrite: stepRunWrite,
 		outbox:       outbox,
 		assert:       assert,
 	}
@@ -143,9 +159,33 @@ func (h *StartWorkflowRunHandler) Handle(
 		Context:           runContext,
 	})
 
+	var replay *startFromReplay
+	if cmd.FromStepID != nil && *cmd.FromStepID != uuid.Nil {
+		replay, err = h.prepareStartFrom(ctx, *cmd.FromStepID, run)
+		if err != nil {
+			if errors.Is(err, domainworkflowrun.ErrFromStepNotFound) ||
+				errors.Is(err, domainworkflowrun.ErrMissingPreviousStepRun) {
+				return nil, err
+			}
+			return nil, errors.New("failed to start workflow run")
+		}
+	}
+
 	err = h.runRepo.WithTransaction(ctx, func(txCtx context.Context) error {
 		if err := h.runRepo.Save(txCtx, run); err != nil {
 			return err
+		}
+		if replay != nil {
+			for _, copied := range replay.copies {
+				if err := h.stepRunWrite.Save(txCtx, copied); err != nil {
+					return err
+				}
+			}
+			for _, skipped := range replay.skips {
+				if err := h.stepRunWrite.Save(txCtx, skipped); err != nil {
+					return err
+				}
+			}
 		}
 		events := run.PullEvents()
 		if cmd.TriggeredBy == domainworkflowrun.TriggeredBySchedule && !cmd.ScheduleAlreadyAdvanced {

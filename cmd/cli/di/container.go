@@ -21,6 +21,9 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 	workflowWriteRepo := write.NewWorkflowWriteRepository(db)
 	workflowRunWriteRepo := write.NewWorkflowRunWriteRepository(db)
 	variableReadRepo := read.NewVariableReadRepository(db)
+	connReadRepo := read.NewConnectionReadRepository(db)
+	stepRunReadRepo := read.NewStepRunReadRepository(db)
+	stepRunWriteRepo := write.NewStepRunWriteRepository(db)
 	outboxRepo := outbox.NewRepository(db)
 	userReadRepo := read.NewUserReadRepository(db)
 	projectReadRepo := read.NewProjectReadRepository(db)
@@ -55,6 +58,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 			workflowWriteRepo,
 			workflowRunWriteRepo,
 			variableReadRepo,
+			stepReadRepo,
+			connReadRepo,
+			stepRunReadRepo,
+			stepRunWriteRepo,
 			outboxRepo,
 			assertCreateAllowedHandler,
 		),

@@ -231,16 +231,32 @@ func (h *WorkflowRunHandler) startWorkflowRun(
 		}
 	}
 
+	var fromStepID *uuid.UUID
+	if req.FromStepID != nil {
+		parsed := uuid.MustParse(*req.FromStepID)
+		fromStepID = &parsed
+	}
+
 	userID := user.ID
 	run, err := h.startHandler.Handle(c.Context(), workflowruncmd.StartWorkflowRunCommand{
 		WorkflowID:        workflowID,
 		TriggeredBy:       domainworkflowrun.TriggeredByAPI,
 		TriggeredByUserID: &userID,
 		Context:           req.Context,
+		FromStepID:        fromStepID,
 	})
 	if err != nil {
 		if errors.Is(err, domainworkflowrun.ErrWorkflowNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "Workflow not found"})
+		}
+		if errors.Is(err, domainworkflowrun.ErrFromStepNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "From step not found"})
+		}
+		if errors.Is(err, domainworkflowrun.ErrMissingPreviousStepRun) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"code":    "MISSING_PREVIOUS_STEP_RUN",
+				"message": "A previous step has no successful run",
+			})
 		}
 		if errors.Is(err, domainworkflowrun.ErrAlreadyInProgress) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{

@@ -337,7 +337,7 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 | Variables | nested under `/api/workflows/:workflowId/variables` (+ paths search per step) |
 | Assertions | nested under `/api/workflows/:workflowId/steps/:stepId/assertions` |
 | Activity | `GET /api/workflows/:workflowId/activity` |
-| Workflow runs | `POST /workflows/:workflowId/start`, `POST /workflows/:workflowId/stop`, list, detail, analytics, `POST/GET …/runs/export` (XLSX by email, Pro/Business) |
+| Workflow runs | `POST /workflows/:workflowId/start` (optional `context`, `fromStepId`), `POST /workflows/:workflowId/stop`, list, detail, analytics, `POST/GET …/runs/export` (XLSX by email, Pro/Business) |
 | Billing | `/api/plans`, `/api/quota`, `/api/subscriptions`, `/api/subscriptions/*`, `/api/invoices` |
 | Realtime | `GET /api/realtime/connection` |
 
@@ -352,7 +352,7 @@ Auth: Bearer Clerk JWT on `/api/*`. Webhooks: `POST /webhooks/clerk` (Svix), `PO
 
 ```
 StartWorkflowRun → workflowRun.started.v1
-  → Orchestrator: root step runs (HTTP queued, delay waiting, condition inline)
+  → Orchestrator: enqueue every step that can run (HTTP queued, delay waiting, condition inline)
   → stepRun.queued.v1 (HTTP only)
   → Executor: HTTP call
   → stepRun.succeeded.v1 | failed.v1

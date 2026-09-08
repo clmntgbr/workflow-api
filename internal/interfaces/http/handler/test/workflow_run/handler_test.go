@@ -399,6 +399,9 @@ func TestWorkflowRunHandler_StartWorkflow_Success(t *testing.T) {
 	if start.cmd.TriggeredBy != domainworkflowrun.TriggeredByAPI {
 		t.Fatalf("triggered by: got %s", start.cmd.TriggeredBy)
 	}
+	if start.cmd.FromStepID != nil {
+		t.Fatal("from step id must be omitted when the body has no fromStepId")
+	}
 
 	var out presenter.WorkflowRunDetailResponse
 	testutil.DecodeJSON(t, resp, &out)
@@ -425,6 +428,88 @@ func TestWorkflowRunHandler_StartWorkflow_WithContext(t *testing.T) {
 	}
 	if start.cmd.Context["orderId"] != "123" {
 		t.Fatalf("context: got %v", start.cmd.Context)
+	}
+}
+
+func TestWorkflowRunHandler_StartWorkflow_WithFromStepID(t *testing.T) {
+	start := &mockStartWorkflowRunHandler{result: sampleWorkflowRunEntity()}
+	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
+
+	body := map[string]any{"fromStepId": testutil.TestStepID.String()}
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", body))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusCreated)
+	}
+	if start.cmd.FromStepID == nil || *start.cmd.FromStepID != testutil.TestStepID {
+		t.Fatalf("from step id: got %v", start.cmd.FromStepID)
+	}
+}
+
+func TestWorkflowRunHandler_StartWorkflow_InvalidFromStepID(t *testing.T) {
+	start := &mockStartWorkflowRunHandler{}
+	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
+
+	body := map[string]any{"fromStepId": "not-a-uuid"}
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", body))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	if start.called {
+		t.Fatal("start handler must not be called with invalid from step id")
+	}
+}
+
+func TestWorkflowRunHandler_StartWorkflow_HandlerError_FromStepNotFound(t *testing.T) {
+	start := &mockStartWorkflowRunHandler{err: domainworkflowrun.ErrFromStepNotFound}
+	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
+
+	body := map[string]any{"fromStepId": testutil.TestStepID.String()}
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", body))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusNotFound)
+	}
+}
+
+func TestWorkflowRunHandler_StartWorkflow_HandlerError_MissingPreviousStepRun(t *testing.T) {
+	start := &mockStartWorkflowRunHandler{err: domainworkflowrun.ErrMissingPreviousStepRun}
+	getWorkflow := workflowGetter(sampleWorkflowView(), nil)
+	h := newWorkflowRunHandler(start, nil, nil, nil, nil, nil, nil, nil, getWorkflow, nil, nil)
+
+	app := testutil.NewTestApp()
+	app.Post("/workflows/:workflowId/start", activeProject(), h.StartWorkflow)
+
+	body := map[string]any{"fromStepId": testutil.TestStepID.String()}
+	resp, err := app.Test(mustJSONRequest(t, http.MethodPost, "/workflows/"+testutil.TestWorkflowID.String()+"/start", body))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("status: got %d want %d", resp.StatusCode, http.StatusConflict)
+	}
+	out := testutil.DecodeJSONMap(t, resp)
+	if out["code"] != "MISSING_PREVIOUS_STEP_RUN" {
+		t.Fatalf("code: got %v", out["code"])
 	}
 }
 

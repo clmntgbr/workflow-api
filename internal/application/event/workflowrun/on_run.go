@@ -71,13 +71,7 @@ func (h *Orchestrator) OnStarted(ctx context.Context, payload []byte) error {
 
 		created := make([]*domainsteprun.StepRun, 0)
 		stepsByID := stepByID(steps)
-		for _, step := range rootSteps(steps, connections) {
-			if isOrphanDelay(step, connections) || isOrphanCondition(step, connections) {
-				continue
-			}
-			if _, ok := existingByStep[step.ID]; ok {
-				continue
-			}
+		for _, step := range steps {
 			more, err := h.activateStepRun(txCtx, run, step, stepsByID, connections, existingByStep)
 			if err != nil {
 				return err

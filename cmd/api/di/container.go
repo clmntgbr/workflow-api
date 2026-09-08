@@ -263,6 +263,10 @@ func NewContainer(db *gorm.DB, env *config.Config) *Container {
 		workflowWriteRepo,
 		workflowRunWriteRepo,
 		variableReadRepo,
+		stepReadRepo,
+		connReadRepo,
+		stepRunReadRepo,
+		stepRunWriteRepo,
 		outboxRepo,
 		assertCreateAllowedHandler,
 	)

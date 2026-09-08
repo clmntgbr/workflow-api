@@ -8,7 +8,7 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/workflows/:workflowId/start` | Start run (optional `context` JSON body) |
+| `POST` | `/api/workflows/:workflowId/start` | Start run (optional `{ "context", "fromStepId" }` JSON body) |
 | `POST` | `/api/workflows/:workflowId/stop` | Cancel in-progress run |
 | `GET` | `/api/workflows/:workflowId/runs` | List runs (paginated) |
 | `GET` | `/api/workflows/:workflowId/runs/:id` | Run detail (step runs, insights) |
@@ -21,6 +21,10 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 ### Start
 
 - `201` with run detail on success.
+- Optional body: `{ "context": { … }, "fromStepId": "<step uuid>" }`.
+- `fromStepId` replays the latest successful run of every ancestor onto the new run, skips reachable steps that are not on that path, then continues from that step. Direct parents must already have a successful step run.
+- `404` when `fromStepId` is missing from the graph (or is an orphan delay/condition).
+- `409` + `MISSING_PREVIOUS_STEP_RUN` when an ancestor has no successful step run to copy.
 - `409` + `RUN_IN_PROGRESS` if a run is already active.
 - `403` on workflow run or concurrent run quota exceeded.
 
@@ -33,7 +37,7 @@ A **workflow run** is one execution of a workflow graph. Runs can be triggered m
 
 ```
 POST /start → workflowRun.started.v1
-  → Orchestrator: root steps
+  → Orchestrator: enqueue every step that can run (roots, or the start-from step once ancestors are copied)
       HTTP  → stepRun.queued → executor → succeeded | failed
       Delay → waiting + resumeAt → worker poller → succeeded
       Condition → inline eval → branch routing

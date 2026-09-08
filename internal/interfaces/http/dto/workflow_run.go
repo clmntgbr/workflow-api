@@ -1,7 +1,8 @@
 package dto
 
 type StartWorkflowRunRequest struct {
-	Context map[string]any `json:"context" validate:"omitempty"`
+	Context    map[string]any `json:"context" validate:"omitempty"`
+	FromStepID *string        `json:"fromStepId" validate:"omitempty,uuid"`
 }
 
 type WorkflowRunAnalyticsQuery struct {
